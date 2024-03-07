@@ -1,0 +1,274 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Threads">
+      <UniqueIdentifier>{d1ace6c1-0109-4fe2-b189-151b17db7d7a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Threads">
+      <UniqueIdentifier>{c5b91b46-bec7-4f70-b1d2-a51801aed307}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{a0d9ecfa-0733-407e-96ad-c2ea5601a003}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Direct3D11 functions">
+      <UniqueIdentifier>{e491835f-959a-4de6-93f6-47f133fec0c3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\include">
+      <UniqueIdentifier>{4112f7f9-ac05-452a-a7ac-69cb9d55bdef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Map">
+      <UniqueIdentifier>{5dbb6782-eb1e-40c0-8af2-5baa9e9290f2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Sprite">
+      <UniqueIdentifier>{feee12ce-a4e8-41ec-9781-c5e52d079b0b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\GUI">
+      <UniqueIdentifier>{26c989d2-f488-4603-b246-869c0b14827c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Armada Intelligence functions">
+      <UniqueIdentifier>{1696eeaf-39ef-46c9-8a84-f7f1174b818d}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Main thread.h">
+      <Filter>Header Files\Threads</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\WorldGen threads.h">
+      <Filter>Header Files\Threads</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\OpenAL1_1 thread.h">
+      <Filter>Header Files\Threads</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Direct3D11 thread.h">
+      <Filter>Header Files\Threads</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Data structures.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\DirectInput8 thread.h">
+      <Filter>Header Files\Threads</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\DirectInput8 keyboard scan codes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\GUI structures.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Direct3D11 functions\class_config.h">
+      <Filter>Header Files\Direct3D11 functions</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Direct3D11 functions\class_buffers.h">
+      <Filter>Header Files\Direct3D11 functions</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Direct3D11 functions\class_lights.h">
+      <Filter>Header Files\Direct3D11 functions</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Direct3D11 functions\class_textures.h">
+      <Filter>Header Files\Direct3D11 functions</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Direct3D11 functions\class_cameras.h">
+      <Filter>Header Files\Direct3D11 functions</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Direct3D11 functions\class_gui.h">
+      <Filter>Header Files\Direct3D11 functions</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\class_timers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\thread flags.h">
+      <Filter>Header Files\Threads</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\OAL1_1 file operations.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Command queue.h">
+      <Filter>Header Files\Threads</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Vector structures.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Entity structures.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Map structures.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Direct3D11 functions\class_render.h">
+      <Filter>Header Files\Direct3D11 functions</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Direct3D11 functions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\File operations.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Common functions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\D3D11 error testing.h">
+      <Filter>Header Files\Threads</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\OAL11 error testing.h">
+      <Filter>Header Files\Threads</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\DI8 error testing.h">
+      <Filter>Header Files\Threads</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\D3D11 type defines.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Armada Intelligence\class_entitymanager.h">
+      <Filter>Header Files\Armada Intelligence functions</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Armada Intelligence\class_mapmanager.h">
+      <Filter>Header Files\Armada Intelligence functions</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Armada Intelligence\D3D11 helper functions.h">
+      <Filter>Header Files\Armada Intelligence functions</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Armada Intelligence\GUI functions.h">
+      <Filter>Header Files\Armada Intelligence functions</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\Fixed-point math.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\DI8 scan code text labels.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="LastVigil.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="OpenAL1_1 thread.cpp">
+      <Filter>Source Files\Threads</Filter>
+    </ClCompile>
+    <ClCompile Include="WorldGen threads.cpp">
+      <Filter>Source Files\Threads</Filter>
+    </ClCompile>
+    <ClCompile Include="Direct3D11 thread.cpp">
+      <Filter>Source Files\Threads</Filter>
+    </ClCompile>
+    <ClCompile Include="DirectInput8 thread.cpp">
+      <Filter>Source Files\Threads</Filter>
+    </ClCompile>
+    <ClCompile Include="GUI functions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Think bank.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="LastVigil.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="small.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="LastVigil.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\gs.instanced.sprites.hlsl">
+      <Filter>Shaders\Sprite</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ps.instanced.sprites.hlsl">
+      <Filter>Shaders\Sprite</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\vs.instanced.sprites.hlsl">
+      <Filter>Shaders\Sprite</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\gs.map.cells.hlsl">
+      <Filter>Shaders\Map</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\gs.map.cells.x8.hlsl">
+      <Filter>Shaders\Map</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ps.map.cells.hlsl">
+      <Filter>Shaders\Map</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\vs.map.cells.hlsl">
+      <Filter>Shaders\Map</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\vs.map.cells.x8.hlsl">
+      <Filter>Shaders\Map</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\gs.gui.hlsl">
+      <Filter>Shaders\GUI</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\gs.text.wrapped.hlsl">
+      <Filter>Shaders\GUI</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ps.gui.hlsl">
+      <Filter>Shaders\GUI</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ps.text.wrapped.hlsl">
+      <Filter>Shaders\GUI</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ps.voxel.frame.hlsl">
+      <Filter>Shaders\GUI</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\vs.gui.hlsl">
+      <Filter>Shaders\GUI</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\vs.text.wrapped.hlsl">
+      <Filter>Shaders\GUI</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\vs.voxel.frame.hlsl">
+      <Filter>Shaders\GUI</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\gs.map.cells.x8.lq.hlsl">
+      <Filter>Shaders\Map</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\gs.entities.sprites.x32.hlsl">
+      <Filter>Shaders\Sprite</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\vs.entities.sprites.x32.hlsl">
+      <Filter>Shaders\Sprite</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ps.entities.sprites.hlsl">
+      <Filter>Shaders\Sprite</Filter>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
+    <None Include="packages.config" />
+    <None Include="Shaders\common.hlsli">
+      <Filter>Shaders\include</Filter>
+    </None>
+    <None Include="Shaders\ps.full register access.hlsli">
+      <Filter>Shaders\include</Filter>
+    </None>
+    <None Include="Shaders\gs.mesh displacement functions.hlsli">
+      <Filter>Shaders\include</Filter>
+    </None>
+  </ItemGroup>
+</Project>
