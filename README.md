@@ -5,9 +5,12 @@ Originally this project started way back in the late '90s. At the time I wanted 
 But things happened and I put the project away, viewing it as a pleasant little pipe dream. Now, though, I have good reason to resurrect it.
 
 As for the current incarnation of all this, ArmadaEngine expands upon TankEngine's design in the following ways:
-* Hybrid voxel/heightfield 3D terrain, replacing flat 2D tiles
+* Hybrid voxel/heightfield 3D terrain iwth real-time deformation, replacing flat 2D tiles
 * Multi-threaded & cache-compact modular A.I., replacing library-based fixed functions
 * Modular terrain map with parallel worlds/planets/dimensions/universes/etc. access, replacing isolated closed terrain maps
 * Definable chemical elements with environment-based transitions & interactions, replacing hard-coded assignable tile properties
 
 I'm still using DirectInput 8 and OpenAL 1.1; obvious signs of me being behind the times. And we all know Direct3D 11 isn't young, either. I intend to (eventually) create a Vulkan pathway in ArmadaEngine, as well as move on to OpenAL Soft. As for DirectInput 8, I will have to create a replacement one day, I suppose. One thing a time...
+
+Testing on-the-fly geometry generation, entity culling, and GUI rendering & function:
+![LastVigil debug_2024_03_12_22_03_18_342](https://github.com/Zenefess/ArmadaEngine/assets/116688139/a9dff456-fcae-46b8-b5ec-2493538af4d3)
