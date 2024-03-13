@@ -5,7 +5,7 @@ Originally this project started way back in the late '90s. At the time I wanted 
 But things happened and I put the project away, viewing it as a pleasant little pipe dream. Now, though, I have good reason to resurrect it.
 
 As for the current incarnation of all this, ArmadaEngine expands upon TankEngine's design in the following ways:
-* Hybrid voxel/heightfield 3D terrain iwth real-time deformation, replacing flat 2D tiles
+* Hybrid voxel/heightfield 3D terrain with real-time deformation, replacing flat 2D tiles
 * Multi-threaded & cache-compact modular A.I., replacing library-based fixed functions
 * Modular terrain map with parallel worlds/planets/dimensions/universes/etc. access, replacing isolated closed terrain maps
 * Definable chemical elements with environment-based transitions & interactions, replacing hard-coded assignable tile properties
