@@ -18,6 +18,6 @@ extern cwchptr stBusy;
 extern cwchptr stError;
 cwchptr stWGen = L"TankEngine";
 
-extern al16 vui64  THREAD_LIFE;			// 'Thread active' flags
-extern al16 wchptr stThrdStat;			// Text strings for thread status
-extern al8  HWND   hWnd;					// Main window's handle
+extern al16 vui64  THREAD_LIFE;         // 'Thread active' flags
+extern al16 wchptr stThrdStat;         // Text strings for thread status
+extern al8  HWND   hWnd;               // Main window's handle

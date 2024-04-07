@@ -8,19 +8,19 @@
  ************************************************************/
 #pragma once
 
- /*	'Thread active' flags
+ /*   'Thread active' flags
 
-	 bit 00-01: Main thread
-		  02-06: Video renderer thread
-		  07-11: Audio renderer thread
-		  12-16: Input thread
-		  17-19: World generation thread
-		  18-20: World generation sub-thread
-		  21-23: AI thread
-		  24-25: 1st AI sub-thread
-		  ...
-		  57-58: 17th AI sub-thread
-		  59-63: Developer thread
+    bit 00-01: Main thread
+        02-06: Video renderer thread
+        07-11: Audio renderer thread
+        12-16: Input thread
+        17-19: World generation thread
+        18-20: World generation sub-thread
+        21-23: AI thread
+        24-25: 1st AI sub-thread
+        ...
+        57-58: 17th AI sub-thread
+        59-63: Developer thread
  */
 #define  MAIN_THREAD_ALIVE 0x0000000000000001
 #define  MAIN_THREAD_DIED  0x0000000000000002

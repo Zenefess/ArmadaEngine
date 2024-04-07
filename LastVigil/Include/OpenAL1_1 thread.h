@@ -20,9 +20,9 @@ extern vol GLOBALCOORDS  gco;
 extern cwchar* stInit;
 extern cwchar* stBusy;
 extern cwchar* stError;
-		 cwchar* stOAL11 = L"OpenAL 1.1";
+       cwchar* stOAL11 = L"OpenAL 1.1";
 
-extern al16 wchar*  stThrdStat;			// Text strings for thread status
-extern al8  HWND    hWnd;					// Main window's handle
-extern al8  HWND    hWndDebug;			// Debug window's handle
+extern al16 wchar*  stThrdStat;         // Text strings for thread status
+extern al8  HWND    hWnd;               // Main window's handle
+extern al8  HWND    hWndDebug;         // Debug window's handle
 extern al8  HRESULT hr;

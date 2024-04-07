@@ -50,10 +50,10 @@ extern CLASS_TIMER mainTimer;
 extern void WriteError(cchptr, bool);
 
 inline static void Try(cchptr stEvent, ui32 uiResult) {
-	static char stDescription[64];
+   static char stDescription[64];
 
-	if(uiResult & 0x080000000) {
-		sprintf(stDescription, "VIDEO:%04X : %s", uiResult & 0x03FFFFFFF, stEvent);
-		WriteError(stDescription, (uiResult & 0x040000000 ? true : false));
-	}
+   if(uiResult & 0x080000000) {
+      sprintf(stDescription, "VIDEO:%04X : %s", uiResult & 0x03FFFFFFF, stEvent);
+      WriteError(stDescription, (uiResult & 0x040000000 ? true : false));
+   }
 }

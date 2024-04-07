@@ -6,9 +6,6 @@
  *                                                        *
  * Copyright (c) David William Bull. All rights reserved. *
  **********************************************************/
-#pragma once
-
-#include "Data structures.h"
 
 /*/
  *  Library of pointers to classes and resources
@@ -26,8 +23,10 @@
 #define AE_PTR_LIB
 extern cptr ptrLib[16];
 
-#define AE_SYS_DATA
+#ifdef DATA_TRACKING
+#include "data tracking.h"
 extern SYSTEM_DATA sysData;
+#endif
 
 #define AE_D3D11_2
 extern vui64     THREAD_LIFE;  // 'Thread active' flags
@@ -36,6 +35,6 @@ extern HINSTANCE hInst;        // Current instance's handle
 extern HWND      hWnd;         // Main window's handle
 extern HANDLE    hErrorOutput; // File handle for error output
 extern HRESULT   hr;
+extern wchar     stErrorFilename[64];
 
-extern wchar stErrorFilename[64];
-void WriteError(cchptrc, cbool);
+extern void WriteError(cchptrc, cbool);

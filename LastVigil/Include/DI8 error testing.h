@@ -26,13 +26,13 @@ cchar stGetKeyDevState[] = "di8Key->GetDeviceState";
 cchar stPollMouse[]      = "di8Mse->Poll";
 
 inline static void Try(cchptr stEvent, ui32 uiResult) {
-	static char stDescription[64];
+   static char stDescription[64];
 
-	if(uiResult & 0x080000000) {
-		sprintf(stDescription, "INPUT:%04X : %s", uiResult & 0x03FFFFFFF, stEvent);
-		if(uiResult & 0x040000000)
-			WriteError(stDescription, true);
-		else
-			WriteError(stDescription, false);
-	}
+   if(uiResult & 0x080000000) {
+      sprintf(stDescription, "INPUT:%04X : %s", uiResult & 0x03FFFFFFF, stEvent);
+      if(uiResult & 0x040000000)
+         WriteError(stDescription, true);
+      else
+         WriteError(stDescription, false);
+   }
 }

@@ -22,26 +22,22 @@
 #include "D3D11 type defines.h"
 #include "D3D11 error testing.h"
 
-extern SYSTEM_DATA sysData;
+// Defined in "LastVigil.cpp"
+extern     SYSTEM_DATA  sysData;
+extern     wchptr       stThrdStat;
+extern     HINSTANCE    hInst;      // Current instance's handle
+extern     HRESULT      hr;
+extern     CLASS_TIMER  mainTimer;
+extern vol GLOBALCOORDS gco;
 
+// Defined in "Direct3D11 thread.cpp"
+extern vui64      THREAD_LIFE_V;
 extern cwchptr    renderWndClass;
 extern cwchptr    rndrWndTitle;
-extern vui64      THREAD_LIFE_V;
 extern RESOLUTION ScrRes;
 
-extern cwchptr stBusy;
-extern cwchptr stError;
-extern cwchptr stInit;
-extern wchptr  stThrdStat;	// Text string for thread status
-
-extern HINSTANCE hInst;			// Current instance's handle
-extern HWND      hWnd;			// Main window's handle
-extern HWND      hWndDebug;		// Debug window's handle
-extern HRESULT   hr;
-
+// Defined in "DirectInput8 thread.h"
 extern vol GLOBALCTRLVARS gcv;
-extern vol GLOBALCOORDS   gco;
-extern     CLASS_TIMER    mainTimer;
 
 #define AE_PTR_LIB
 extern cptr ptrLib[16];
