@@ -10,7 +10,6 @@
  *                                                        *
  * Copyright (c) David William Bull. All rights reserved. *
  **********************************************************/
-
 #pragma once
 
 #include <immintrin.h>
