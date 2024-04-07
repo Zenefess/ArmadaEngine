@@ -12,6 +12,6 @@
 #include "Data structures.h"
 #include "Entity structures.h"
 
-void Template(ENTITY *me) {	// Pass pointer to parent entity
+void Template(ENTITY *me) {   // Pass pointer to parent entity
 
 };
