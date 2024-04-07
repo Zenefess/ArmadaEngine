@@ -87,6 +87,7 @@ static const float rcp512   = 0.001953125f;
 static const float rcp16384 = 0.00006103515625f;
 static const float rcp32768 = 0.000030517578125f;
 static const float rcp65534 = 0.000015259254737998596148564104129154f;
+static const float rcp65535 = 0.000015259021896696421759365224689097f;
 
 static const float  PIf     = 3.1415926535897932384626433832795f;
 static const double PId     = 3.1415926535897932384626433832795;
@@ -100,23 +101,23 @@ inline void add64(inout ui64 a, in cui64 b) { const uint c = a.low; a.low += b.l
 
 // PRNG
 inline int2 rand_ui15(in const uint2 indices) {
-	const int2 i = (indices << 13u) ^ indices;
-	return (i * (i * i * 15731u + 789221u) + 1376312589u) & 0x07FFF;
+   const int2 i = (indices << 13u) ^ indices;
+   return (i * (i * i * 15731u + 789221u) + 1376312589u) & 0x07FFF;
 }
 
 inline uint rand_ui31(in const uint index) {
-	const uint i = (index << 13u) ^ index;
-	return (i * (i * i * 15731u + 789221u) + 1376312589u) & 0x07FFFFFFF;
+   const uint i = (index << 13u) ^ index;
+   return (i * (i * i * 15731u + 789221u) + 1376312589u) & 0x07FFFFFFF;
 }
 
 inline uint2 rand_ui31(in const uint2 indices) {
-	const uint2 i = (indices << 13u) ^ indices;
-	return (i * (i * i * 15731u + 789221u) + 1376312589u) & 0x07FFFFFFF;
+   const uint2 i = (indices << 13u) ^ indices;
+   return (i * (i * i * 15731u + 789221u) + 1376312589u) & 0x07FFFFFFF;
 }
 
 inline uint4 rand_ui31(in const uint4 indices) {
-	const uint4 i = (indices << 13u) ^ indices;
-	return (i * (i * i * 15731u + 789221u) + 1376312589u) & 0x07FFFFFFF;
+   const uint4 i = (indices << 13u) ^ indices;
+   return (i * (i * i * 15731u + 789221u) + 1376312589u) & 0x07FFFFFFF;
 }
 
 // Exchange the values of 2 variables
@@ -128,12 +129,12 @@ inline void Swap(inout uint2 v) { v.x ^= v.y; v.y ^= v.x; v.x ^= v.y; };
 
 // Sort 4 indices based on ratios
 inline void Sort(in const uint4 ratios, inout uint4 indices) {
-	if(ratios.x < ratios.y) { indices.x ^= indices.y; indices.y ^= indices.x; indices.x ^= indices.y; };
-	if(ratios.y < ratios.z) { indices.y ^= indices.z; indices.z ^= indices.y; indices.y ^= indices.z; };
-	if(ratios.z < ratios.w) { indices.z ^= indices.w; indices.w ^= indices.z; indices.z ^= indices.w; };
-	if(ratios.x < ratios.y) { indices.x ^= indices.y; indices.y ^= indices.x; indices.x ^= indices.y; };
-	if(ratios.y < ratios.z) { indices.y ^= indices.z; indices.z ^= indices.y; indices.y ^= indices.z; };
-	if(ratios.x < ratios.y) { indices.x ^= indices.y; indices.y ^= indices.x; indices.x ^= indices.y; };
+   if(ratios.x < ratios.y) { indices.x ^= indices.y; indices.y ^= indices.x; indices.x ^= indices.y; };
+   if(ratios.y < ratios.z) { indices.y ^= indices.z; indices.z ^= indices.y; indices.y ^= indices.z; };
+   if(ratios.z < ratios.w) { indices.z ^= indices.w; indices.w ^= indices.z; indices.z ^= indices.w; };
+   if(ratios.x < ratios.y) { indices.x ^= indices.y; indices.y ^= indices.x; indices.x ^= indices.y; };
+   if(ratios.y < ratios.z) { indices.y ^= indices.z; indices.z ^= indices.y; indices.y ^= indices.z; };
+   if(ratios.x < ratios.y) { indices.x ^= indices.y; indices.y ^= indices.x; indices.x ^= indices.y; };
 }
 
 // Vector rotation
@@ -141,55 +142,55 @@ inline float2 RotateVector(in float2 v, in const float2 dir) { return float2(dot
 
 // Calculate sin & cos values for orientionation of triangle, then pack into uints
 inline uint3 PackSinCosFromVerts(in const float3 vert0, in const float3 vert1, in const float3 vert2) {
-	const float2x3 fUV     = float2x3(vert1 - vert0, vert2 - vert0);
-	const float3   fNormal = float3((fUV[0].y * fUV[1].z) - (fUV[0].z * fUV[1].y),
-											  (fUV[0].z * fUV[1].x) - (fUV[0].x * fUV[1].z),
-											  (fUV[0].x * fUV[1].y) - (fUV[0].y * fUV[1].x));
-	const float2   fPerp   = float2(0.0f, -1.0f);
+   const float2x3 fUV     = float2x3(vert1 - vert0, vert2 - vert0);
+   const float3   fNormal = float3((fUV[0].y * fUV[1].z) - (fUV[0].z * fUV[1].y),
+                                   (fUV[0].z * fUV[1].x) - (fUV[0].x * fUV[1].z),
+                                   (fUV[0].x * fUV[1].y) - (fUV[0].y * fUV[1].x));
+   const float2   fPerp   = float2(0.0f, -1.0f);
 
-	const float3x2 fSinCos = { (length(fNormal.yz) == 0.0f ? fPerp : normalize(fNormal.yz)),
-										(length(fNormal.xz) == 0.0f ? fPerp : normalize(fNormal.xz)),
-										(length(fNormal.xy) == 0.0f ? fPerp : normalize(fNormal.xy)) };
-	
-	return f32tof16(-float3(fSinCos[0].y, fSinCos[1].y, fSinCos[2].y)) | (f32tof16(float3(fSinCos[0].x, fSinCos[1].x, fSinCos[2].x)) << 16);
+   const float3x2 fSinCos = { (length(fNormal.yz) == 0.0f ? fPerp : normalize(fNormal.yz)),
+                              (length(fNormal.xz) == 0.0f ? fPerp : normalize(fNormal.xz)),
+                              (length(fNormal.xy) == 0.0f ? fPerp : normalize(fNormal.xy)) };
+   
+   return f32tof16(-float3(fSinCos[0].y, fSinCos[1].y, fSinCos[2].y)) | (f32tof16(float3(fSinCos[0].x, fSinCos[1].x, fSinCos[2].x)) << 16);
 }
 
 inline uint2 PackXYSinCosFromVerts(in const float3 vert0, in const float3 vert1, in const float3 vert2) {
-	const float2x3 fUV     = float2x3(vert1 - vert0, vert2 - vert0);
-	const float3   fNormal = float3((fUV[0].y * fUV[1].z) - (fUV[0].z * fUV[1].y),
-											  (fUV[0].z * fUV[1].x) - (fUV[0].x * fUV[1].z),
-											  (fUV[0].x * fUV[1].y) - (fUV[0].y * fUV[1].x));
-	const float2   fPerp   = float2(0.0f, -1.0f);
+   const float2x3 fUV     = float2x3(vert1 - vert0, vert2 - vert0);
+   const float3   fNormal = float3((fUV[0].y * fUV[1].z) - (fUV[0].z * fUV[1].y),
+                                   (fUV[0].z * fUV[1].x) - (fUV[0].x * fUV[1].z),
+                                   (fUV[0].x * fUV[1].y) - (fUV[0].y * fUV[1].x));
+   const float2   fPerp   = float2(0.0f, -1.0f);
 
-	const float2x2 fSinCos = { (length(fNormal.yz) == 0.0f ? fPerp : normalize(fNormal.yz)),
-										(length(fNormal.xz) == 0.0f ? fPerp : normalize(fNormal.xz)) };
-	
-	return f32tof16(-float2(fSinCos[0].y, fSinCos[1].y)) | (f32tof16(float2(fSinCos[0].x, fSinCos[1].x)) << 16);
+   const float2x2 fSinCos = { (length(fNormal.yz) == 0.0f ? fPerp : normalize(fNormal.yz)),
+                              (length(fNormal.xz) == 0.0f ? fPerp : normalize(fNormal.xz)) };
+   
+   return f32tof16(-float2(fSinCos[0].y, fSinCos[1].y)) | (f32tof16(float2(fSinCos[0].x, fSinCos[1].x)) << 16);
 }
 
 // Denormalise: 2x packed uint16 -> 2x float
 inline float2 Float16x2(in const uint input, in const float floor, in const float ceiling) {
-	const uint2  prefloat  = uint2(input & 0x0FFFF, input >> 16);
-	const float2 postfloat = float2(prefloat) * 0.0000152590218966964217593652246891f;
+   const uint2  prefloat  = uint2(input & 0x0FFFF, input >> 16);
+   const float2 postfloat = float2(prefloat) * 0.000015259021896696421759365224689097f;
 
-	return postfloat * (ceiling - floor) + floor;
+   return postfloat * (ceiling - floor) + floor;
 }
 
 // Denormalise: 4x packed uint16 -> 4x float
 inline float4 Float16x4(in const uint2 input, in const float floor, in const float ceiling) {
-	const uint4  prefloat  = uint4(input & 0x0FFFF, input >> 16);
-	const float4 postfloat = float4(prefloat.xzyw) * 0.0000152590218966964217593652246891f;
+   const uint4  prefloat  = uint4(input & 0x0FFFF, input >> 16);
+   const float4 postfloat = float4(prefloat.xzyw) * 0.000015259021896696421759365224689097f;
 
-	return postfloat * (ceiling - floor) + floor;
+   return postfloat * (ceiling - floor) + floor;
 }
 
 // Convert & add integer seconds and floating-point reaminder to double
 inline double Seconds(in const uint seconds, in const float fraction) {
-	return double(seconds) + double(fraction);
+   return double(seconds) + double(fraction);
 }
 
 inline double Seconds(in cTIME time ) {
-	return double(time.seconds) + double(time.fraction);
+   return double(time.seconds) + double(time.fraction);
 }
 
 #endif
