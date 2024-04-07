@@ -38,10 +38,10 @@ struct HELPFUNC_MAP {
    }
 
    ~HELPFUNC_MAP(void) {
-      _aligned_free(modBuf);
-      _aligned_free(visBuf);
-      _aligned_free(vertBuf);
-      _aligned_free(gpuBuf);
+      mfree(modBuf);
+      mfree(visBuf);
+      mfree(vertBuf);
+      mfree(gpuBuf);
    }
 
    inline void CreateBuffers(csi16 worldIndex, csi16 mapIndex, csi16 elementTableIndex) {
@@ -135,10 +135,10 @@ al32 struct HELPFUNC_ENT {
    }
 
    ~HELPFUNC_ENT() {
-      _aligned_free(modBuf);
-      _aligned_free(visBuf);
-      _aligned_free(vertBuf);
-      _aligned_free(gpuBuf);
+      mfree(modBuf);
+      mfree(visBuf);
+      mfree(vertBuf);
+      mfree(gpuBuf);
    }
 
    inline void CreateBuffers(csi16 groupIndex) {
