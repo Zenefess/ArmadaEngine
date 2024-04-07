@@ -6,6 +6,8 @@
 ...Who knows; maybe this will go well enough that my AmStaff & I can move from Australia to Florida. Australia is full of dead memories, whereas Florida, maybe, possibly, could still have something worthwhile for me over there. It will be the least I do.
 
 
+
+Original text:
    This is a personal project I've been working on in isolation, primarily to rescue myself from chronic symptoms of stage 4 dementia. Back in early 2022 I had gone way beyond failing to remember names on a regular basis; I had reached a point where I was forgetting how to begin complex tasks I'd been doing most of my life. Then I found an old project I had put on freeze indefinitely for other priorities (and I understood most of what I was looking at), so I became determined to use it as a way to bring my brain back.
    And it's working; 4 months of learning & coding with DirectX 11 was enough to restore my memory recall to even better than it was 10 years ago. But events since beginning ArmadaEngine have slowed me down -- including permanent arm & leg injuries -- and I need to keep going.
 
