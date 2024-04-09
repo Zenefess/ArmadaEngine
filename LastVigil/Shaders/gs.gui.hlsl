@@ -1,12 +1,13 @@
 /************************************************************
  * File: gs.gui.hlsl                    Created: 2023/04/09 *
- *                                Last modified: 2024/04/07 *
+ *                                Last modified: 2024/04/09 *
  *                                                          *
  * Notes: 8 characters per instance.                        *
  *                                                          *
  * 2023/07/02: Moved input data to structured buffer        *
  * 2024/04/01: GUI_EL_DYN SRV+Adj.coords replaced with UAV  *
  * 2024/04/05: Added truncation functionality to text       *
+ * 2024/04/09: Added compression functionality to text      *
  *                                                          *
  * To do: 1)Add rotation                                    *
  *                                                          *
@@ -35,7 +36,7 @@ struct GUI_EL_DYN { // 96 bytes (24 scalars)
    float  rot;       // Amount of rotation
    float  width;     // Total width of vertex's text in view space
    uint   pei;       // Parent element's GUI_EL_DYN index: this==No parent
-   uint   taos;      // 0~27==Offset into structured text buffer
+   uint   taos;      // 0~25==Offset into text array (div.by 16), 26~31==Vertex's char count
    uint   ind_type;  // 0~15==Offset into alphabet buffer, 16~23==Runtime index of alphabet's atlas texture, 24~31==Element type
    uint   seo_bits;  // 0~15==First sibling element offset, 16~19==Justification (L,R,T,B), 20~23==???
 };                   // 24==Rotate, 25==Translate, 26&27==Scale: X&Y, 28==Invisible, 29==Truncate, 30==Compress, 31==Wide chars
@@ -144,8 +145,8 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
 
    const uint  type    = curElement.ind_type & 0x0FF000000;
    const uint  ai_type = ((curElement.ind_type >> 16) & 0x07F) | (type << 7);
-   const float border  = ((curElement.pei != 0x0FFFFFFFF) && (curBits & 0x0200) ? invScale.y : invScale.x);
-
+   
+   float  border = ((curElement.pei != 0x0FFFFFFFF) && (curBits & 0x0200) ? invScale.y : invScale.x);
    float2 coords;
 
    // Type!=Text
@@ -195,7 +196,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
    // Type==Text
    } else {
       const uint   i_div2      = i >> 1;
-      const uint   taOS        = curElement.taos + (i_div2);
+      const uint   taOS        = (curElement.taos & 0x03FFFFFF) + (i_div2);
       const uint   alphaOS     = curElement.ind_type & 0x0FFFF;
       const uint   arrayStep   = (i & 0x01) << 1;
       const uint2  char16Index = uint2(char16[taOS][arrayStep], char16[taOS][arrayStep + 1]);
@@ -205,25 +206,38 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       // Exit if no character(s) or invisible
       if(chars[0].x == alphaOS || colour.a < 0.001f) return;
 
-      // Calculate total string width
-      const uint  lastVert   = curElement.seo_bits & 0x0FFFF;
-            float totalWidth = curElement.width;
+      // Calculate total string width and character count
+      const uint firstVertex = ((curElement.seo_bits & 0x08000) ? input[0] : input[0] - (curElement.seo_bits & 0x07FFF));
+      const uint lastVertex  = firstVertex + (element[firstVertex].seo_bits & 0x07FFF);
 
-      for(uint vi = input[0] + 1; vi <= lastVert; vi++) totalWidth += element[vi].width;
+      float totalWidth = element[firstVertex].width;
+      uint  totalChars = element[firstVertex].taos >> 26;
+
+      for(uint vi = firstVertex + 1; vi <= lastVertex; vi++) {
+         totalWidth += element[vi].width;
+         totalChars += element[vi].taos >> 26;
+      }
+      
+      totalWidth *= 0.5f;
 
       // 'Compress' bit test
-      if((curBits & 0x04000) && (totalWidth > 2.0f)) parScaling.xz /= totalWidth * 0.5f;
+      if((curBits & 0x04000) && (totalWidth > 1.0f)) {
+         parScaling.xz /= totalWidth;
+         border        *= totalWidth;
+      }
 
       // Start point --- !!! Move character size & dimension transformations to inner loop? !!!
-      const float4 size   = float4(curElement.size * parScaling.xy, parScaling.xy / parScaling.zw);
-      const float2 offset = (1.0f - float2(uint2(alphabet[chars[0][0]].size & 0x0FFFF, alphabet[chars[0][0]].size >> 16)) * rcp65535) * curElement.size * 0.5f;
+      const float4 size     = float4(curElement.size * parScaling.xy, parScaling.xy / parScaling.zw);
+      const float2 offset   = (1.0f - float2(uint2(alphabet[chars[0][0]].size & 0x0FFFF, alphabet[chars[0][0]].size >> 16)) * rcp65535) * curElement.size * 0.5f;
+      const float  adjWidth = (totalChars > 32 ? totalWidth : curElement.width);
 
-      coords = (i & 0x01 ? element[input[0]].coords[i_div2].zw : element[input[0]].coords[i_div2].xy) * size.zw;
+      coords = ((i & 0x01) ? element[input[0]].coords[i_div2].zw : element[input[0]].coords[i_div2].xy) * size.zw;
 
       // Justification test
-           if(curBits & 0x01) coords.x -= offset.x * size.z + border;                           // Origin relative to left of viewport
-      else if(curBits & 0x02) coords.x -= (offset.x + curElement.width) * size.z - border;      // Origin relative to right of viewport
-      else                    coords.x -= (curElement.width * 0.5f + offset.x) * size.z;
+           if((curBits & 0x01) || ((curBits & 0x04000) && ((totalWidth > 1.0f) || (totalChars > 32))))
+                              coords.x -= offset.x * size.z + border;                           // Origin relative to left of viewport
+      else if(curBits & 0x02) coords.x -= (offset.x + adjWidth) * size.z - border;              // Origin relative to right of viewport
+      else                    coords.x -= (adjWidth * 0.5f + offset.x) * size.z;
            if(curBits & 0x04) coords.y += (offset.y - curElement.size.y) * size.w + invScale.y; // Origin relative to top of viewport
       else if(curBits & 0x08) coords.y -= offset.y * size.w + invScale.y;                       // Origin relative to bottom of viewport
       else                    coords.y -= curElement.size.y * size.w * 0.5f;
@@ -256,7 +270,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
             // 'Truncate' bit tests
             const float limit = parScaling.z * (offset.x + 1.0f);
             if((curBits & 0x02000) && (coords.x + size.x >= limit)) return; // Character exceeds right border?
-            [flatten] if((curBits & 0x02000) && (coords.x >= -limit)) {} {  // Character exceeds left border?
+            [flatten] if((curBits & 0x02000) && (coords.x >= -limit)) {} {  // Character does not exceed left border?
                output.Append(verts[0]);
                output.Append(verts[1]);
                output.Append(verts[2]);

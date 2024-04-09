@@ -1,6 +1,6 @@
 /************************************************************
  * File: vs.gui.hlsl                    Created: 2023/04/09 *
- *                                Last modified: 2024/04/03 *
+ *                                Last modified: 2024/04/09 *
  *                                                          *
  * Notes: 32 characters per vertex.                         *
  *                                                          *
@@ -34,7 +34,7 @@ struct GUI_EL_DYN { // 96 bytes (24 scalars)
    float  rot;       // Amount of rotation
    float  width;     // Total width of vertex's text in view space
    uint   pei;       // Parent element's GUI_EL_DYN index: this==No parent
-   uint   taos;      // 0~27==Offset into structured text buffer
+   uint   taos;      // 0~25==Offset into text array (div.by 16), 26~31==Vertex's char count
    uint   ind_type;  // 0~15==Offset into alphabet buffer, 16~23==Runtime index of alphabet's atlas texture, 24~31==Element type
    uint   seo_bits;  // 0~15==First sibling element offset, 16~19==Justification (L,R,T,B), 20~23==???
 };                   // 24==No rotation, 25==NoTranslation, 26&27==No scaling: X&Y, 28==Invisible, 29==Truncate, 30==Compress, 31==Wide chars
@@ -48,15 +48,15 @@ uint main(in const uint index : INDEX) : INDEX {
 
    // If type==Text
    if(!(curElement.ind_type & 0x0F000000)) {
-      const float scale      = curElement.size.x;// * guiScale;
-      const uint  alphaOS    = curElement.ind_type & 0x0FFFF;
-      const uint4 charLot[2] = { char16[curElement.taos], char16[(curElement.taos) + 1] };
-      const uint4 char4[8]   = { ((charLot[0].xxxx >> shift8888) & 0x0FF) + alphaOS, ((charLot[0].yyyy >> shift8888) & 0x0FF) + alphaOS,
+      const float scale       = curElement.size.x;// * guiScale;
+      const uint  alphaOS     = curElement.ind_type & 0x0FFFF;
+      const uint4 charLot[2]  = { char16[curElement.taos & 0x03FFFFFF], char16[(curElement.taos & 0x03FFFFFF) + 1] };
+      const uint4 char4[8]    = { ((charLot[0].xxxx >> shift8888) & 0x0FF) + alphaOS, ((charLot[0].yyyy >> shift8888) & 0x0FF) + alphaOS,
                                  ((charLot[0].zzzz >> shift8888) & 0x0FF) + alphaOS, ((charLot[0].wwww >> shift8888) & 0x0FF) + alphaOS,
                                  ((charLot[1].xxxx >> shift8888) & 0x0FF) + alphaOS, ((charLot[1].yyyy >> shift8888) & 0x0FF) + alphaOS,
                                  ((charLot[1].zzzz >> shift8888) & 0x0FF) + alphaOS, ((charLot[1].wwww >> shift8888) & 0x0FF) + alphaOS };
 
-      uint  i;
+      uint i;
       // Accumulate sub-total of width
       for(i = 0, element[index].width = 0.0f; i < 4 && char4[0][i] > alphaOS; i++)
          element[index].width += float(alphabet[char4[0][i]].size & 0x0FFFF) * rcp65535;

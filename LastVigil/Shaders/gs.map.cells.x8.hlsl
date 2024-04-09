@@ -55,7 +55,7 @@ struct GOut { // 48 bytes (3 vectors) <-- Add data for texture blending with adj
    float2 tex      : TEXCOORD;
    uint2  rot      : ROTATIONS;   // sin & cos of XY rotations
    
-   //float3 bw : COLOR;            // Blend weights
+   //float3 bw : COLOR;             // Blend weights
    //uint   ei : ELEMENTINDICES;
 };
 
@@ -67,7 +67,7 @@ const StructuredBuffer<ELEMENT_IMM> element : register(t0);
 void main(in point cint4x11 indices[1] : CELLS, cuint instanceID : SV_GSInstanceID, inout TriangleStream<GOut> triStream) {
    cint4    _index[11]  = indices[0];
    cuint    uiCell      = instanceID >> 2;
-   cuint    uiStrip      = (instanceID & 0x03) << 1;
+   cuint    uiStrip     = (instanceID & 0x03) << 1;
    cuint4x4 index       = uint4x4(_index[uiCell], _index[uiCell + 1], _index[uiCell + 2], _index[uiCell + 3]);
    cuint    uiCurCell   = index[2][2];
    cmatrix  cellDensity = matrix(uint4x4(cell[index[0][0]].dens_warp, cell[index[0][1]].dens_warp, cell[index[0][2]].dens_warp, cell[index[0][3]].dens_warp,
