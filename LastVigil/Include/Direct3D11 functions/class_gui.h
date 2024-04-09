@@ -1,6 +1,6 @@
 /************************************************************  
  * File: class_gui.h                    Created: 2023/01/26 *
- *                                Last modified: 2024/04/01 *
+ *                                Last modified: 2024/04/09 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -286,7 +286,7 @@ al32 struct CLASS_GUI {
 
       cui32   uiPrevVert   = curVert - 1;
       cVEC2Df uiPrevOrigin = element_dgs[uiPrevVert].origin[0];
-      cui32   uiBufIndex   = element_dgs[uiPrevVert].textArrayOS & 0x0FFFFFFF;
+      cui32   uiBufIndex   = element_dgs[uiPrevVert].textArrayOS & 0x03FFFFFF;
       fl32    fOffset      = 0.0f;
 
       // Accumulate character widths
@@ -378,7 +378,7 @@ al32 struct CLASS_GUI {
          element_dgs[siGUIVerts].rotAngle      = 0.0f;
          element_dgs[siGUIVerts].width         = 0.0f;
          element_dgs[siGUIVerts].parentIndex   = 0x0FFFFFFFF; // Change to iterate & add unique character widths
-         element_dgs[siGUIVerts].textArrayOS   = (i + siTextBufferOS) >> 4;
+         element_dgs[siGUIVerts].textArrayOS   = ((i + siTextBufferOS) >> 4) | ((siTextSize - i > 32 ? 32 : siTextSize - i) << 26);
          element_dgs[siGUIVerts].alphabetIndex = alphabet[alphabetIndex].pIMMos;
          element_dgs[siGUIVerts].atlasIndex    = (ui8)alphabet[alphabetIndex].atlasIndex;
          element_dgs[siGUIVerts].elementType   = 0;
@@ -386,7 +386,7 @@ al32 struct CLASS_GUI {
          element_dgs[siGUIVerts].orient        = alignment;
          element_dgs[siGUIVerts].mods          = (mods ? mods : 0x0F);
       }
-      element_dgs[siFirstVert].sibling = abs(siFirstVert - siGUIVerts) | 0x08000;
+      element_dgs[siFirstVert].sibling = (siGUIVerts - siFirstVert) | 0x08000;
 
       siTextBufferOS += siTextBlockSize;
       element[siGUIElements].vertexCount[0] = element[siGUIElements].vertexCount[1] = ui16(siGUIVerts - siFirstVert);
@@ -447,7 +447,7 @@ al32 struct CLASS_GUI {
          element_dgs[siGUIVerts].rotAngle      = 0.0f;
          element_dgs[siGUIVerts].width         = 0.0f;
          element_dgs[siGUIVerts].parentIndex   = 0x0FFFFFFFF;
-         element_dgs[siGUIVerts].textArrayOS   = (i + siTextBufferOS) >> 4;
+         element_dgs[siGUIVerts].textArrayOS   = ((i + siTextBufferOS) >> 4) | ((siTextSize - i > 32 ? 32 : siTextSize - i) << 26);
          element_dgs[siGUIVerts].alphabetIndex = alphabet[alphabetIndex].pIMMos;
          element_dgs[siGUIVerts].atlasIndex    = (ui8)alphabet[alphabetIndex].atlasIndex;
          element_dgs[siGUIVerts].elementType   = 0;
@@ -473,7 +473,7 @@ al32 struct CLASS_GUI {
          element_dgs[siGUIVerts].orient        = alignment;
          element_dgs[siGUIVerts].mods          = (mods ? mods | 0x010 : 0x01F);
       }
-      element_dgs[siFirstVert].sibling = abs(siFirstVert - siGUIVerts) | 0x08000;
+      element_dgs[siFirstVert].sibling = (siGUIVerts - siFirstVert) | 0x08000;
 
       siTextBufferOS += siTextBlockSize;
       element[siGUIElements].vertexCount[0] = ui16(max(1, (siTextSize + 31) >> 5));
@@ -957,18 +957,22 @@ al32 struct CLASS_GUI {
    }
 
    inline void UpdateText(cchptr text, ui32 elementIndex) {
-      csi32 vertexIndex   = element[elementIndex].vertexIndex;
-      csi32 textBufferOS  = element_dgs[vertexIndex].textArrayOS << 4;
+      GUI_ELEMENT &curElement = element[elementIndex];
+
+      csi32 vertexIndex   = curElement.vertexIndex;
+      csi32 textBufferOS  = (element_dgs[vertexIndex].textArrayOS & 0x03FFFFFF) << 4;
       csi32 stringLength  = si32(strlen(text));
       csi32 textBlockSize = max(1, (stringLength + 31) >> 5);
 
-      if(textBlockSize >= element[elementIndex].vertexCount[1]) {
-         element[elementIndex].vertexCount[0] = element[elementIndex].vertexCount[1];
-         const size_t truncBlock = (size_t(element[elementIndex].vertexCount[1]) << 5) - 1;
+      if(textBlockSize >= curElement.vertexCount[1]) {
+         curElement.charCount      = min(stringLength, textBlockSize << 5);
+         curElement.vertexCount[0] = curElement.vertexCount[1];
+         const size_t truncBlock = (size_t(curElement.vertexCount[1]) << 5) - 1;
          strncpy(&textBuffer[textBufferOS], text, truncBlock);
          textBuffer[textBufferOS + truncBlock] = 0;
       } else {
-         element[elementIndex].vertexCount[0] = textBlockSize;
+         curElement.charCount      = stringLength;
+         curElement.vertexCount[0] = textBlockSize;
          strncpy(&textBuffer[textBufferOS], text, stringLength);
          textBuffer[textBufferOS + stringLength] = 0;
          csi32 deltaIndex = (textBufferOS + stringLength) & 0x01F;
@@ -982,32 +986,38 @@ al32 struct CLASS_GUI {
             }
          }
       }
-      for(ui8 i = 0; i < element[elementIndex].vertexCount[0]; i++) {
+      for(ui8 i = 0; i < curElement.vertexCount[0]; i++) {
          csi32 offset = vertexIndex + i;
          csi32 step   = stringLength - (i << 5);
-         element_dgs[offset].mods &= 0x0EF;
-         element_dgs[offset].origin[0] = _CalculateOrigin(vertexIndex, offset, element_dgs[offset].alphabetIndex);
-         element_dgs[offset].origin[1] = (step > 8 ? cVEC2Df{ 16384.0f, 16384.0f } : element_dgs[offset].origin[0] );
-         element_dgs[offset].origin[2] = (step > 16 ? cVEC2Df{ 16384.0f, 16384.0f } : element_dgs[offset].origin[1] );
-         element_dgs[offset].origin[3] = (step > 24 ? cVEC2Df{ 16384.0f, 16384.0f } : element_dgs[offset].origin[2] );
+
+         element_dgs[offset].mods       &= 0x0EF;
+         element_dgs[offset].textArrayOS = (element_dgs[offset].textArrayOS & 0x03FFFFFF) | (min(step, 32) << 26);
+         element_dgs[offset].origin[0]   = _CalculateOrigin(vertexIndex, offset, element_dgs[offset].alphabetIndex);
+         element_dgs[offset].origin[1]   = (step > 8 ? cVEC2Df{ 16384.0f, 16384.0f } : element_dgs[offset].origin[0] );
+         element_dgs[offset].origin[2]   = (step > 16 ? cVEC2Df{ 16384.0f, 16384.0f } : element_dgs[offset].origin[1] );
+         element_dgs[offset].origin[3]   = (step > 24 ? cVEC2Df{ 16384.0f, 16384.0f } : element_dgs[offset].origin[2] );
       }
-      for(ui8 i = textBlockSize; i < element[elementIndex].vertexCount[1]; i++)
+      for(ui8 i = textBlockSize; i < curElement.vertexCount[1]; i++)
          element_dgs[vertexIndex + i].mods |= 0x010;
    }
 
    inline void UpdateText(cchptr text, cVEC2Du32 elementIndex) {
-      csi32 vertexIndex   = element[elementIndex.y].vertexIndex;
-      csi32 textBufferOS  = element_dgs[vertexIndex].textArrayOS << 4;
+      GUI_ELEMENT &curElement = element[elementIndex.y];
+
+      csi32 vertexIndex   = curElement.vertexIndex;
+      csi32 textBufferOS  = (element_dgs[vertexIndex].textArrayOS & 0x03FFFFFF) << 4;
       csi32 stringLength  = si32(strlen(text));
       csi32 textBlockSize = max(1, (stringLength + 31) >> 5);
 
-      if(textBlockSize >= element[elementIndex.y].vertexCount[1]) {
-         element[elementIndex.y].vertexCount[0] = element[elementIndex.y].vertexCount[1];
-         const size_t truncBlock = (size_t(element[elementIndex.y].vertexCount[1]) << 5) - 1;
+      if(textBlockSize >= curElement.vertexCount[1]) {
+         curElement.charCount      = textBlockSize << 5;
+         curElement.vertexCount[0] = curElement.vertexCount[1];
+         const size_t truncBlock = (size_t(curElement.vertexCount[1]) << 5) - 1;
          strncpy(&textBuffer[textBufferOS], text, truncBlock);
          textBuffer[textBufferOS + truncBlock] = 0;
       } else {
-         element[elementIndex.y].vertexCount[0] = textBlockSize;
+         curElement.charCount      = stringLength;
+         curElement.vertexCount[0] = textBlockSize;
          strncpy(&textBuffer[textBufferOS], text, stringLength);
          textBuffer[textBufferOS + stringLength] = 0;
          csi32 deltaIndex = (textBufferOS + stringLength) & 0x01F;
@@ -1021,16 +1031,18 @@ al32 struct CLASS_GUI {
             }
          }
       }
-      for(ui8 i = 0; i < element[elementIndex.y].vertexCount[0]; i++) {
+      for(ui8 i = 0; i < curElement.vertexCount[0]; i++) {
          csi32 offset = vertexIndex + i;
          csi32 step   = stringLength - (i << 5);
-         element_dgs[offset].mods &= 0x0EF;
-         element_dgs[offset].origin[0] = _CalculateOrigin(vertexIndex, offset, element_dgs[offset].alphabetIndex);
-         element_dgs[offset].origin[1] = (step > 8 ? cVEC2Df{ 16384.0f, 16384.0f } : element_dgs[offset].origin[0] );
-         element_dgs[offset].origin[2] = (step > 16 ? cVEC2Df{ 16384.0f, 16384.0f } : element_dgs[offset].origin[1] );
-         element_dgs[offset].origin[3] = (step > 24 ? cVEC2Df{ 16384.0f, 16384.0f } : element_dgs[offset].origin[2] );
+
+         element_dgs[offset].mods       &= 0x0EF;
+         element_dgs[offset].textArrayOS = (element_dgs[offset].textArrayOS & 0x03FFFFFF) | (min(step, 32) << 26);
+         element_dgs[offset].origin[0]   = _CalculateOrigin(vertexIndex, offset, element_dgs[offset].alphabetIndex);
+         element_dgs[offset].origin[1]   = (step > 8 ? cVEC2Df{ 16384.0f, 16384.0f } : element_dgs[offset].origin[0] );
+         element_dgs[offset].origin[2]   = (step > 16 ? cVEC2Df{ 16384.0f, 16384.0f } : element_dgs[offset].origin[1] );
+         element_dgs[offset].origin[3]   = (step > 24 ? cVEC2Df{ 16384.0f, 16384.0f } : element_dgs[offset].origin[2] );
       }
-      for(ui8 i = textBlockSize; i < element[elementIndex.y].vertexCount[1]; i++)
+      for(ui8 i = textBlockSize; i < curElement.vertexCount[1]; i++)
          element_dgs[vertexIndex + i].mods |= 0x010;
    }
 
