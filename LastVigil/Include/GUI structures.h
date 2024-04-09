@@ -70,10 +70,10 @@ al32 struct GUI_EL_DGS { // 96 bytes (24 scalars)   ///--- Rewrite to remove red
    fl32   rotAngle;      // Orientation
    fl32   width;         // Total width of vertex's text in view space
    ui32   parentIndex;   // GUI_EL_DGS index of parent element; 0x0FFFFFFFF==No parent
-   ui32   textArrayOS;   // Offset into text array (div.by 16)
+   ui32   textArrayOS;   // 0~25==Offset into text array (div.by 16), 28~31==Vertex's char count
    ui16   alphabetIndex; // Offset into alphabet buffer
    ui8    atlasIndex;    // Runtime index of atlas texture
-   ui8    elementType;   // Text=0, Panel=1, Button=2, Toggle=3, Scalar=4, Cursor=5(, Dial=6, 
+   ui8    elementType;   // Text=0, Panel=1, Button=2, Toggle=3, Scalar=4, Cursor=5(, Dial=6, )
    ui16   sibling;       // 0~14==First sibling element offset / Sibling count (if bit15 set)
    ui8    orient;        // 0~3==Justificition : left, right, top, bottom
    ui8    mods;          // 0==Rotate, 1==Translate, 2&3==Scaling: X&Y, 4==Invisible, 5==Truncate, 6==Compress, 7==Wide chars

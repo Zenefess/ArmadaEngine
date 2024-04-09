@@ -5,7 +5,7 @@
  * Notes: 2023/04/27: Added constant vector typedefs.       *
  *        2024/04/04: Added ui24 vector types.              *
  *                                                          *
- *  Copyright (c) David William Bull. All rights reserved.  *
+ *                         Copyright (c) David William Bull *
  ************************************************************/
 #pragma once
 
