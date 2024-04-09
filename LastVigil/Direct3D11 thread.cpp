@@ -271,9 +271,9 @@ Reinitialise_:
         char textBoxText[128]  = "Ya Mum!";
         char inputBoxText[128] = "Eshay, bruh? Let's oge!";
 
-   cui32 textElement  = gpu.gui.CreateText(textBuffer, 128, alphabetIndex, { 0.0f, 0.0f }, { 0.0468757f, 0.0468757f }, { 1.0f, 1.0f, 1.0f, 1.0f }, 0x09, 0x0);
-   cui32 textInputEl  = gpu.gui.CreateText(textInputs, 128, alphabetIndex, { 0.0f, 0.0f }, { 0.0468757f, 0.0468757f }, { 1.0f, 1.0f, 1.0f, 1.0f }, 0x06, 0x0);
-   cVEC2Du32 textBox  = gpu.gui.CreateTextBox(textBoxText, 128, alphabetIndex, { 0.125f, 0.125f }, { 1.0f, 1.0f, 1.0f, 1.0f }, 0, 11, { 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f }, 0x02, 0x0, 0x0, 0x03);
+   cui32 textElement  = gpu.gui.CreateText(textBuffer, 128, alphabetIndex, { 0.0f, 0.0f }, { 0.0468757f, 0.0468757f }, { 1.0f, 1.0f, 1.0f, 1.0f }, 0x09, 0x0F);
+   cui32 textInputEl  = gpu.gui.CreateText(textInputs, 128, alphabetIndex, { 0.0f, 0.0f }, { 0.0468757f, 0.0468757f }, { 1.0f, 1.0f, 1.0f, 1.0f }, 0x06, 0x0F);
+   cVEC2Du32 textBox  = gpu.gui.CreateTextBox(textBoxText, 128, alphabetIndex, { 0.125f, 0.125f }, { 1.0f, 1.0f, 1.0f, 1.0f }, 0, 11, { 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f }, 0x02, 0x0, 0x0, 0x0F);
    cVEC3Du32 inputBox = gpu.gui.CreateInputBox(inputBoxText, 128, alphabetIndex, { 0.15f, 0.15f }, { 1.0f, 1.0f, 1.0f, 1.0f }, 0, 7, 75, { 1.0f, 1.0f }, { 0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, { 0.0f, -0.75f }, 0x0, 0x0, 0x0, 0x047);
 
    cui32 interfaceMain = gpu.gui.CreateInterface(128, 16);

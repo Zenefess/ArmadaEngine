@@ -140,7 +140,7 @@ void __Activate0_0_Default_Input(cptrc indices) {
    if(!(element[0].stateBits & 0x04)) {
       element[0].stateBits |= 0x04;
 
-      textBufferInfo.source.pCH        =  &(*(const CLASS_GUI *)ptrLib[4]).textBuffer[vertex[2].textArrayOS << 4];
+      textBufferInfo.source.pCH        =  &(*(const CLASS_GUI *)ptrLib[4]).textBuffer[(vertex[2].textArrayOS & 0x03FFFFFF) << 4];
       textBufferInfo.source.byteCount  =  element[2].vertexCount[1] << 5;
       textBufferInfo.source.byteOffset =  element[2].charCount << (element[2].bitField & 0x0800 ? 1 : 0);
       textBufferInfo.source.bitField   |= 0x01;
