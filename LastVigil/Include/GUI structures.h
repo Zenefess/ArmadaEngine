@@ -12,6 +12,25 @@
 #include "typedefs.h"
 #include "Vector structures.h"
 
+#define GUI_ALIGN_C 0x0
+#define GUI_ALIGN_L 0x01
+#define GUI_ALIGN_R 0x02
+#define GUI_ALIGN_T 0x04
+#define GUI_ALIGN_B 0x08
+#define GUI_ELLIPSE 0x010
+
+#define GUI_NONE    0x0
+#define GUI_ROT     0x01
+#define GUI_TRANS   0x02
+#define GUI_SCALE_X 0x04
+#define GUI_SCALE_Y 0x08
+#define GUI_SCALE   0x0C
+#define GUI_INVIS   0x010
+#define GUI_TRUNC   0x020
+#define GUI_COMP    0x040
+#define GUI_WIDE_CH 0x080
+#define GUI_DEFAULT 0x047
+
 al8 struct GUI_SPRITE { // 32 bytes
    wchptr name;
    VEC4Df tc;   // Texture coordinates
@@ -75,8 +94,13 @@ al32 struct GUI_EL_DGS { // 96 bytes (24 scalars)   ///--- Rewrite to remove red
    ui8    atlasIndex;    // Runtime index of atlas texture
    ui8    elementType;   // Text=0, Panel=1, Button=2, Toggle=3, Scalar=4, Cursor=5(, Dial=6, )
    ui16   sibling;       // 0~14==First sibling element offset / Sibling count (if bit15 set)
-   ui8    orient;        // 0~3==Justificition : left, right, top, bottom
-   ui8    mods;          // 0==Rotate, 1==Translate, 2&3==Scaling: X&Y, 4==Invisible, 5==Truncate, 6==Compress, 7==Wide chars
+   union {
+      ui16 bitField;
+      struct {
+         ui8 orient;     // 0~3==Justificition : left, right, top, bottom, 4==Elliptical bounding space, 5~7==???
+         ui8 mods;       // 0==Rotate, 1==Translate, 2&3==Scaling: X&Y, 4==Invisible, 5==Truncate, 6==Compress, 7==Wide chars
+      };
+   };
 };
 
 al32 struct GUI_ELEMENT { // 128 bytes
@@ -128,6 +152,58 @@ al32 struct GUI_ELEMENT { // 128 bytes
       ui8   ui8Var[16];
       si8   si8Var[16];
    };
+};
+
+// Input data for element creation
+al16 struct GUI_EL_DESC { // 112 bytes
+   union {
+      chptr  text = NULL;
+      wchptr wtext;
+   };
+   VEC2Df viewPos = { 0.0f, 0.0f };
+   struct {
+      VEC4Df text = { 1.0f, 1.0f, 1.0f, 1.0f };
+      VEC4Df panel = { 1.0f, 1.0f, 1.0f, 1.0f };
+      VEC4Df cursor = { 1.0f, 1.0f, 1.0f, 1.0f };
+   } colour;
+   struct {
+      VEC2Df text = { 1.0f, 1.0f };
+      VEC2Df panel = { 1.0f, 1.0f };
+      VEC2Df cursor = { 1.0f, 1.0f };
+   } size;
+   struct {
+      si16 alphabet = -1;
+      ui16 spriteLib = 0x0FFFF;
+      ui16 panelSprite = 0x0FFFF;
+      ui16 cursorSprite = 0x0FFFF;
+   } index;
+   union {
+      struct {
+         ui16 text;
+         ui16 panel;
+         ui16 cursor;
+         ui16 RES;
+      } bitField;
+      struct {
+         ui8 textAlign;
+         ui8 textMods;
+         ui8 panelAlign;
+         ui8 panelMods;
+         ui8 cursorAlign;
+         ui8 cursorMods;
+         ui8 RES0;
+         ui8 RES1;
+      };
+   };
+   si32 charCount = 0;
+   ui32 RES = 0x0CDCDCDCD;
+
+   GUI_EL_DESC(void) {
+      bitField.text   = 0x00047;
+      bitField.panel  = 0x0000F;
+      bitField.cursor = 0x00003;
+      bitField.RES    = 0x0CDCD;
+   }
 };
 
 al32 struct GUI_INTERFACE { // 64 bytes
