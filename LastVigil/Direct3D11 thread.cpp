@@ -1,6 +1,6 @@
 /************************************************************
  * File: Direct3D11 thread.cpp          Created: 2022/10/12 *
- *                               Code last mod.: 2024/04/03 *
+ *                               Code last mod.: 2024/04/16 *
  *                                                          *
  * Desc: Video rendering via Direct3D 11 API.               *
  *                                                          *
@@ -229,12 +229,12 @@ Reinitialise_:
    mapMan.CreateWorld(0, 0, 1);
 
    MAP_DESC md;
-   md.stName = (wchptrc)L"Test map";
-   md.stInfo = (wchptrc)L"Description text.";
-   md.ptIndex = 0;
+   md.stName   = (wchptrc)L"Test map";
+   md.stInfo   = (wchptrc)L"Description text.";
+   md.ptIndex  = 0;
    md.chunkDim = { 16, 16, 1 };
-   md.mapDim = { { 1024, 1024, 8 } }; // 256x144x1 -> 4,718,592 triangles -> Approx. 1.68 billion triangles per second @ 4K
-   md.zso = 4;
+   md.mapDim   = { { 1024, 1024, 8 } }; // 256x144x1 -> 4,718,592 triangles -> Approx. 1.68 billion triangles per second @ 4K
+   md.zso      = 4;
    si32 mapID = mapMan.CreateMap(md, 0, -1, 0, 2);
 
    csi32 numEntities = 1024;
@@ -259,11 +259,13 @@ Reinitialise_:
    for(ui32 i = 0; i < 81; i++)
       gpu.gui.CreateSprite(GUISprites, (GUI_SPRITE &)defaultUISprite[i], true);
 
-   cui32 panelElement0 = gpu.gui.CreateToggle(0, 34, { 0.0f, 0.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, 0x05, 0x0);
+   GUI_EL_DESC elementDesc;
+
+   cui32 panelElement0 = gpu.gui.CreateToggle(0, 34, { 0.0f, 0.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, 0x04, 0x0);
    cui32 panelElement1 = gpu.gui.CreateButton(0, 34, { 0.0f, 0.25f }, { 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, 0x05, 0x0);
    cui32 panelElement2 = gpu.gui.CreateScalar(0, 20, 75, { 0.0f, 0.5f }, { 2.0f, 2.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, 0x05, 0x0);
 
-   cui32 alphabetIndex = gpu.gui.CreateAlphabet(L"Bogan", 16, 16, { 0.5f, 0.75f }, 0, uiAtlasIndex[0]);
+   csi16 alphabetIndex = gpu.gui.CreateAlphabet(L"Bogan", 16, 16, { 0.5f, 0.75f }, 0, uiAtlasIndex[0]);
    gpu.gui.UploadAlphabetBuffer(0);
 
    al32 char textBuffer[128]   = "TR-X \1\2\3\4\5\6\7";
@@ -271,10 +273,30 @@ Reinitialise_:
         char textBoxText[128]  = "Ya Mum!";
         char inputBoxText[128] = "Eshay, bruh? Let's oge!";
 
-   cui32 textElement  = gpu.gui.CreateText(textBuffer, 128, alphabetIndex, { 0.0f, 0.0f }, { 0.0468757f, 0.0468757f }, { 1.0f, 1.0f, 1.0f, 1.0f }, 0x09, 0x0F);
-   cui32 textInputEl  = gpu.gui.CreateText(textInputs, 128, alphabetIndex, { 0.0f, 0.0f }, { 0.0468757f, 0.0468757f }, { 1.0f, 1.0f, 1.0f, 1.0f }, 0x06, 0x0F);
-   cVEC2Du32 textBox  = gpu.gui.CreateTextBox(textBoxText, 128, alphabetIndex, { 0.125f, 0.125f }, { 1.0f, 1.0f, 1.0f, 1.0f }, 0, 11, { 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f }, 0x02, 0x0, 0x0, 0x0F);
-   cVEC3Du32 inputBox = gpu.gui.CreateInputBox(inputBoxText, 128, alphabetIndex, { 0.15f, 0.15f }, { 1.0f, 1.0f, 1.0f, 1.0f }, 0, 7, 75, { 1.0f, 1.0f }, { 0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, { 0.0f, -0.75f }, 0x0, 0x0, 0x0, 0x047);
+   cui32 textElement = gpu.gui.CreateText(textBuffer, 128, alphabetIndex, { 0.0f, 0.0f }, { 0.0468757f, 0.0468757f }, { 1.0f, 1.0f, 1.0f, 1.0f }, 0x09, 0x0F);
+   cui32 textInputEl = gpu.gui.CreateText(textInputs, 128, alphabetIndex, { 0.0f, 0.0f }, { 0.0468757f, 0.0468757f }, { 1.0f, 1.0f, 1.0f, 1.0f }, 0x06, 0x0D);
+   elementDesc.viewPos    = { 0.0f, 0.0f };
+   elementDesc.index      = { alphabetIndex, 0, 11 };
+   elementDesc.size       = { { 0.125f, 0.125f }, { 1.0f, 1.0f } };
+   elementDesc.colour     = { { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f } };
+   elementDesc.text       = textBoxText;
+   elementDesc.charCount  = 128;
+   elementDesc.panelAlign = GUI_ALIGN_R;
+   elementDesc.panelMods  = GUI_NONE;
+   elementDesc.textAlign  = GUI_ALIGN_C;
+   elementDesc.textMods   = GUI_ROT | GUI_TRANS | GUI_SCALE;
+   cVEC2Du32 textBox = gpu.gui.CreateTextBox(elementDesc);
+   elementDesc.viewPos    = { 0.0f, -0.75f };
+   elementDesc.index      = { alphabetIndex, 0, 20, 75 };
+   elementDesc.size       = { { 0.15f, 0.15f }, { 2.0f, 2.0f }, { 0.5f, 0.5f } };
+   elementDesc.colour     = { { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f } };
+   elementDesc.text       = inputBoxText;
+   elementDesc.charCount  = 128;
+   elementDesc.panelAlign = GUI_ALIGN_C;
+   elementDesc.panelMods  = GUI_NONE;
+   elementDesc.textAlign  = GUI_ALIGN_R;
+   elementDesc.textMods   = GUI_DEFAULT;
+   cVEC3Du32 inputBox = gpu.gui.CreateInputBox(elementDesc);
 
    cui32 interfaceMain = gpu.gui.CreateInterface(128, 16);
    gpu.gui.AddElementToInterface(panelElement0, interfaceMain);
@@ -419,12 +441,16 @@ Reinitialise_:
          if(gcvLocal.imm.b[16] & 0x08) {
             if(siCell != 0x080000001) {
                mapMan.ModQuadCellDensity(sivActiveCell, -fElapsedTime, 0, 0);
+               gpu.gui.element_dgs[gpu.gui.element[panelElement0].vertexIndex].rotAngle -= fElapsedTime;
+               gpu.gui.element_dgs[gpu.gui.element[textInputEl].vertexIndex].rotAngle -= fElapsedTime;
             }
          }
          // Mouse button 4
          if(gcvLocal.imm.b[16] & 0x010) {
             if(siCell != 0x080000001) {
                mapMan.ModQuadCellDensity(sivActiveCell, fElapsedTime, 0, 0);
+               gpu.gui.element_dgs[gpu.gui.element[panelElement0].vertexIndex].rotAngle += fElapsedTime;
+               gpu.gui.element_dgs[gpu.gui.element[textInputEl].vertexIndex].rotAngle += fElapsedTime;
             }
          }
          // Mouse wheel left
