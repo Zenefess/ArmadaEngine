@@ -1,6 +1,6 @@
 /************************************************************  
  * File: class_gui.h                    Created: 2023/01/26 *
- *                                Last modified: 2024/04/09 *
+ *                                Last modified: 2024/04/16 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -187,16 +187,16 @@ al32 struct CLASS_GUI {
 ///--- To do...
    }
 
-   cui32 CreateAlphabet(cwchptrc languageName, csi32 xSegments, csi32 ySegments, cVEC2Df charSize, si16 alphabetIndex, csi16 atlasIndex) {
+   cui16 CreateAlphabet(cwchptrc languageName, csi32 xSegments, csi32 ySegments, cVEC2Df charSize, si16 alphabetIndex, csi16 atlasIndex) {
       // Find first available slot if alphabetIndex is -1
       if(alphabetIndex == -1) {
          si16 i = 0;
          for(; alphabet[i].stLanguage && i < MAX_ALPHABETS; i++);
-         if(i >= MAX_ALPHABETS) return 0x080000001; // All alphabet slots occupied
+         if(i >= MAX_ALPHABETS) return 0x08001; // All alphabet slots occupied
          alphabetIndex = i;
       }
-      if(xSegments < 1 || ySegments < 1) return 0x080000002;
-      if(xSegments * ySegments > MAX_CHARACTERS) return 0x080000003;
+      if(xSegments < 1 || ySegments < 1) return 0x08002;
+      if(xSegments * ySegments > MAX_CHARACTERS) return 0x08003;
 
       cui32 pIMMos = alphabetIndex * MAX_CHARACTERS;
       wcscpy(stLanguage[uiLanguages], languageName);
@@ -667,7 +667,7 @@ al32 struct CLASS_GUI {
       element_dgs[siGUIVerts].texCoords    = curSpr.tc;
       element_dgs[siGUIVerts].colour       = Fix16x4x4((SSE4Df32 &)colour);
       element_dgs[siGUIVerts].size         = spriteSize;
-      element_dgs[siGUIVerts].rotAngle     = 0.0f;   ///--- Add ---///
+      element_dgs[siGUIVerts].rotAngle     = 0.0f;
       element_dgs[siGUIVerts].width        = 0.0f;
       element_dgs[siGUIVerts].parentIndex  = 0x0FFFFFFFF;
       element_dgs[siGUIVerts].atlasIndex   = (ui8)curLib.atlasIndex;
@@ -680,13 +680,12 @@ al32 struct CLASS_GUI {
       element_dgs[siGUIVerts].texCoords    = curLib.sprite[spriteIndex + 1].tc;
       element_dgs[siGUIVerts].colour       = Fix16x4x4((SSE4Df32 &)colour);
       element_dgs[siGUIVerts].size         = spriteSize;
-      element_dgs[siGUIVerts].rotAngle     = 0.0f;   ///--- Add ---///
+      element_dgs[siGUIVerts].rotAngle     = 0.0f;
       element_dgs[siGUIVerts].width        = 0.0f;
       element_dgs[siGUIVerts].parentIndex  = 0x0FFFFFFFF;
       element_dgs[siGUIVerts].atlasIndex   = (ui8)curLib.atlasIndex;
       element_dgs[siGUIVerts].elementType  = 3;
       element_dgs[siGUIVerts].sibling      = 1;
-      element_dgs[siGUIVerts].orient       = alignment;
       element_dgs[siGUIVerts].orient       = alignment;
       element_dgs[siGUIVerts++].mods       = (mods ? mods | 0x010 : 0x01F);
 
@@ -694,12 +693,12 @@ al32 struct CLASS_GUI {
    }
 
    // Returns index of panel. Default index of indicator == [return value] + 1
-   cui32 CreateScalar(cui16 spriteLibIndex, cui16 spriteIndexPanel, cui16 spriteIndexIndicator, cVEC2Df viewPos, cVEC2Df size, cVEC4Df colour, ui8 alignment, ui8 mods) {
+   cui32 CreateScalar(cui16 spriteLibIndex, cui16 panelSpriteIndex, cui16 cursorSpriteIndex, cVEC2Df viewPos, cVEC2Df size, cVEC4Df colour, cui8 alignment, cui8 mods) {
       if(siGUIElements >= MAX_GUI_ELEMENTS) return 0x080000001;
 
       const GUI_SPRITE_LIB &curLib = spriteLib[spriteLibIndex];
-            GUI_SPRITE     &panSpr = curLib.sprite[spriteIndexPanel];
-            GUI_SPRITE     &indSpr = curLib.sprite[spriteIndexIndicator];
+            GUI_SPRITE     &panSpr = curLib.sprite[panelSpriteIndex];
+            GUI_SPRITE     &indSpr = curLib.sprite[cursorSpriteIndex];
 
       cVEC2Df spriteSize[2] = { { fabsf(panSpr.tc.x2 - panSpr.tc.x1) * size.x, fabsf(panSpr.tc.y2 - panSpr.tc.y1) * size.y },
                                 { fabsf(indSpr.tc.x2 - indSpr.tc.x1) * size.x, fabsf(indSpr.tc.y2 - indSpr.tc.y1) * size.y } };
@@ -749,8 +748,8 @@ al32 struct CLASS_GUI {
       element_dgs[siGUIVerts].atlasIndex   = (ui8)curLib.atlasIndex;
       element_dgs[siGUIVerts].elementType  = 5;
       element_dgs[siGUIVerts].sibling      = 1;
-      element_dgs[siGUIVerts].orient       = alignment;
-      element_dgs[siGUIVerts++].mods       = (mods ? mods | 0x03 : 0x03);
+      element_dgs[siGUIVerts].orient       = 0x0;
+      element_dgs[siGUIVerts++].mods       = (mods ? mods | 0x02 : 0x02);
 
       return siGUIElements++;
    }
@@ -772,11 +771,11 @@ al32 struct CLASS_GUI {
    }
 
    // Returns indices of panel element and text overlay
-   cVEC2Du32 CreateTextBox(cchptrc text, csi32 charCount, csi16 alphabetIndex, cVEC2Df textSize, cVEC4Df textColour, cui16 spriteLibIndex, cui16 spriteIndex, cVEC2Df panelSize, cVEC4Df panelColour, cVEC2Df viewPos, ui8 panelAlignment, ui8 panelMods, ui8 textAlignment, ui8 textMods) {
+   cVEC2Du32 CreateTextBox(const GUI_EL_DESC &desc) {
       if(siGUIElements >= MAX_GUI_ELEMENTS - 1) return { 0x080000001, MAX_GUI_ELEMENTS };
 
-      cui32 panel   = CreatePanel(spriteLibIndex, spriteIndex, viewPos, panelSize, panelColour, panelAlignment, panelMods);
-      cui32 overlay = CreateText(text, charCount, alphabetIndex, { 0.0f, 0.0f }, textSize, textColour, textAlignment, textMods);
+      cui32 panel   = CreatePanel(desc.index.spriteLib, desc.index.panelSprite, desc.viewPos, desc.size.panel, desc.colour.panel, desc.panelAlign, desc.panelMods);
+      cui32 overlay = CreateText(desc.text, desc.charCount, desc.index.alphabet, { 0.0f, 0.0f }, desc.size.text, desc.colour.text, desc.textAlign, desc.textMods);
 
       cui32 panelVert = element[panel].vertexIndex;
       cui32 firstVert = element[overlay].vertexIndex;
@@ -788,19 +787,19 @@ al32 struct CLASS_GUI {
    }
 
    // Returns indices of panel element, cursor element, and text overlay
-   cVEC3Du32 CreateInputBox(cchptrc text, csi32 charCount, csi16 alphabetIndex, cVEC2Df textSize, cVEC4Df textColour, cui16 spriteLibIndex, cui16 panelSpriteIndex, cui16 cursorSpriteIndex, cVEC2Df panelSize, cVEC2Df cursorSize, cVEC4Df panelColour, cVEC4Df cursorColour, cVEC2Df viewPos, ui8 panelAlignment, ui8 panelMods, ui8 textAlignment, ui8 textMods) {
+   cVEC3Du32 CreateInputBox(const GUI_EL_DESC &desc) {
       if(siGUIElements >= MAX_GUI_ELEMENTS - 2) return { 0x080000001, MAX_GUI_ELEMENTS, 0 };
 
-      cui32 panel = CreatePanel(spriteLibIndex, panelSpriteIndex, viewPos, panelSize, panelColour, panelAlignment, panelMods);
+      cui32 panel = CreatePanel(desc.index.spriteLib, desc.index.panelSprite, desc.viewPos, desc.size.panel, desc.colour.panel, desc.panelAlign, desc.panelMods);
 
       fl32 accum = 0.0f;
-      for(ui16 i = 0; text[i]; i++)
-         accum += alphabet_pIMM[alphabet[alphabetIndex].pIMMos + text[i]].width;
+      for(ui16 i = 0; desc.text[i]; i++)
+         accum += alphabet_pIMM[alphabet[desc.index.alphabet].pIMMos + desc.text[i]].width;
 
-      cVEC2Df curPos = { viewPos.x + Float16(element[panel].si16Var[6], 16383.25f) + (accum * textSize.x), viewPos.y + Float16(element[panel].si16Var[6], 16383.25f) + (textSize.y * 0.5f) };
+      cVEC2Df curPos = { desc.viewPos.x + Float16(element[panel].si16Var[6], 16383.25f) + (accum * desc.size.text.x), desc.viewPos.y + Float16(element[panel].si16Var[6], 16383.25f) + (desc.size.text.y * 0.5f) };
 
-      cui32   cursor  = CreateCursor(spriteLibIndex, cursorSpriteIndex, curPos, cursorSize, cursorColour, textAlignment, panelMods);
-      cui32   overlay = CreateText(text, charCount, alphabetIndex, { 0.0f, 0.0f }, textSize, textColour, textAlignment, textMods);
+      cui32   cursor  = CreateCursor(desc.index.spriteLib, desc.index.cursorSprite, curPos, desc.size.cursor, desc.colour.cursor, desc.textAlign, desc.panelMods);
+      cui32   overlay = CreateText(desc.text, desc.charCount, desc.index.alphabet, { 0.0f, 0.0f }, desc.size.text, desc.colour.text, desc.textAlign, desc.textMods);
 
       cui32 panelVert = element[panel].vertexIndex;
       cui32 firstVert = element[overlay].vertexIndex;
