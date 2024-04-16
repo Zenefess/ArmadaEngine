@@ -121,8 +121,6 @@ inline uint4 rand_ui31(in const uint4 indices) {
 }
 
 // Exchange the values of 2 variables
-//inline void Swap(inout uint a, inout uint b) { const uint c = a; a = b; b = c; }
-
 inline void Swap(inout uint a, inout uint b) { a ^= b; b ^= a; a ^= b; };
 
 inline void Swap(inout uint2 v) { v.x ^= v.y; v.y ^= v.x; v.x ^= v.y; };

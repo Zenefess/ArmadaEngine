@@ -1,6 +1,6 @@
 /************************************************************
  * File: gs.gui.hlsl                    Created: 2023/04/09 *
- *                                Last modified: 2024/04/09 *
+ *                                Last modified: 2024/04/16 *
  *                                                          *
  * Notes: 8 characters per instance.                        *
  *                                                          *
@@ -8,8 +8,11 @@
  * 2024/04/01: GUI_EL_DYN SRV+Adj.coords replaced with UAV  *
  * 2024/04/05: Added truncation functionality to text       *
  * 2024/04/09: Added compression functionality to text      *
+ *             Added rotation functionality to non-text     *
+ * 2024/04/16: Added rotation functionality to text         *
  *                                                          *
- * To do: 1)Add rotation                                    *
+ * To do: Add elliptical bounding shape                     *
+ *        Add wide character support                        *
  *                                                          *
  *  Copyright (c) David William Bull. All rights reserved.  *
  ************************************************************/
@@ -24,7 +27,7 @@ cbuffer CB_VIEW : register(b0) { // 144 bytes (9 vectors)
 };
 
 struct CHAR_IMM { // 16 bytes (1 scalar)
-   uint2 tc;    // Texture coordinates : 4x(1p15)
+   uint2 tc;   // Texture coordinates : 4x(1p15)
    uint  size; // Relative X&Y dimensions : p16n0.0~1.0
    uint  os;   // Relative X&Y offsets : p-1.0~1.0
 };
@@ -38,7 +41,7 @@ struct GUI_EL_DYN { // 96 bytes (24 scalars)
    uint   pei;       // Parent element's GUI_EL_DYN index: this==No parent
    uint   taos;      // 0~25==Offset into text array (div.by 16), 26~31==Vertex's char count
    uint   ind_type;  // 0~15==Offset into alphabet buffer, 16~23==Runtime index of alphabet's atlas texture, 24~31==Element type
-   uint   seo_bits;  // 0~15==First sibling element offset, 16~19==Justification (L,R,T,B), 20~23==???
+   uint   seo_bits;  // 0~15==First sibling element offset, 16~19==Justification (L,R,T,B), 20==Elliptical bounding space, 21~23==???
 };                   // 24==Rotate, 25==Translate, 26&27==Scale: X&Y, 28==Invisible, 29==Truncate, 30==Compress, 31==Wide chars
 
 struct GOut { // 44 bytes (2 vectors + 3 scalars)
@@ -82,12 +85,10 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
          parTranslation = curParent.coords[0].xy;
 
          // Justification test
-         const float2 adjust = invScale - curParent.size;
-
-              if(curParent.seo_bits & 0x010000) parTranslation.x -= adjust.x; // Origin relative to left of viewport
-         else if(curParent.seo_bits & 0x020000) parTranslation.x += adjust.x; // Origin relative to right of viewport
-              if(curParent.seo_bits & 0x040000) parTranslation.y += adjust.y; // Origin relative to top of viewport
-         else if(curParent.seo_bits & 0x080000) parTranslation.y -= adjust.y; // Origin relative to bottom of viewport
+         if(curParent.seo_bits & 0x030000) parTranslation.x -= invScale.x - curParent.size.x; // Origin relative to left/right of viewport
+         if(curParent.seo_bits & 0x0C0000) parTranslation.y -= invScale.y - curParent.size.y; // Origin relative to top/bottom of viewport
+         if(curParent.seo_bits & 0x020000) parTranslation.x *= -1.0f;                         // Flip X coordinate relative to right of viewport
+         if(curParent.seo_bits & 0x040000) parTranslation.y *= -1.0f;                         // Flip Y coordinate relative to top of viewport
 
          // Does the parent have a parent?
          if(curParent.pei != 0x0FFFFFFFF) {
@@ -97,8 +98,8 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
             parScaling.zw *= curParent2.coords[0].zw;
 
             // 'Scale' bits test
-                 if((curParent.seo_bits & 0x04000000) == 0x04000000) parScaling.xy *= curParent2.coords[0].zz;
-            else if((curParent.seo_bits & 0x08000000) == 0x08000000) parScaling.xy *= curParent2.coords[0].ww;
+                 if((curParent.seo_bits & 0x0C000000) == 0x04000000) parScaling.xy *= curParent2.coords[0].zz;
+            else if((curParent.seo_bits & 0x0C000000) == 0x08000000) parScaling.xy *= curParent2.coords[0].ww;
             else if((curParent.seo_bits & 0x0C000000) == 0x0C000000) parScaling.xy *= curParent2.coords[0].zw;
 
             // 'Translate' bit test
@@ -106,12 +107,10 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
                parTranslation += curParent2.coords[0].xy;
 
                // Justification test
-               const float2 adjust2 = invScale - curParent2.size;
-
-                    if(curParent2.seo_bits & 0x010000) parTranslation.x -= adjust2.x; // Origin relative to left of viewport
-               else if(curParent2.seo_bits & 0x020000) parTranslation.x += adjust2.x; // Origin relative to right of viewport
-                    if(curParent2.seo_bits & 0x040000) parTranslation.y += adjust2.y; // Origin relative to top of viewport
-               else if(curParent2.seo_bits & 0x080000) parTranslation.y -= adjust2.y; // Origin relative to bottom of viewport
+               if(curParent2.seo_bits & 0x030000) parTranslation.x -= invScale.x - curParent2.size.x; // Origin relative to left/right of viewport
+               if(curParent2.seo_bits & 0x0C0000) parTranslation.y -= invScale.y - curParent2.size.y; // Origin relative to top/bottom of viewport
+               if(curParent2.seo_bits & 0x020000) parTranslation.x *= -1.0f;                          // Flip X coordinate relative to right of viewport
+               if(curParent2.seo_bits & 0x040000) parTranslation.y *= -1.0f;                          // Flip Y coordinate relative to top of viewport
 
                // Does the grandparent have a parent?
                if(curParent2.pei != 0x0FFFFFFFF) {
@@ -121,21 +120,19 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
                   parScaling.zw *= curParent3.coords[0].zw;
 
                   // 'Scale' bits test
-                       if((curParent2.seo_bits & 0x04000000) == 0x04000000) parScaling.xy *= curParent3.coords[0].zz;
-                  else if((curParent2.seo_bits & 0x08000000) == 0x08000000) parScaling.xy *= curParent3.coords[0].ww;
+                       if((curParent2.seo_bits & 0x0C000000) == 0x04000000) parScaling.xy *= curParent3.coords[0].zz;
+                  else if((curParent2.seo_bits & 0x0C000000) == 0x08000000) parScaling.xy *= curParent3.coords[0].ww;
                   else if((curParent2.seo_bits & 0x0C000000) == 0x0C000000) parScaling.xy *= curParent3.coords[0].zw;
 
                   // 'Translate' bit test
                   if(curParent.seo_bits & 0x02000000) {
-                     parTranslation += curParent2.coords[0].xy;
+                     parTranslation += curParent3.coords[0].xy;
 
                      // Justification test
-                     const float2 adjust3 = invScale - curParent3.size;
-
-                          if(curParent3.seo_bits & 0x010000) parTranslation.x -= adjust3.x; // Origin relative to left of viewport
-                     else if(curParent3.seo_bits & 0x020000) parTranslation.x += adjust3.x; // Origin relative to right of viewport
-                          if(curParent3.seo_bits & 0x040000) parTranslation.y += adjust3.y; // Origin relative to top of viewport
-                     else if(curParent3.seo_bits & 0x080000) parTranslation.y -= adjust3.y; // Origin relative to bottom of viewport
+                     if(curParent3.seo_bits & 0x030000) parTranslation.x -= invScale.x - curParent3.size.x; // Origin relative to left/right of viewport
+                     if(curParent3.seo_bits & 0x0C0000) parTranslation.y -= invScale.y - curParent3.size.y; // Origin relative to top/bottom of viewport
+                     if(curParent3.seo_bits & 0x020000) parTranslation.x *= -1.0f;                          // Flip X coordinate relative to right of viewport
+                     if(curParent3.seo_bits & 0x040000) parTranslation.y *= -1.0f;                          // Flip Y coordinate relative to top of viewport
                   } else parScaling.xy = tempScaling2;
                }
             } else parScaling.xy = tempScaling;
@@ -143,55 +140,109 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       } else parScaling.xy = 1.0f;
    }
 
-   const uint  type    = curElement.ind_type & 0x0FF000000;
-   const uint  ai_type = ((curElement.ind_type >> 16) & 0x07F) | (type << 7);
+   const uint type    = curElement.ind_type & 0x0FF000000;
+   const uint ai_type = ((curElement.ind_type >> 16) & 0x07F) | (type << 7);
    
+   float2 coords = 0.0f;
    float  border = ((curElement.pei != 0x0FFFFFFFF) && (curBits & 0x0200) ? invScale.y : invScale.x);
-   float2 coords;
 
    // Type!=Text
    [branch] if(type) {
-      const float2 size = curElement.size + curElement.size;
+      const float4 size = float4(curElement.size * parScaling.xy, curElement.size * parScaling.xy / parScaling.zw);
 
       coords = curElement.coords[0].xy;
 
       // Justification
-           if(curBits & 0x01) coords.x -= border;                                     // Origin relative to left of viewport
-      else if(curBits & 0x02) { coords.x -= border - size.x; coords.x *= -1.0f; }     // Origin relative to right of viewport
-      else                    coords.x -= curElement.size.x;
-           if(curBits & 0x04) { coords.y -= invScale.y - size.y; coords.y *= -1.0f; } // Origin relative to top of viewport
-      else if(curBits & 0x08) coords.y -= invScale.y;                                 // Origin relative to bottom of viewport
-      else                    coords.y -= curElement.size.y;
+      [flatten] if(curBits & 0x03) {  // Origin relative to left/right of viewport
+         coords.x += size.z - border;
+         [flatten] if(curBits & 0x02) // Origin relative to right of viewport
+            coords.x *= -1.0f;
+      }
+      [flatten] if(curBits & 0x0C) {  // Origin relative to top/bottom of viewport
+         coords.y += size.w - invScale.y;
+         [flatten] if(curBits & 0x04) // Origin relative to top of viewport
+            coords.y *= -1.0f;
+      }
+
+      const float4 rotVals = { coords.xy, sin(curElement.rot), cos(curElement.rot)};
+
+      // 'Rotate' && 'translate' bits test: Transrotate around parent's center
+      if((curBits & 0x0300) == 0x0300) {
+         coords.x = (rotVals.x * rotVals.w) - (rotVals.y * rotVals.z);
+         coords.y = (rotVals.x * rotVals.z) + (rotVals.y * rotVals.w);
+      }
 
       // If parented, scale & translate coordinates to parent space
       if(curElement.pei != 0x0FFFFFFFF) {
-         coords *= parScaling.xy;
+         coords *= parScaling.zw;
          coords += parTranslation;
       }
 
-      const float  stepY  = float(i) * 0.25f;
-      const float4 deltas = float4(curElement.size * 2.0f, curElement.coords[1].zw - curElement.coords[1].xy);
       const float4 col[4] = { float4((uint4(curElement.tint[0].xx, curElement.tint[0].yy) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16,
                               float4((uint4(curElement.tint[0].zz, curElement.tint[0].ww) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16,
                               float4((uint4(curElement.tint[1].xx, curElement.tint[1].yy) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16,
                               float4((uint4(curElement.tint[1].zz, curElement.tint[1].ww) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16 };
+      GOut vert[3];
 
-      const float4 colDelta[2] = { col[3] - col[1], col[2] - col[0] };
+      vert[0].ai_type = vert[1].ai_type = vert[2].ai_type = ai_type;
+      vert[0].pos = vert[1].pos = float4(0.0f, 0.0f, 0.0f, 1.0f);
+      vert[2].pos = float4(coords * guiScale, 0.0f, 1.0f);
+      vert[2].col = (col[0] + col[1] + col[2] + col[3]) * 0.25f;
+      vert[2].tc  = (curElement.coords[1].xy + curElement.coords[1].zw) * 0.5f;
 
-      [unroll]
-      for(float stepX = 0.0f; stepX <= 1.0f; stepX += 0.25f) {
-         const float3 step    = float3(stepX, stepY, stepY + 0.25f);
-         const float4 pos     = float4((deltas.xy * step.xy + coords) * guiScale, 0.0f, 1.0f);
-         const float4 pos2    = float4((deltas.xy * step.xz + coords) * guiScale, 0.0f, 1.0f);
-         const float4 cols[2] = { colDelta[0] * step.x + col[1], colDelta[1] * step.x + col[0] };
-
-         const GOut verts[2] = { pos,  (cols[1] - cols[0]) * step.y + cols[0], deltas.zw * step.xy + curElement.coords[1].xy, ai_type,
-                                 pos2, (cols[1] - cols[0]) * step.z + cols[0], deltas.zw * step.xz + curElement.coords[1].xy, ai_type };
-
-         output.Append(verts[0]);
-         output.Append(verts[1]);
+      [flatten] switch(i) { // Only [flatten] compiles in Release mode
+      default:
+         vert[0].pos.xy -= size.xy;
+         vert[0].col     = col[0];
+         vert[0].tc      = curElement.coords[1].xy;
+         vert[1].pos.xy  = float2(-size.x, size.y);
+         vert[1].col     = col[2];
+         vert[1].tc      = curElement.coords[1].xw;
+         break;
+      case 1:
+         vert[0].pos.xy = float2(-size.x, size.y);
+         vert[0].col    = col[2];
+         vert[0].tc     = curElement.coords[1].xw;
+         vert[1].pos.xy = size.xy;
+         vert[1].col    = col[3];
+         vert[1].tc     = curElement.coords[1].zw;
+         break;
+      case 2:
+         vert[0].pos.xy = size.xy;
+         vert[0].col    = col[3];
+         vert[0].tc     = curElement.coords[1].zw;
+         vert[1].pos.xy = float2(size.x, -size.y);
+         vert[1].col    = col[1];
+         vert[1].tc     = curElement.coords[1].zy;
+         break;
+      case 3:
+         vert[0].pos.xy  = float2(size.x, -size.y);
+         vert[0].col     = col[1];
+         vert[0].tc      = curElement.coords[1].zy;
+         vert[1].pos.xy -= size.xy;
+         vert[1].col     = col[0];
+         vert[1].tc      = curElement.coords[1].xy;
+         break;
       }
-      
+
+      // 'Rotate' bits test: Rotate around element center
+      if(curBits & 0x0100) {
+         const float2 tempPos0 = float2((vert[0].pos.x * rotVals.w) - (vert[0].pos.y * rotVals.z), (vert[0].pos.x * rotVals.z) + (vert[0].pos.y * rotVals.w));
+         const float2 tempPos1 = float2((vert[1].pos.x * rotVals.w) - (vert[1].pos.y * rotVals.z), (vert[1].pos.x * rotVals.z) + (vert[1].pos.y * rotVals.w));
+
+         vert[0].pos.xy = tempPos0;
+         vert[1].pos.xy = tempPos1;
+      }
+
+      vert[0].pos.xy += coords;
+      vert[1].pos.xy += coords;
+      vert[0].pos.xy *= guiScale;
+      vert[1].pos.xy *= guiScale;
+
+      output.Append(vert[0]);
+      output.Append(vert[1]);
+      output.Append(vert[2]);
+
       return;
    // Type==Text
    } else {
@@ -203,6 +254,8 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       const uint4  chars[2]    = { ((char16Index.xxxx >> shift8888) & 0x0FF) + alphaOS, ((char16Index.yyyy >> shift8888) & 0x0FF) + alphaOS };
       const float4 colour      = float4((uint4(curElement.tint[i_div2][arrayStep].xx, curElement.tint[i_div2][arrayStep + 1].xx) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16;
 
+      float4 vertPos[2];
+
       // Exit if no character(s) or invisible
       if(chars[0].x == alphaOS || colour.a < 0.001f) return;
 
@@ -210,37 +263,64 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       const uint firstVertex = ((curElement.seo_bits & 0x08000) ? input[0] : input[0] - (curElement.seo_bits & 0x07FFF));
       const uint lastVertex  = firstVertex + (element[firstVertex].seo_bits & 0x07FFF);
 
-      float totalWidth = element[firstVertex].width;
-      uint  totalChars = element[firstVertex].taos >> 26;
+      uint2 li = { 0, 0 };
+      float2 totalWidth = { element[firstVertex].width, 0.0f };
+      uint   totalChars = element[firstVertex].taos >> 26;
 
       for(uint vi = firstVertex + 1; vi <= lastVertex; vi++) {
-         totalWidth += element[vi].width;
+         totalWidth += float2(element[vi].width, element[vi - 1].width);
          totalChars += element[vi].taos >> 26;
       }
       
       totalWidth *= 0.5f;
 
       // 'Compress' bit test
-      if((curBits & 0x04000) && (totalWidth > 1.0f)) {
-         parScaling.xz /= totalWidth;
-         border        *= totalWidth;
+      if((curBits & 0x04000) && (totalWidth.x > 1.0f)) {
+         parScaling.xz /= totalWidth.x;
+         border        *= totalWidth.x;
       }
 
       // Start point --- !!! Move character size & dimension transformations to inner loop? !!!
       const float4 size     = float4(curElement.size * parScaling.xy, parScaling.xy / parScaling.zw);
       const float2 offset   = (1.0f - float2(uint2(alphabet[chars[0][0]].size & 0x0FFFF, alphabet[chars[0][0]].size >> 16)) * rcp65535) * curElement.size * 0.5f;
-      const float  adjWidth = (totalChars > 32 ? totalWidth : curElement.width);
+      const float  adjWidth = (totalChars > 32 ? totalWidth.x : curElement.width);
 
-      coords = ((i & 0x01) ? element[input[0]].coords[i_div2].zw : element[input[0]].coords[i_div2].xy) * size.zw;
+      // Justification
+      [flatten] if(curBits & 0x03) {  // Origin relative to left/right of viewport
+         coords.x = adjWidth * size.z * 0.5f - border;
+         [flatten] if((curBits & 0x02) && !((curBits & 0x04000) && ((totalWidth.x > 1.0f) || (totalChars > 32)))) // Origin relative to right of viewport && not filling viewport width
+            coords.x *= -1.0f;
+      }
+      [flatten] if(curBits & 0x0C) {  // Origin relative to top/bottom of viewport
+         coords.y = curElement.size.y * size.w * 0.5f - invScale.y;
+         [flatten] if(curBits & 0x04) // Origin relative to top of viewport
+            coords.y *= -1.0f;
+      }
 
-      // Justification test
-           if((curBits & 0x01) || ((curBits & 0x04000) && ((totalWidth > 1.0f) || (totalChars > 32))))
-                              coords.x -= offset.x * size.z + border;                           // Origin relative to left of viewport
-      else if(curBits & 0x02) coords.x -= (offset.x + adjWidth) * size.z - border;              // Origin relative to right of viewport
-      else                    coords.x -= (adjWidth * 0.5f + offset.x) * size.z;
-           if(curBits & 0x04) coords.y += (offset.y - curElement.size.y) * size.w + invScale.y; // Origin relative to top of viewport
-      else if(curBits & 0x08) coords.y -= offset.y * size.w + invScale.y;                       // Origin relative to bottom of viewport
-      else                    coords.y -= curElement.size.y * size.w * 0.5f;
+      coords += element[input[0]].coords[0].xy * size.zw;
+      float2 coords2 = ((i & 0x01) ? element[input[0]].coords[i_div2].zw : element[input[0]].coords[i_div2].xy) - element[input[0]].coords[0].xy;
+
+      const float4 rotVals = { coords, sin(curElement.rot), cos(curElement.rot) };
+
+      // 'Rotate' && 'translate' bits test: Transrotate around parent's center
+      if((curBits & 0x0300) == 0x0300) {
+         coords.x = (rotVals.x * rotVals.w) - (rotVals.y * rotVals.z) * size.z;
+         coords.y = (rotVals.x * rotVals.z) + (rotVals.y * rotVals.w) * size.w;
+      }
+
+      // Width offset
+      vertPos[0].x = (adjWidth * 0.5f - coords2.x + offset.x) * size.z;
+      // Second justification test for height offset
+           if(curBits & 0x04) vertPos[0].y = (curElement.size.y * 0.5f - offset.y) * size.w; // Origin relative to top of viewport
+      else if(curBits & 0x08) vertPos[0].y = (curElement.size.y * 0.5f + offset.y) * size.w; // Origin relative to bottom of viewport
+      else                    vertPos[0].y = (curElement.size.y * 0.5f) * size.w;
+      // 'Rotate' bit test: rotate anchor vertex around element's center
+      if((curBits & 0x0100) == 0x0100) {
+         coords.x -= (vertPos[0].x * rotVals.w) - (vertPos[0].y * rotVals.z);
+         coords.y -= (vertPos[0].x * rotVals.z) + (vertPos[0].y * rotVals.w);
+      } else {
+         coords -= vertPos[0].xy;
+      }
 
       // If parented, scale & translate coordinates to parent space
       if(curElement.pei != 0x0FFFFFFFF) {
@@ -249,23 +329,31 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       }
 
       // Generate vertices
-      [unroll]
-      for(uint quad = 0; quad < 2; quad++)
-         [unroll]
-         for(uint index = 0; index < 4; index++) {
+      [unroll] for(uint quad = 0; quad < 2; quad++)
+         [unroll] for(uint index = 0; index < 4; index++) {
             const uint curChar = chars[quad][index];
 
             // Exit if null character
             if(curChar == alphaOS) return;
 
-            const float2 os   = float2(uint2(alphabet[curChar].os & 0x0FFFF, alphabet[curChar].os >> 16)) * 0.0000305180437933928435187304493782f - 1.0f;
-            const float2 pos  = (os * size.xy + coords) * guiScale;
-            const float2 pos2 = size.xy * guiScale + pos;
+            const float2 os    = float2(uint2(alphabet[curChar].os & 0x0FFFF, alphabet[curChar].os >> 16)) * 0.0000305180437933928435187304493782f - 1.0f;
+            const float4 pos12 = { os * size.xy, os * size.xy + float2(0.0f, size.y) };
+            const float4 pos34 = pos12 + float4(size.x, 0.0f, size.x, 0.0f);
+
+            vertPos[0] = float4((pos12.x * rotVals.w) - (pos12.y * rotVals.z), (pos12.x * rotVals.z) + (pos12.y * rotVals.w),
+                                (pos12.z * rotVals.w) - (pos12.w * rotVals.z), (pos12.z * rotVals.z) + (pos12.w * rotVals.w));
+            vertPos[1] = float4((pos34.x * rotVals.w) - (pos34.y * rotVals.z), (pos34.x * rotVals.z) + (pos34.y * rotVals.w),
+                                (pos34.z * rotVals.w) - (pos34.w * rotVals.z), (pos34.z * rotVals.z) + (pos34.w * rotVals.w));
+            vertPos[0] += coords.xyxy;
+            vertPos[0] *= guiScale.xyxy;
+            vertPos[1] += coords.xyxy;
+            vertPos[1] *= guiScale.xyxy;
+
             const uint2  chTC = alphabet[curChar].tc;
             const float4 tc   = float4((uint4(chTC.xx, chTC.yy) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * rcp32768;
 
-            const GOut verts[4] = { float4(pos, 0.0f, 1.0f), colour, tc.xw, ai_type,           float4(pos.x, pos2.y, 0.0f, 1.0f), colour, tc.xy, ai_type,
-                                    float4(pos2.x, pos.y, 0.0f, 1.0f), colour, tc.zw, ai_type, float4(pos2, 0.0f, 1.0f), colour, tc.zy, ai_type };
+            const GOut verts[4] = { float4(vertPos[0].xy, 0.0f, 1.0f), colour, tc.xw, ai_type, float4(vertPos[0].zw, 0.0f, 1.0f), colour, tc.xy, ai_type,
+                                    float4(vertPos[1].xy, 0.0f, 1.0f), colour, tc.zw, ai_type, float4(vertPos[1].zw, 0.0f, 1.0f), colour, tc.zy, ai_type };
 
             // 'Truncate' bit tests
             const float limit = parScaling.z * (offset.x + 1.0f);
@@ -278,7 +366,8 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
                output.RestartStrip();
             }
 
-            coords.x += float(alphabet[curChar].size & 0x0FFFF) * size.x * rcp65535;
+            const float adjSize = float(alphabet[curChar].size & 0x0FFFF) * size.x * rcp65535;
+            coords += float2(adjSize * rotVals.w, adjSize * rotVals.z);
          }
    }
 }
