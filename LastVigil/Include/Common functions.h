@@ -1,6 +1,6 @@
 /************************************************************
  * File: Common functions.h             Created: 2023/02/02 *
- *                                    Last mod.: 2024/03/30 *
+ *                                    Last mod.: 2024/04/18 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -123,25 +123,40 @@ inline void transrotate(VEC2Df &coord, cfl32 angle, cfl32 dist) {
    coord.y += dist * cosf(angle);
 }
 
-inline cVEC2Df sincos(cfl32 x) {
-   cfl32 fSinX = sinf(x);
+inline void transrotate(VEC2Df &coord, cfl32 angle) {
+   cVEC2Df temp = coord;
+   cVEC2Df rots = { sinf(angle), cosf(angle) };
+
+   coord = { (temp.x * rots.y) - (temp.y * rots.x), (temp.x * rots.x) + (temp.y * rots.y) };
+}
+
+inline void transrotate(VEC2Df &coord, cVEC2Df origin, cfl32 angle) {
+   cVEC2Df temp = { coord.x - origin.x, coord.y - origin.y };
+   cVEC2Df rots = { sinf(angle), cosf(angle) };
+
+   coord = { (temp.x * rots.y) - (temp.y * rots.x) + origin.x,
+             (temp.x * rots.x) + (temp.y * rots.y) + origin.y };
+}
+
+inline cVEC2Df sincos(cfl32 angle) {
+   cfl32 fSinX = sinf(angle);
    return { fSinX, sqrtf(1.0f - fSinX * fSinX) };
 }
 
-inline void sincos(cfl32 x, fl32 &sinval, fl32 &cosval) {
-   cfl32 fSinX = sinf(x);
+inline void sincos(cfl32 angle, fl32 &sinval, fl32 &cosval) {
+   cfl32 fSinX = sinf(angle);
    sinval = fSinX;
    cosval = sqrtf(1.0f - fSinX * fSinX);
 }
 
-inline void sincos(cfl32 x, fl64 &sinval, fl64 &cosval) {
-   cfl64 dSinX = sin(cfl64(x));
+inline void sincos(cfl32 angle, fl64 &sinval, fl64 &cosval) {
+   cfl64 dSinX = sin(cfl64(angle));
    sinval = dSinX;
    cosval = sqrt(1.0 - dSinX * dSinX);
 }
 
-inline void sincos(cfl64 x, fl64 &sinval, fl64 &cosval) {
-   cfl64 dSinX = sin(x);
+inline void sincos(cfl64 angle, fl64 &sinval, fl64 &cosval) {
+   cfl64 dSinX = sin(angle);
    sinval = dSinX;
    cosval = sqrt(1.0 - dSinX * dSinX);
 }

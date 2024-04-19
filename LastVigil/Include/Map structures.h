@@ -91,53 +91,53 @@ al8 struct CELL {   // 40 bytes
    ui32      RES;
 };
 
-al16 struct MAPDIMS_ICB {   // 48 bytes
+al16 struct MAPDIMS_ICB { // 48 bytes
    VEC3Ds32 mapDims;     // X, Y, Z cell counts
    VEC3Du8  mapDimsE;    // Exponenets of .iMapDim
    ui8      zsoL;        // Low byte of Z spawning offset
    VEC3Ds32 chunkDims;   // X, Y, Z cell counts
-   VEC3Du8   chunkDimsE;  // Exponenets of .iChunkDim
+   VEC3Du8   chunkDimsE; // Exponenets of .iChunkDim
    ui8      zsoH;        // High byte of Z spawning offset
-   VEC3Du8   chunkCount;  // X, Y, Z chunk counts - 1
+   VEC3Du8   chunkCount; // X, Y, Z chunk counts - 1
    ui8      bitFlags;
    VEC2Du32 totalCells;  // Cells/chunk, Cells/map
-   ui32      totalChunks; // Chunks/map
+   ui32     totalChunks; // Chunks/map
 };
 
-al16 struct MAPDIMS_ICB_ {   // 48 bytes
-   VEC3Ds32 mapDims;      // X, Y, Z cell counts
-   si32      zso;         // Z spawning offset
+al16 struct MAPDIMS_ICB_ { // 48 bytes
+   VEC3Ds32 mapDims;     // X, Y, Z cell counts
+   si32      zso;        // Z spawning offset
    VEC3Ds32 chunkDims;   // X, Y, Z cell counts
-   VEC3Du8   chunkCount;   //   X, Y, Z chunk counts
+   VEC3Du8   chunkCount; //   X, Y, Z chunk counts
    ui8      bitFlags;
-   VEC2Du32 totalCells;    // Cells/chunk, Cells/map
+   VEC2Du32 totalCells;  // Cells/chunk, Cells/map
    ui32     totalChunks; // Chunks/map
    ui32     RES;
 };
 
-al16 struct MAP_DESC {   // 64 bytes
-   wchptr stName;               // Text label
-   wchptr stInfo;               // Extended text
+al16 struct MAP_DESC { // 64 bytes
+   wchptr stName;         // Text label
+   wchptr stInfo;         // Extended text
    union {
       VEC3Ds32 totals;
       struct {
-         si32 chunkCells;      // Chunk cell count
-         si32 mapCells;         // Map cell count
-         si32 mapChunks;      // Map chunk count
+         si32 chunkCells; // Chunk cell count
+         si32 mapCells;   // Map cell count
+         si32 mapChunks;  // Map chunk count
       };
    };
    si16 zso;                  // .zDim spawning offset (default ground level)
-   si16 ptIndex;               // Index of periodic table used by map
+   si16 ptIndex;              // Index of periodic table used by map
    union {
       VEC3Ds16 dims[3];
       struct {
-         VEC3Ds16 mapDim;      // Map dimensions; cells
+         VEC3Ds16 mapDim;     // Map dimensions; cells
          VEC3Ds16 chunkDim;   // Chunk dimensions; cells
-         VEC3Ds16 chunkCount;   // Map dimensions; chunks
+         VEC3Ds16 chunkCount; // Map dimensions; chunks
       };
    };
-   ui8  chunkCellsE;            // Exponent of totalCells.chunk
-   ui8  chunkRowCellE;         // Exponent of cells per row of chunks
+   ui8  chunkCellsE;          // Exponent of totalCells.chunk
+   ui8  chunkRowCellE;        // Exponent of cells per row of chunks
    ui8  chunkPlaneCellE;      // Exponent of cells per plane of chunks
 //   ui32 RES;
 };

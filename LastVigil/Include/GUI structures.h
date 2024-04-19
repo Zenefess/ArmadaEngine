@@ -1,9 +1,10 @@
 /************************************************************
  * File: GUI structures.h               Created: 2023/01/26 *
- *                                Last modified: 2024/04/04 *
+ *                                Last modified: 2024/04/18 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
+ * 2024/04/18: Added GUI_DESC struct                        *
  *                                                          *
  *  Copyright (c) David William Bull. All rights reserved.  *
  ************************************************************/
@@ -12,24 +13,25 @@
 #include "typedefs.h"
 #include "Vector structures.h"
 
-#define GUI_ALIGN_C 0x0
-#define GUI_ALIGN_L 0x01
-#define GUI_ALIGN_R 0x02
-#define GUI_ALIGN_T 0x04
-#define GUI_ALIGN_B 0x08
-#define GUI_ELLIPSE 0x010
+#define UI_ALIGN_C 0x0
+#define UI_ALIGN_L 0x01
+#define UI_ALIGN_R 0x02
+#define UI_ALIGN_T 0x04
+#define UI_ALIGN_B 0x08
+#define UI_ELLIPSE 0x010
+#define UI_INVIS   0x080
 
-#define GUI_NONE    0x0
-#define GUI_ROT     0x01
-#define GUI_TRANS   0x02
-#define GUI_SCALE_X 0x04
-#define GUI_SCALE_Y 0x08
-#define GUI_SCALE   0x0C
-#define GUI_INVIS   0x010
-#define GUI_TRUNC   0x020
-#define GUI_COMP    0x040
-#define GUI_WIDE_CH 0x080
-#define GUI_DEFAULT 0x047
+#define UI_NONE    0x0
+#define UI_ROT     0x01
+#define UI_TRANS   0x02
+#define UI_SCALE_X 0x04
+#define UI_SCALE_Y 0x08
+#define UI_SCALE   0x0C
+#define UI_DEFAULT 0x0F
+#define UI_TRUNC   0x010
+#define UI_COMP    0x020
+#define UI_CTRL_CH 0x040
+#define UI_WIDE_CH 0x080
 
 al8 struct GUI_SPRITE { // 32 bytes
    wchptr name;
@@ -92,13 +94,13 @@ al32 struct GUI_EL_DGS { // 96 bytes (24 scalars)   ///--- Rewrite to remove red
    ui32   textArrayOS;   // 0~25==Offset into text array (div.by 16), 28~31==Vertex's char count
    ui16   alphabetIndex; // Offset into alphabet buffer
    ui8    atlasIndex;    // Runtime index of atlas texture
-   ui8    elementType;   // Text=0, Panel=1, Button=2, Toggle=3, Scalar=4, Cursor=5(, Dial=6, )
+   ui8    elementType;   // Text=0, Panel=1, Button=2, Toggle=3, Scalar=4, Cursor=5, Dial=6
    ui16   sibling;       // 0~14==First sibling element offset / Sibling count (if bit15 set)
    union {
       ui16 bitField;
       struct {
-         ui8 orient;     // 0~3==Justificition : left, right, top, bottom, 4==Elliptical bounding space, 5~7==???
-         ui8 mods;       // 0==Rotate, 1==Translate, 2&3==Scaling: X&Y, 4==Invisible, 5==Truncate, 6==Compress, 7==Wide chars
+         ui8 align;      // 0~3==Justification (L,R,T,B), 4==Elliptical bounding space, 5~6==???, 7==Invisible
+         ui8 mods;       // 0==Rotate, 1==Translate, 2&3==Scale: X&Y, 4==Truncate, 5==Compress, 6==Process control characters, 7==Wide chars
       };
    };
 };
@@ -131,9 +133,9 @@ al32 struct GUI_ELEMENT { // 128 bytes
    ui16 vertexCount[2]; // Number of vertices used; 0==Current, 1==Maximum
    si16 soundBankIndex;
    union {
-      ui16 bitField;      // 0~3==(Text=0, Panel=1, Button=2, Scalar=3, Input=4, Cursor=5, Knob=6)
-      struct {            // 4~5==???, 6==Wide characters, 7==Button active
-         ui8 elementType;
+      ui16 bitField;
+      struct {
+         ui8 elementType; // 0~3==(Text=0, Panel=1, Button=2, Scalar=3, Input=4, Cursor=5, Dial=6), 4~5==???, 6==Wide characters, 7==Element actived
          ui8 stateBits;   // 8~13==Function busy bits, 14==Visible, 15==Active
       };
    };
@@ -151,6 +153,27 @@ al32 struct GUI_ELEMENT { // 128 bytes
       si16  si16Var[8];
       ui8   ui8Var[16];
       si8   si8Var[16];
+   };
+};
+
+al32 struct GUI_INTERFACE { // 64 bytes
+   ui16 *vertex;       // Vertex array of indices to element entries
+   si16  maxVertices;
+   si16  vertCount;
+   si16  maxInputs;
+   si16  inputCount;
+   union {             // Array of input combinations
+      VEC4Du8 *inputs;
+      ui8    (*input)[4];
+   };
+   union {             // Array of input text labels
+      chptr *inputLabels;
+      char (*inputLabel)[32];
+   };
+   union {             // 1-bit element activity array, ~256 vertices
+      ui64  mod[4];
+      ui128 mod128[2];
+      ui256 mod256;
    };
 };
 
@@ -196,7 +219,7 @@ al16 struct GUI_EL_DESC { // 112 bytes
       };
    };
    si32 charCount = 0;
-   ui32 RES = 0x0CDCDCDCD;
+   ui32 RES       = 0x0CDCDCDCD;
 
    GUI_EL_DESC(void) {
       bitField.text   = 0x00047;
@@ -206,23 +229,29 @@ al16 struct GUI_EL_DESC { // 112 bytes
    }
 };
 
-al32 struct GUI_INTERFACE { // 64 bytes
-   ui16 *vertex;       // Vertex array of indices to element entries
-   si16  maxVertices;
-   si16  vertCount;
-   si16  maxInputs;
-   si16  inputCount;
-   union {             // Array of input combinations
-      VEC4Du8 *inputs;
-      ui8    (*input)[4];
+#define TriggerInputProcessing gcv.misc[7] |= 0x080
+
+// Set .interfaceIndex before executing "gcv.misc[7] |= 0x080;"
+struct GUI_DESC { // 64 bytes
+   union {
+      AVX8Ds32 returnValues;
+      struct {
+         SSE4Ds32 cellIndex;
+         SSE4Ds32 activeLayer;
+      };
+      struct {
+         VEC3Ds32 activeCell;
+         si32     cell;
+      };
+      VEC2Ds32 activePlane;
    };
-   union {             // Array of input text labels
-      chptr *inputLabels;
-      char (*inputLabel)[32];
-   };
-   union {             // 1-bit element activity array, ~256 vertices
-      ui64  mod[4];
-      ui128 mod128[2];
-      ui256 mod256;
-   };
+   ui32 interfaceIndex; // User interface to draw
+   //si16 alphabetIndex;  // Alphabet to assign to elements
+   //ui16 spriteLibIndex; // Sprite library to assign to elements
+
+public:
+   void ProcessInputs(cui32 index) { // Requires GLOBALCTRLVARS 'gcv' global variable
+      interfaceIndex = index;
+      gcv.misc[7] |= 0x080;
+   }
 };

@@ -27,7 +27,8 @@
 
 typedef cMAPMAN_THREAD_DATA * const cMMTDptr;
 
-vui128 MAPMAN_THREAD_STATUS = {};
+extern vui128 MAPMAN_THREAD_STATUS;
+
 static void _MM_Cull_Nonvisible_RasteriseLayer(cVEC4Ds32[2]);
 static void _MM_Cull_Nonvisible_Rasterise(cVEC4Ds32[4]);
 static void _MM_Cull_Nonvisible_and_Unchanged(ptr);

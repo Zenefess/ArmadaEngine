@@ -1,6 +1,6 @@
 /**********************************************************
  * File: Main thread.h                Created: 2008/09/16 *
- *                              Last modified: 2023/04/26 *
+ *                              Last modified: 2024/04/18 *
  *                                                        *
  * Desc:                                                  *
  *                                                        *
@@ -11,14 +11,22 @@
  *  Library of pointers to classes and resources
  *  --------------------------------------------
  *
- * 0==Class: File operations
- * 1==Class: Camera manager
- * 2==Class: Map manager
- * 3==Class: Entity manager
- * 4==Class: GUI manager
- * 5==
- * 6==
- * 7==
+ *  0==Class: File operations
+ *  1==Class: Camera manager
+ *  2==Class: Map manager
+ *  3==Class: Entity manager
+ *  4==Class: GUI manager
+ *  5==Class: GPU manager
+ *  6==
+ *  7==
+ *  8==Active MAP_DESC information
+ *  9==Active GUI_DESC information
+ * 10==
+ * 11==
+ * 12==
+ * 13==
+ * 14==
+ * 15==
 /*/
 #define AE_PTR_LIB
 extern cptr ptrLib[16];

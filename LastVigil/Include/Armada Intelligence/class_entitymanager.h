@@ -411,7 +411,8 @@ al32 struct CLASS_ENTITYMANAGER {
    inline si32 Cull(ui32aptrc arrayVisible, ui32ptrc arrayUnchanged, csi32 entityGroup, csi8 threadCount) {
       static ui8 uiTHREADS = 0;
 
-      if(!arrayVisible) { MAPMAN_THREAD_STATUS.m128i_u8[0] &= 0x0F3; return 0; }
+//      if(!arrayVisible) { MAN_THREAD_STATUS.m128i_u8[0] &= 0x0F3; return 0; }
+      if(!arrayVisible) { ENTMAN_THREAD_STATUS.m128i_u8[0] &= 0x0F3; return 0; }
 
       cui8 threadBits = ENTMAN_THREAD_STATUS.m128i_u8[0];
 

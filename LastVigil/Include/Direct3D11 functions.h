@@ -73,6 +73,7 @@ al32 struct CLASS_GPU {
 
 #ifdef AE_PTR_LIB
       ptrLib[0] = &files;
+      ptrLib[5] = this;
 #endif
       cfg.files = gui.files = &files;
       cfg.dev = buf.dev = cam.dev = lit.dev = tex.dev = ren.dev = dev;

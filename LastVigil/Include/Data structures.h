@@ -141,13 +141,13 @@ al32 struct TEXTBUFFER {
 };
 
 // Global control variables
-al32 struct GLOBALCTRLVARS {   // 128 bytes
-   union {   // Position of cursor relative to client window
+al32 struct GLOBALCTRLVARS { // 128 bytes
+   union { // Position of cursor relative to client window
       si32     curCoord[2];
       VEC2Ds32 curCoords;
    };
    union {
-      ui64 bits;   // Bitfield: 60==Numerical input, 61==Text input, 62==No button activity, 63==Update state changes
+      ui64 bits;    // Bitfield: 59==Mouse cursor visible, 60==Numerical input, 61==Text input, 62==No button activity, 63==Update state changes
       ui8  misc[8];
    };
    union {
