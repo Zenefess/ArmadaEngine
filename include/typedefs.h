@@ -8,7 +8,7 @@
  * Notes: 2023/05/23: Added SSE & AVX vector types.       *
  *        2023/06/05: Added ui24 data type.               *
  *                                                        *
- * Copyright (c) David William Bull. All rights reserved. *
+ *                       Copyright (c) David William Bull *
  **********************************************************/
 #pragma once
 
