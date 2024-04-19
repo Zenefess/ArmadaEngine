@@ -1,6 +1,6 @@
 /************************************************************
  * File: GUI functions.cpp              Created: 2023/06/13 *
- *                                Last modified: 2024/03/29 *
+ *                                Last modified: 2024/04/19 *
  *                                                          *
  * Desc: User interface functions for in-game menus and     *
  *       developer environment.                             *
@@ -18,8 +18,92 @@
 #include "class_timers.h"
 #include "Direct3D11 thread.h"
 #include "Direct3D11 functions.h"
+#include "Armada Intelligence/class_mapmanager.h"
 
 extern TEXTBUFFER textBufferInfo; // Buffer information for character input
+
+void ProcessGUIInputs(GLOBALCTRLVARS &gcvLocal) {
+   CLASS_GPU        &gpu    = *(CLASS_GPU *)ptrLib[5];
+   CLASS_MAPMANAGER &mapMan = *(CLASS_MAPMANAGER *)ptrLib[2];
+   GUI_DESC         &gd     = *(GUI_DESC *)ptrLib[9];
+
+   cfl32 fElapsedTime = float(mainTimer.GetElapsedTimeScaled());
+
+   si128 &siActiveLayer = gd.returnValues.xmm1;
+   si32  &siCell        = gd.returnValues.vector[0].w;
+   si32   siChunk       = 0;
+
+   csi32 siWheel = gcvLocal.s32.z[1].x;
+
+   siActiveLayer = gpu.gui.ProcessInputs(gcvLocal, gd.interfaceIndex); // If cursor is over GUI element, process
+   if(siActiveLayer.m128i_i32[0] < 0) {
+      gd.activeCell.z = siWheel;
+      // Locate cell under cursor
+      gd.activePlane = gpu.cam.CursorLayerIntersect(siWheel, cvector{ 0.0f, 0.0f, 0.5f }, gcvLocal.curCoords, 0, 0);
+      siCell = mapMan.CalcCellIndex(gd.activeCell, 0, 0);
+      siChunk = siCell / (*(MAP_DESC *)ptrLib[8]).chunkCells;
+      // Mouse button 0
+      if(siActiveLayer.m128i_i32[1] < 0 && gcvLocal.imm.b[16] & 0x01) {
+         if(siCell != 0x080000001) {
+            mapMan.world[0].map[0]->cell[siCell].pixel->gev += ui16(fElapsedTime * 2048.0f);
+            mapMan.world[0].map[0]->chunkMod[siChunk >> 6] |= ui64(0x01) << (siChunk & 0x03F);
+         }
+      }
+      // Mouse button 1
+      if(siActiveLayer.m128i_i32[2] < 0 && gcvLocal.imm.b[16] & 0x02) {
+         if(siCell != 0x080000001) {
+            mapMan.world[0].map[0]->cell[siCell].pixel->gev -= ui16(fElapsedTime * 2048.0f);
+            mapMan.world[0].map[0]->chunkMod[siChunk >> 6] |= ui64(0x01) << (siChunk & 0x03F);
+         }
+      }
+      // Mouse button 3
+      if(gcvLocal.imm.b[16] & 0x08) {
+         if(siCell != 0x080000001) {
+            mapMan.ModQuadCellDensity(gd.activeCell, -fElapsedTime, 0, 0);
+//            gpu.gui.element_dgs[gpu.gui.element[panelElement0].vertexIndex].rotAngle -= fElapsedTime;
+//            gpu.gui.element_dgs[gpu.gui.element[textInputEl].vertexIndex].rotAngle -= fElapsedTime;
+         }
+      }
+      // Mouse button 4
+      if(gcvLocal.imm.b[16] & 0x010) {
+         if(siCell != 0x080000001) {
+            mapMan.ModQuadCellDensity(gd.activeCell, fElapsedTime, 0, 0);
+//            gpu.gui.element_dgs[gpu.gui.element[panelElement0].vertexIndex].rotAngle += fElapsedTime;
+//            gpu.gui.element_dgs[gpu.gui.element[textInputEl].vertexIndex].rotAngle += fElapsedTime;
+         }
+      }
+      // Mouse wheel left
+      if(gcvLocal.imm.b[16] & 0x020) {
+         if(siCell != 0x080000001) {
+            mapMan.ModQuadCellDensity(gd.activeCell, -fElapsedTime, 0, 0);
+         }
+      }
+      // Mouse wheel right
+      if(gcvLocal.imm.b[16] & 0x040) {
+         if(siCell != 0x080000001) {
+            mapMan.ModQuadCellDensity(gd.activeCell, fElapsedTime, 0, 0);
+         }
+      }
+      if(gcvLocal.imm.b[4] & 0x01)
+         if(siCell != 0x080000001) {
+            mapMan.world[0].map[0]->cell[siCell].geometry->et.x = (gcvLocal.misc[1] & 0x03) + 1;
+            mapMan.world[0].map[0]->chunkMod[siChunk >> 6] |= ui64(0x01) << (siChunk & 0x03F);
+         }
+   }
+   // Mouse button 2
+   if(gcvLocal.imm.b[16] & 0x04) {
+      if(gcvLocal.misc[7] & 0x08) {
+         //gpu.MouseCursor(hWnd, false);
+         gcvLocal.misc[7] &= 0x0F7;
+      }
+      gpu.cam.s[0].fXrot -= gcvLocal.xy[1].y2;
+      gpu.cam.s[0].fYrot += gcvLocal.xy[1].x1;
+   } else
+      if(!(gcvLocal.misc[7] & 0x04)) {
+         //gpu.MouseCursor(hWnd, true);
+         gcvLocal.misc[7] |= 0x08;
+      }
+}
 
 void __Activate0_0_Default_Button(cptrc indices) {
    const GUI_INDICES &data = (GUI_INDICES &)indices;
@@ -29,8 +113,8 @@ void __Activate0_0_Default_Button(cptrc indices) {
 
    if(!(element.stateBits & 0x04)) {
       element.bitField ^= 0x0480;
-      vertex[0].mods ^= 0x010;
-      vertex[1].mods ^= 0x010;
+      vertex[0].align ^= 0x080;
+      vertex[1].align ^= 0x080;
    }
 }
 
@@ -42,8 +126,8 @@ void __Activate0_1_Default_Button(cptrc indices) {
 
    if(element.stateBits & 0x04) {
       element.bitField ^= 0x0480;
-      vertex[0].mods ^= 0x010;
-      vertex[1].mods ^= 0x010;
+      vertex[0].align ^= 0x080;
+      vertex[1].align ^= 0x080;
    }
 }
 
@@ -55,8 +139,8 @@ void __Activate0_0_Default_Toggle(cptrc indices) {
 
    if(!(element.stateBits & 0x04)) {
       element.bitField ^= 0x0400;
-      vertex[0].mods ^= 0x010;
-      vertex[1].mods ^= 0x010;
+      vertex[0].align ^= 0x080;
+      vertex[1].align ^= 0x080;
    }
 }
 
@@ -167,13 +251,13 @@ void __Passive_Default_Input(cptrc indices) {
          vertex[oldVertCount].origin[1] = { 0.0f, 0.0f };
          vertex[oldVertCount].origin[2] = { 0.0f, 0.0f };
          vertex[oldVertCount].origin[3] = { 0.0f, 0.0f };
-         vertex[oldVertCount].mods |= 0x010;
+         vertex[oldVertCount].align |= 0x080;
       } else if(newVertCount > oldVertCount) {
          vertex[newVertCount].origin[0] = (*(const CLASS_GUI *)ptrLib[4])._CalculateOrigin(indexVert, indexVert + newVertCount, vertex[0].alphabetIndex);
          vertex[newVertCount].origin[1] = { 16384.0f, 16384.0f };
          vertex[newVertCount].origin[2] = { 16384.0f, 16384.0f };
          vertex[newVertCount].origin[3] = { 16384.0f, 16384.0f };
-         vertex[newVertCount].mods &= 0x0EF;
+         vertex[newVertCount].align &= 0x07F;
       }
 
       // Is the 'confirm' flag set?
@@ -199,6 +283,72 @@ void __OnHover_Default(cptrc indices) {
 void __OffHover_Default(cptrc indices) {
    const GUI_INDICES &data = (GUI_INDICES &)indices;
 
+}
+
+/*
+ *  User interfaces
+ */
+
+void MainMenu(cptrc argList) {
+   static bool firstRun = true;
+
+   const struct INPUT_INDICES {
+      si16 alphabet;
+      ui16 spriteLib;
+      ui16 panelSprite;
+   } &index = (const INPUT_INDICES &)argList;
+
+   CLASS_GUI &gui = *(CLASS_GUI *)ptrLib[4];
+   GUI_DESC  &gd  = *(GUI_DESC *)ptrLib[9];
+
+   union { VEC2Du32 button[8]; struct { VEC2Du32 buttonOptions, buttonEditors, buttonExit; }; };
+
+   ui32 interfaceMain;
+
+   if(firstRun) {
+      GUI_EL_DESC elementDesc;
+
+      elementDesc.viewPos    = { 0.0f, -0.25f };
+      elementDesc.index      = { index.alphabet, index.spriteLib, index.panelSprite };
+      elementDesc.size       = { { 0.125f, 0.125f }, { 1.0f, 1.0f } };
+      elementDesc.colour     = { { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f } };
+      elementDesc.text       = (chptr)"Options";
+      elementDesc.charCount  = 7;
+      elementDesc.panelAlign = UI_ALIGN_L;
+      elementDesc.panelMods  = UI_NONE;
+      elementDesc.textAlign  = UI_ALIGN_C;
+      elementDesc.textMods   = UI_ROT | UI_TRANS | UI_SCALE_X;
+      buttonOptions = gui.CreateTextButton(elementDesc);
+      elementDesc.viewPos    = { 0.0f, -0.5f };
+      elementDesc.index      = { index.alphabet, index.spriteLib, index.panelSprite };
+      elementDesc.size       = { { 0.125f, 0.125f }, { 1.0f, 1.0f } };
+      elementDesc.colour     = { { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f } };
+      elementDesc.text       = (chptr)"Editors";
+      elementDesc.charCount  = 7;
+      elementDesc.panelAlign = UI_ALIGN_L;
+      elementDesc.panelMods  = UI_NONE;
+      elementDesc.textAlign  = UI_ALIGN_C;
+      elementDesc.textMods   = UI_ROT | UI_TRANS | UI_SCALE_X;
+      buttonEditors = gui.CreateTextButton(elementDesc);
+      elementDesc.viewPos    = { 0.0f, 0.0f };
+      elementDesc.index      = { index.alphabet, index.spriteLib, index.panelSprite };
+      elementDesc.size       = { { 0.125f, 0.125f }, { 1.0f, 1.0f } };
+      elementDesc.colour     = { { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f } };
+      elementDesc.text       = (chptr)"Exit";
+      elementDesc.charCount  = 4;
+      elementDesc.panelAlign = UI_ALIGN_L | UI_ALIGN_B;
+      elementDesc.panelMods  = UI_NONE;
+      elementDesc.textAlign  = UI_ALIGN_C;
+      elementDesc.textMods   = UI_ROT | UI_TRANS | UI_SCALE_X;
+      buttonExit = gui.CreateTextButton(elementDesc);
+
+      interfaceMain = gui.CreateInterface(128, 16);
+      gui.AddElementToInterface(buttonOptions, interfaceMain);
+      gui.AddElementToInterface(buttonEditors, interfaceMain);
+      gui.AddElementToInterface(buttonExit, interfaceMain);
+
+      firstRun = false;
+   }
 }
 
 /*
@@ -237,10 +387,6 @@ void GameplayMenu(cptrc argList) {       // 7th
 }
 
 void OptionsMenu(cptrc argList) {        // 6th
-   const CLASS_GUI &gui = *(const CLASS_GUI *)ptrLib[4];
-}
-
-void MainMenu(cptrc argList) {           // 8th
    const CLASS_GUI &gui = *(const CLASS_GUI *)ptrLib[4];
 }
 

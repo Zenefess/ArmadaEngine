@@ -1,6 +1,6 @@
 /************************************************************
  * File: DirectInput8 thread.cpp        Created: 2022/11/01 *
- *                                Last modified: 2024/03/31 *
+ *                                Last modified: 2024/04/19 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -14,6 +14,8 @@
 #include "DirectInput8 thread.h"
 
 #pragma intrinsic(_InterlockedExchange64)
+
+extern void ProcessGUIInputs(GLOBALCTRLVARS &); // Defined in "DirectInput8 thread.h"
 
 extern vui64 THREAD_LIFE; // 'Thread active' flags
 
@@ -414,10 +416,11 @@ Reinitialise_:
             }
          }
       }
-//      gcvLocal.misc[7] &= 0x07F;
+
+      ProcessGUIInputs(gcvLocal);
 
       // Forcing volatile copy to avoid glitches 
-      for(i = 0; i < 16; i++) _InterlockedExchange64(&((vsi64 (&)[4])gcv)[i], ((si64 (&)[4])gcvLocal)[i]);
+      for(i = 0; i < 16; i++) _InterlockedExchange64(&((vsi64 (&)[16])gcv)[i], ((si64 (&)[16])gcvLocal)[i]);
 
       Sleep(1);
    } while (threadLife & INPUT_THREAD_ALIVE);
