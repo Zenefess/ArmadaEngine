@@ -1,18 +1,19 @@
 /************************************************************
  * File: gs.gui.hlsl                    Created: 2023/04/09 *
- *                                Last modified: 2024/04/16 *
+ * Type: Geometry shader          Last modified: 2024/04/17 *
  *                                                          *
  * Notes: 8 characters per instance.                        *
  *                                                          *
  * 2023/07/02: Moved input data to structured buffer        *
  * 2024/04/01: GUI_EL_DYN SRV+Adj.coords replaced with UAV  *
  * 2024/04/05: Added truncation functionality to text       *
- * 2024/04/09: Added compression functionality to text      *
- *             Added rotation functionality to non-text     *
+ * 2024/04/09: Added compression functionality to text, and *
+ *             rotation functionality to non-text           *
  * 2024/04/16: Added rotation functionality to text         *
  *                                                          *
  * To do: Add elliptical bounding shape                     *
  *        Add wide character support                        *
+ *        Add control character support                     *
  *                                                          *
  *  Copyright (c) David William Bull. All rights reserved.  *
  ************************************************************/
@@ -29,7 +30,7 @@ cbuffer CB_VIEW : register(b0) { // 144 bytes (9 vectors)
 struct CHAR_IMM { // 16 bytes (1 scalar)
    uint2 tc;   // Texture coordinates : 4x(1p15)
    uint  size; // Relative X&Y dimensions : p16n0.0~1.0
-   uint  os;   // Relative X&Y offsets : p-1.0~1.0
+   uint  os;   // Relative X&Y offsets : p16n-1.0~1.0
 };
 
 struct GUI_EL_DYN { // 96 bytes (24 scalars)
@@ -41,8 +42,8 @@ struct GUI_EL_DYN { // 96 bytes (24 scalars)
    uint   pei;       // Parent element's GUI_EL_DYN index: this==No parent
    uint   taos;      // 0~25==Offset into text array (div.by 16), 26~31==Vertex's char count
    uint   ind_type;  // 0~15==Offset into alphabet buffer, 16~23==Runtime index of alphabet's atlas texture, 24~31==Element type
-   uint   seo_bits;  // 0~15==First sibling element offset, 16~19==Justification (L,R,T,B), 20==Elliptical bounding space, 21~23==???
-};                   // 24==Rotate, 25==Translate, 26&27==Scale: X&Y, 28==Invisible, 29==Truncate, 30==Compress, 31==Wide chars
+   uint   seo_bits;  // 0~15==First sibling element offset, 16~19==Justification (L,R,T,B), 20==Elliptical bounding space, 21~22==???, 23==Invisible
+};                   // 24==Rotate, 25==Translate, 26&27==Scale: X&Y, 28==Truncate, 29==Compress, 30==Process control characters, 31==Wide chars
 
 struct GOut { // 44 bytes (2 vectors + 3 scalars)
    float4 pos     : SV_Position;
@@ -63,7 +64,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
    const uint   curBits  = curElement.seo_bits >> 16;
 
    // Exit if element not visible
-   if((curBits & 0x01000) || curElement.size.x == 0.0f || curElement.size.y == 0.0f) return;
+   if((curBits & 0x080) || curElement.size.x == 0.0f || curElement.size.y == 0.0f) return;
 
    // Calculate parent rotation, scaling and translation factors; 3 deep
    float4 parScaling     = 1.0f; // .xy==Scale, .zw==Scaled translation
@@ -148,7 +149,12 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
 
    // Type!=Text
    [branch] if(type) {
-      const float4 size = float4(curElement.size * parScaling.xy, curElement.size * parScaling.xy / parScaling.zw);
+      const float4 size   = float4(curElement.size * parScaling.xy, curElement.size * parScaling.xy / parScaling.zw);
+      const float4 col[4] = { float4((uint4(curElement.tint[0].xx, curElement.tint[0].yy) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16,
+                              float4((uint4(curElement.tint[0].zz, curElement.tint[0].ww) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16,
+                              float4((uint4(curElement.tint[1].xx, curElement.tint[1].yy) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16,
+                              float4((uint4(curElement.tint[1].zz, curElement.tint[1].ww) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16 };
+      GOut vert[3];
 
       coords = curElement.coords[0].xy;
 
@@ -167,10 +173,8 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       const float4 rotVals = { coords.xy, sin(curElement.rot), cos(curElement.rot)};
 
       // 'Rotate' && 'translate' bits test: Transrotate around parent's center
-      if((curBits & 0x0300) == 0x0300) {
-         coords.x = (rotVals.x * rotVals.w) - (rotVals.y * rotVals.z);
-         coords.y = (rotVals.x * rotVals.z) + (rotVals.y * rotVals.w);
-      }
+      if((curBits & 0x0300) == 0x0300)
+         coords = float2((rotVals.x * rotVals.w) - (rotVals.y * rotVals.z), (rotVals.x * rotVals.z) + (rotVals.y * rotVals.w));
 
       // If parented, scale & translate coordinates to parent space
       if(curElement.pei != 0x0FFFFFFFF) {
@@ -178,20 +182,16 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
          coords += parTranslation;
       }
 
-      const float4 col[4] = { float4((uint4(curElement.tint[0].xx, curElement.tint[0].yy) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16,
-                              float4((uint4(curElement.tint[0].zz, curElement.tint[0].ww) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16,
-                              float4((uint4(curElement.tint[1].xx, curElement.tint[1].yy) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16,
-                              float4((uint4(curElement.tint[1].zz, curElement.tint[1].ww) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16 };
-      GOut vert[3];
-
+      // Calculate vertices
       vert[0].ai_type = vert[1].ai_type = vert[2].ai_type = ai_type;
+
       vert[0].pos = vert[1].pos = float4(0.0f, 0.0f, 0.0f, 1.0f);
       vert[2].pos = float4(coords * guiScale, 0.0f, 1.0f);
       vert[2].col = (col[0] + col[1] + col[2] + col[3]) * 0.25f;
       vert[2].tc  = (curElement.coords[1].xy + curElement.coords[1].zw) * 0.5f;
 
-      [flatten] switch(i) { // Only [flatten] compiles in Release mode
-      default:
+      [flatten] switch(i) { // Only [flatten] compiles with optimisations
+      case 0:
          vert[0].pos.xy -= size.xy;
          vert[0].col     = col[0];
          vert[0].tc      = curElement.coords[1].xy;
@@ -275,7 +275,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       totalWidth *= 0.5f;
 
       // 'Compress' bit test
-      if((curBits & 0x04000) && (totalWidth.x > 1.0f)) {
+      if((curBits & 0x02000) && (totalWidth.x > 1.0f)) {
          parScaling.xz /= totalWidth.x;
          border        *= totalWidth.x;
       }
@@ -288,7 +288,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       // Justification
       [flatten] if(curBits & 0x03) {  // Origin relative to left/right of viewport
          coords.x = adjWidth * size.z * 0.5f - border;
-         [flatten] if((curBits & 0x02) && !((curBits & 0x04000) && ((totalWidth.x > 1.0f) || (totalChars > 32)))) // Origin relative to right of viewport && not filling viewport width
+         [flatten] if((curBits & 0x02) && !((curBits & 0x02000) && ((totalWidth.x > 1.0f) || (totalChars > 32)))) // Origin relative to right of viewport && not filling viewport width
             coords.x *= -1.0f;
       }
       [flatten] if(curBits & 0x0C) {  // Origin relative to top/bottom of viewport
@@ -357,8 +357,8 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
 
             // 'Truncate' bit tests
             const float limit = parScaling.z * (offset.x + 1.0f);
-            if((curBits & 0x02000) && (coords.x + size.x >= limit)) return; // Character exceeds right border?
-            [flatten] if((curBits & 0x02000) && (coords.x >= -limit)) {} {  // Character does not exceed left border?
+            if((curBits & 0x01000) && (coords.x + size.x >= limit)) return; // Character exceeds right border?
+            [flatten] if((curBits & 0x01000) && (coords.x >= -limit)) {} {  // Character does not exceed left border?
                output.Append(verts[0]);
                output.Append(verts[1]);
                output.Append(verts[2]);

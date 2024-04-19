@@ -45,7 +45,7 @@ struct GOut { // 48 bytes (3 vectors) <-- Add data for texture blending with adj
 float4 main(in const GOut g) : SV_Target {
    cuint     index    = g.ci;
    cuint     atlas    = cell[index].nrps_ai >> 24;
-   cfloat3x4 fTexSamp = Sample3of4TerrainNearest(atlas, g.tex);
+   cfloat3x4 fTexSamp = Sample3of4Terrain(uint2(atlas, 1), g.tex);
    // Alpha test
    clip(fTexSamp[0].a - sqrt05f);
    // Unpack paint & global tint colours
@@ -88,7 +88,7 @@ float4 main(in const GOut g) : SV_Target {
       cfloat3 occ     = (1.0f - ang) * fTexMask.x * lum;
       fLight     += max(0.0f, (lum - occ) * fColour);
       fHighlight += max(0.0f, (fTexMask.y - (1.0f - fHL.x)) * lum * fColour * fHL.y);*/
-   for(uint i = 0; i < 56; i += 4) { // (i < 48): No stutter    (i < 64): Minor stuter    (i < 128): stutter    ??? Shader code exceeeding cache ??? Partially unroll
+   for(uint i = 0; i < 48; i += 4) { // (i < 48): No stutter    (i < 64): Minor stuter    (i < 128): stutter    ??? Shader code exceeeding cache ??? Partially unroll
       // Unpack colour variable
       cfloat4x3 fColour = float4x3(uint4x3(uint3(l[i].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF, uint3(l[i + 1].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF,
                                            uint3(l[i + 2].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF, uint3(l[i + 3].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF)) * rcp256 - 128.0f;

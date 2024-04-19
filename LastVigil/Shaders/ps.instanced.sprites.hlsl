@@ -46,7 +46,7 @@ struct GOut {   // 56 bytes (3 vectors + 2 scalars)
 float4 main(in const GOut g) : SV_Target {
    const uint     index    = g.si_ai & 0x0FFFFF;
    const uint     atlas    = g.si_ai >> 25;
-   const float3x4 fTexSamp = Sample3of4SpriteLinear(atlas, g.tex);
+   const float3x4 fTexSamp = Sample3of4Sprite(uint2(atlas, 2), g.tex);
    // Alpha test
    clip(fTexSamp[0].a - sqrt05f);
    // Unpack paint & global tint colours
@@ -74,7 +74,7 @@ float4 main(in const GOut g) : SV_Target {
    // Calculate light
    float3 fLight = 0.0f, fHighlight = 0.0f;
    [unroll]
-   for(uint i = 0; i < 56; i++) {
+   for(uint i = 0; i < 48; i++) {
       // Unpack colour variable
       const float3 fColour = float3(uint3(l[i].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF) * rcp256 - 128.0f;
       // Unpack highlight variables

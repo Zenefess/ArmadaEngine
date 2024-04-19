@@ -1,13 +1,11 @@
 /************************************************************
  * File: vs.gui.hlsl                    Created: 2023/04/09 *
- *                                Last modified: 2024/04/09 *
+ * Type: Vertex shader            Last modified: 2024/04/09 *
  *                                                          *
  * Notes: 32 characters per vertex.                         *
  *                                                          *
  * 2023/07/01: Moved input data to structured buffer        *
  * 2024/04/01: GUI_EL_DYN SRV+Adj.coords replaced by UAV    *
- *                                                          *
- * To do: 1)Add rotation                                    *
  *                                                          *
  *  Copyright (c) David William Bull. All rights reserved.  *
  ************************************************************/
@@ -24,7 +22,7 @@ cbuffer CB_VIEW : register(b0) { // 144 bytes (9 vectors)
 struct CHAR_IMM { // 16 bytes (1 scalar)
    uint2 tc;    // Texture coordinates : 4x(1p15)
    uint  size; // Relative X & Y dimensions : p16n0.0~1.0
-   uint  os;   // Relative X & Y offsets : p-1.0~1.0
+   uint  os;   // Relative X & Y offsets : p16n-1.0~1.0
 };
 
 struct GUI_EL_DYN { // 96 bytes (24 scalars)
@@ -36,8 +34,8 @@ struct GUI_EL_DYN { // 96 bytes (24 scalars)
    uint   pei;       // Parent element's GUI_EL_DYN index: this==No parent
    uint   taos;      // 0~25==Offset into text array (div.by 16), 26~31==Vertex's char count
    uint   ind_type;  // 0~15==Offset into alphabet buffer, 16~23==Runtime index of alphabet's atlas texture, 24~31==Element type
-   uint   seo_bits;  // 0~15==First sibling element offset, 16~19==Justification (L,R,T,B), 20~23==???
-};                   // 24==No rotation, 25==NoTranslation, 26&27==No scaling: X&Y, 28==Invisible, 29==Truncate, 30==Compress, 31==Wide chars
+   uint   seo_bits;  // 0~15==First sibling element offset, 16~19==Justification (L,R,T,B), 20==Elliptical bounding space, 21~22==???, 23==Invisible
+};                   // 24==Rotate, 25==Translate, 26&27==Scale: X&Y, 28==Truncate, 29==Compress, 30==Process control characters, 31==Wide chars
 
 StructuredBuffer   <CHAR_IMM>   alphabet : register(t0); // Character geometry
 StructuredBuffer   <uint4>      char16   : register(t1); // Text pool
@@ -48,7 +46,7 @@ uint main(in const uint index : INDEX) : INDEX {
 
    // If type==Text
    if(!(curElement.ind_type & 0x0F000000)) {
-      const float scale       = curElement.size.x;// * guiScale;
+      const float scale       = curElement.size.x;
       const uint  alphaOS     = curElement.ind_type & 0x0FFFF;
       const uint4 charLot[2]  = { char16[curElement.taos & 0x03FFFFFF], char16[(curElement.taos & 0x03FFFFFF) + 1] };
       const uint4 char4[8]    = { ((charLot[0].xxxx >> shift8888) & 0x0FF) + alphaOS, ((charLot[0].yyyy >> shift8888) & 0x0FF) + alphaOS,

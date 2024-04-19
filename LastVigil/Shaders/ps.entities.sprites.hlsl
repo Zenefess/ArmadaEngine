@@ -46,7 +46,7 @@ struct GOut { // 56 bytes (3 vectors + 2 scalars)
 float4 main(in const GOut g) : SV_Target {
    const uint     index    = g.si;
    const uint     atlas    = g.ai;
-   const float3x4 fTexSamp = Sample3of4SpriteLinear(atlas, g.tex);
+   const float3x4 fTexSamp = Sample3of4Sprite(uint2(atlas, 2), g.tex);
    // Alpha test
    clip(fTexSamp[0].a - sqrt05f);
    // Unpack paint & global tint colours
