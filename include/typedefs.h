@@ -8,6 +8,9 @@
  * Notes: 2023/05/23: Added SSE & AVX vector types.       *
  *        2023/06/05: Added ui24 data type.               *
  *                                                        *
+ * To do: Swap naming scheme of constant pointer and      *
+ *        pointer-to-constant                             *
+ *                                                        *
  *                       Copyright (c) David William Bull *
  **********************************************************/
 #pragma once
@@ -297,6 +300,11 @@ typedef unsigned __int32  * const ui32ptrc;
 typedef unsigned __int32 ** const ui32aptrc;
 typedef unsigned __int64  * const ui64ptrc;
 typedef unsigned __int64 ** const ui64aptrc;
+typedef   signed  __int8  * const si8ptrc;
+typedef   signed __int32  * const si32ptrc;
+typedef   signed __int32 ** const si32aptrc;
+typedef   signed __int64  * const si64ptrc;
+typedef   signed __int64 ** const si64aptrc;
 
 // Constant-pointer-to-constant types
 typedef const             void  * const cptrc;
