@@ -17,15 +17,15 @@ struct LIGHT {
    uint2  RES;
 };
 
-cbuffer cbLight {   // 512 bytes
+cbuffer cbLight { // 512 bytes
    const LIGHT l[256] : register(b0);
 }
 
-struct SPRITE_DYN {   // 16 bytes (1 vector)
-   uint pmc;      // Paint map colour [RGBA] : p8n0.0~1.0
-   uint gtc;      // Global tint colour [RGBA] : p8n0.0~1.0
-   uint gev_ems;   // 0-15==Global emission value : s7p8, Emission map scalar : 7p9
-   uint nrps;      // 0-7==Normal map scalar : p8n0.0~1.818359375, 8-15==Roughness map scalar, 16-23==Paint map scalar : p8n0.0~1.0, 24-31==???
+struct SPRITE_DYN { // 16 bytes (1 vector)
+   uint pmc;     // Paint map colour [RGBA] : p8n0.0~1.0
+   uint gtc;     // Global tint colour [RGBA] : p8n0.0~1.0
+   uint gev_ems; // 0-15==Global emission value : s7p8, Emission map scalar : 7p9
+   uint nrps;    // 0-7==Normal map scalar : p8n0.0~1.818359375, 8-15==Roughness map scalar, 16-23==Paint map scalar : p8n0.0~1.0, 24-31==???
 };
 
 StructuredBuffer<SPRITE_DYN> sprite : register(t0);
@@ -34,11 +34,11 @@ StructuredBuffer<SPRITE_DYN> sprite : register(t0);
 // ------------
 // [0] == Diffuse map | [1] == Normal map | [2] == Occlusion, roughness, paint, and emission maps
 
-struct GOut {   // 56 bytes (3 vectors + 2 scalars)
+struct GOut { // 56 bytes (3 vectors + 2 scalars)
    float4 pos      : SV_Position;
    float3 position : POSITION;
    uint   si_ai    : SPRITEINDEX;
-   uint3  rot      : ROTATIONS;      // sin & cos of XYZ rotations
+   uint3  rot      : ROTATIONS;   // sin & cos of XYZ rotations
    uint   RES      : RESERVED;
    float2 tex      : TEXCOORD;
 };

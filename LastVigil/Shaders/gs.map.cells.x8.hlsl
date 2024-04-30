@@ -30,15 +30,15 @@ cbuffer MAPDIMS_ICB : register(b2) { // 48 bytes (3 vectors)
    cuint  mapDimsE;   // Exponenets of .iMapDim, 24-31==Low byte of .zDim spawning offset
    cint3  iChunkDim;  // X, Y, Z cell counts per chunk
    cuint  chunkDimsE; // Exponenets of .iChunkDim, 24-31==High byte of .zDim spawning offset
-   cuint  chunkCount; //   X, Y, Z chunk counts - 1, 24-31==bitFlags
+   cuint  chunkCount; // X, Y, Z chunk counts - 1, 24-31==bitFlags
    cuint2 totalCells; // Cells per chunk, Cells per map
    cuint  RES;
 }
 
 struct ELEMENT_IMM { // 16 bytes (1 vector)
-   uint2 tc;           // Texture coordinates
-   uint   aft_et;      // Animation frame time : 24p8, 24-31==Base transparency
-   uint   afoc_tcs_ai; // 0-7==Animation frame offset, 8-15==Animation frame count, 16-23==.tc scalar : 2p6-1, 24-30==Runtime index of atlas texture, 31==???
+   uint2 tc;          // Texture coordinates
+   uint  aft_et;      // Animation frame time : 24p8, 24-31==Base transparency
+   uint  afoc_tcs_ai; // 0-7==Animation frame offset, 8-15==Animation frame count, 16-23==.tc scalar : 2p6-1, 24-30==Runtime index of atlas texture, 31==???
 };
 
 struct CELL_DYN { // 16 bytes (1 vector)

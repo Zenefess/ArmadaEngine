@@ -263,7 +263,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       const uint firstVertex = ((curElement.seo_bits & 0x08000) ? input[0] : input[0] - (curElement.seo_bits & 0x07FFF));
       const uint lastVertex  = firstVertex + (element[firstVertex].seo_bits & 0x07FFF);
 
-      uint2 li = { 0, 0 };
+      uint2  li = { 0, 0 };
       float2 totalWidth = { element[firstVertex].width, 0.0f };
       uint   totalChars = element[firstVertex].taos >> 26;
 

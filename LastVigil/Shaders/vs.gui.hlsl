@@ -20,7 +20,7 @@ cbuffer CB_VIEW : register(b0) { // 144 bytes (9 vectors)
 };
 
 struct CHAR_IMM { // 16 bytes (1 scalar)
-   uint2 tc;    // Texture coordinates : 4x(1p15)
+   uint2 tc;   // Texture coordinates : 4x(1p15)
    uint  size; // Relative X & Y dimensions : p16n0.0~1.0
    uint  os;   // Relative X & Y offsets : p16n-1.0~1.0
 };
@@ -46,10 +46,10 @@ uint main(in const uint index : INDEX) : INDEX {
 
    // If type==Text
    if(!(curElement.ind_type & 0x0F000000)) {
-      const float scale       = curElement.size.x;
-      const uint  alphaOS     = curElement.ind_type & 0x0FFFF;
-      const uint4 charLot[2]  = { char16[curElement.taos & 0x03FFFFFF], char16[(curElement.taos & 0x03FFFFFF) + 1] };
-      const uint4 char4[8]    = { ((charLot[0].xxxx >> shift8888) & 0x0FF) + alphaOS, ((charLot[0].yyyy >> shift8888) & 0x0FF) + alphaOS,
+      const float scale      = curElement.size.x;
+      const uint  alphaOS    = curElement.ind_type & 0x0FFFF;
+      const uint4 charLot[2] = { char16[curElement.taos & 0x03FFFFFF], char16[(curElement.taos & 0x03FFFFFF) + 1] };
+      const uint4 char4[8]   = { ((charLot[0].xxxx >> shift8888) & 0x0FF) + alphaOS, ((charLot[0].yyyy >> shift8888) & 0x0FF) + alphaOS,
                                  ((charLot[0].zzzz >> shift8888) & 0x0FF) + alphaOS, ((charLot[0].wwww >> shift8888) & 0x0FF) + alphaOS,
                                  ((charLot[1].xxxx >> shift8888) & 0x0FF) + alphaOS, ((charLot[1].yyyy >> shift8888) & 0x0FF) + alphaOS,
                                  ((charLot[1].zzzz >> shift8888) & 0x0FF) + alphaOS, ((charLot[1].wwww >> shift8888) & 0x0FF) + alphaOS };
