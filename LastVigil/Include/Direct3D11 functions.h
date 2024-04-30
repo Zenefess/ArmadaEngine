@@ -32,7 +32,7 @@ al32 struct CLASS_GPU {
    CLASS_FILEOPS  files;
    CLASS_CONFIG   cfg;
    CLASS_BUFFERS  buf;
-   CLASS_CAMERAS  cam;
+   CLASS_CAM      cam;
    CLASS_RENDER   ren;
    CLASS_LIGHTS   lit;
    CLASS_TEXTURES tex;
@@ -73,7 +73,7 @@ al32 struct CLASS_GPU {
 
 #ifdef AE_PTR_LIB
       ptrLib[0] = &files;
-      ptrLib[5] = this;
+      ptrLib[1] = this;
 #endif
       cfg.files = gui.files = &files;
       cfg.dev = buf.dev = cam.dev = lit.dev = tex.dev = ren.dev = dev;

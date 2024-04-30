@@ -1,6 +1,6 @@
 /************************************************************
  * File: Data structures.h              Created: 2022/10/20 *
- *                                Last modified: 2024/03/29 *
+ *                                Last modified: 2024/04/23 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -141,49 +141,50 @@ al32 struct TEXTBUFFER {
 };
 
 // Global control variables
-al32 struct GLOBALCTRLVARS { // 128 bytes
-   union { // Position of cursor relative to client window
-      si32     curCoord[2];
-      VEC2Ds32 curCoords;
-   };
+al32 struct GLOBALCTRLVARS { // 160 bytes
    union {
-      ui64 bits;    // Bitfield: 59==Mouse cursor visible, 60==Numerical input, 61==Text input, 62==No button activity, 63==Update state changes
-      ui8  misc[8];
-   };
-   union {
-      union {
-         float  axis[12];
-         VEC3Df vec3D[4];
-         VEC2Df vec2D[6];
+      struct {
          struct {
-            VEC4Df xy[2];
-            VEC2Df z[2];
-         };
+            VEC2Df ls; // Left analog stick
+            VEC2Df rs; // Right analog stick
+            fl32   lt; // Left trigger
+            fl32   rt; // Right trigger
+         } joy[2];
+         struct {
+            fl32 x;
+            fl32 y;
+            si32 z; // Wheel
+            si32 w; // Wheel; horizontal
+         } mouse;
       };
-      union {
-         si32     axis[12];
-         VEC3Ds32 vec3D[4];
-         VEC2Ds32 vec2D[6];
-         struct {
-            VEC4Ds32 xy[2];
-            VEC2Ds32 z[2];
-         };
-      } s32;
+      fl32x8 faxis32[2];
+      fl32x4 faxis16[4];
+      float  faxis[16];
+      si32   iaxis[16];
    };
-   union {
+   union { // Immediate key states
       ui256 button, key;
       struct { ui64 buttons0, buttons1, buttons2, buttons3; };
       struct { ui64 keys0, keys1, keys2, keys3; };
       ui64 buttons[4], keys[4];
       ui8  b[32], k[32];
    } imm;
-   union {
+   union { // Relative key states
       ui256 button, key;
       struct { ui64 buttons0, buttons1, buttons2, buttons3; };
       struct { ui64 keys0, keys1, keys2, keys3; };
       ui64 buttons[4], keys[4];
       ui8  b[32], k[32];
    } rel;
+   union { // Position of cursor relative to client window
+      si32     curCoord[2];
+      VEC2Ds32 curCoords;
+   };
+   union { // Bitfield: 59==Mouse cursor visible, 60==Numerical input, 61==Text input, 62==No button activity, 63==Update state changes
+      ui64 bits;
+      ui8  misc[8];
+   };
+   ui128 RES;
 };
 
 // Global coordinates

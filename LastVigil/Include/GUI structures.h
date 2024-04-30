@@ -1,6 +1,6 @@
 /************************************************************
  * File: GUI structures.h               Created: 2023/01/26 *
- *                                Last modified: 2024/04/18 *
+ *                                Last modified: 2024/04/20 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -178,80 +178,102 @@ al32 struct GUI_INTERFACE { // 64 bytes
 };
 
 // Input data for element creation
-al16 struct GUI_EL_DESC { // 112 bytes
+al32 struct GUI_EL_DESC { // 160 bytes
    union {
-      chptr  text = NULL;
-      wchptr wtext;
+      struct {
+         funcptr hover[2];          // Functions for onHover & offHover
+         union {
+            funcptr activate[2][2]; // Functions for onActivate & offActivate via buttons 0 & 1
+            struct {
+               funcptr activate0[2];
+               funcptr activate1[2];
+            };
+         };
+      } func;
+      funcptr function[6] = {};
+   };
+   union {
+      chptr  textPtr = NULL;
+      wchptr wtextPtr;
    };
    VEC2Df viewPos = { 0.0f, 0.0f };
    struct {
-      VEC4Df text = { 1.0f, 1.0f, 1.0f, 1.0f };
-      VEC4Df panel = { 1.0f, 1.0f, 1.0f, 1.0f };
+      VEC4Df text   = { 1.0f, 1.0f, 1.0f, 1.0f };
+      VEC4Df panel  = { 1.0f, 1.0f, 1.0f, 1.0f };
       VEC4Df cursor = { 1.0f, 1.0f, 1.0f, 1.0f };
-   } colour;
+   } tint;
    struct {
-      VEC2Df text = { 1.0f, 1.0f };
-      VEC2Df panel = { 1.0f, 1.0f };
+      VEC2Df text   = { 1.0f, 1.0f };
+      VEC2Df panel  = { 1.0f, 1.0f };
       VEC2Df cursor = { 1.0f, 1.0f };
    } size;
    struct {
-      si16 alphabet = -1;
-      ui16 spriteLib = 0x0FFFF;
-      ui16 panelSprite = 0x0FFFF;
+      si16 soundBank    = -1;
+      si16 alphabet     = -1;
+      ui16 spriteLib    = 0x0FFFF;
+      ui16 panelSprite  = 0x0FFFF;
       ui16 cursorSprite = 0x0FFFF;
    } index;
    union {
       struct {
-         ui16 text;
-         ui16 panel;
-         ui16 cursor;
-         ui16 RES;
-      } bitField;
+         struct BITFIELD {
+            ui8 align;
+            ui8 mods;
+         } text;
+         BITFIELD panel;
+         BITFIELD cursor;
+      };
       struct {
-         ui8 textAlign;
-         ui8 textMods;
-         ui8 panelAlign;
-         ui8 panelMods;
-         ui8 cursorAlign;
-         ui8 cursorMods;
-         ui8 RES0;
-         ui8 RES1;
+         ui16 textBits;
+         ui16 panelBits;
+         ui16 cursorBits;
       };
    };
    si32 charCount = 0;
    ui32 RES       = 0x0CDCDCDCD;
 
    GUI_EL_DESC(void) {
-      bitField.text   = 0x00047;
-      bitField.panel  = 0x0000F;
-      bitField.cursor = 0x00003;
-      bitField.RES    = 0x0CDCD;
+      textBits   = 0x00047;
+      panelBits  = 0x0000F;
+      cursorBits = 0x00003;
    }
 };
 
 #define TriggerInputProcessing gcv.misc[7] |= 0x080
 
+// Passing-in true when decalring will set it as globally accessible.
 // Set .interfaceIndex before executing "gcv.misc[7] |= 0x080;"
-struct GUI_DESC { // 64 bytes
-   union {
-      AVX8Ds32 returnValues;
-      struct {
-         SSE4Ds32 cellIndex;
-         SSE4Ds32 activeLayer;
-      };
-      struct {
-         VEC3Ds32 activeCell;
-         si32     cell;
-      };
-      VEC2Ds32 activePlane;
-   };
-   ui32 interfaceIndex; // User interface to draw
-   //si16 alphabetIndex;  // Alphabet to assign to elements
-   //ui16 spriteLibIndex; // Sprite library to assign to elements
+al32 struct GUI_DESC { // 32 bytes
+   ui32 interfaceIndex = 0;    // Currently active interface
+   ui32 defaultInterface = 0;  // Default user interface index
+   ui32 prevInterface = 0;     // User interface transitioned from
+   ui32 nextInterface = 0;     // User interface to transition to
+   fl32 transitionTime = 0.0f; // Period of time (in seconds) to transition between user interfaces
+   fl32 elapsedTime = 0;       // Current elapsed time (in seconds) of transition
+   ui16 noInputTime = 0;       // Period of time (in milliseconds) GUI input is inactive between interface transitions
+   ui8  transitionMods = 0;    // 0==Delayed, 1==Overlaid, 2==Fade in, 3==Fade out, 4~7==???
+   ui8  RES[5];
 
-public:
-   void ProcessInputs(cui32 index) { // Requires GLOBALCTRLVARS 'gcv' global variable
-      interfaceIndex = index;
-      gcv.misc[7] |= 0x080;
+   GUI_DESC(cbool makeGlobal) { if(makeGlobal) ptrLib[15] = this; }
+
+   // Requires GLOBALCTRLVARS 'gcv' global variable
+   void ProcessInputs(void) const { gcv.misc[7] |= 0x080; }
+
+   // If(nextInterface!=interfaceIndex ? Transition to nextInterface)
+   // If(Transited ? interfaceIndex=nextInterface)
+   // If(nextInterface==-1 ? Reverse transition to prevInterface)
+
+   // Automatic management of transition states for user interfaces
+   void ProcessTransition(void) {
+      // Transition to next interface
+      if(nextInterface != interfaceIndex) {
+
+      // Reverse transition from current interface
+      } else if(nextInterface == 0x0FFFFFFFF) {
+
+      // Confirm new interface
+      } if(elapsedTime >= transitionTime) {
+
+      }
    }
 };

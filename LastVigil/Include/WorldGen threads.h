@@ -1,6 +1,6 @@
 /**********************************************************
- * File: WorldGen threads.h             Created: 28/10/08 *
- *                                Last modified: 28/10/08 *
+ * File: WorldGen threads.h             Created: 08/10/28 *
+ *                                Last modified: 08/10/28 *
  *                                                        *
  * Desc:                                                  *
  *                                                        *
@@ -16,8 +16,8 @@
 extern cwchptr stInit;
 extern cwchptr stBusy;
 extern cwchptr stError;
-cwchptr stWGen = L"TankEngine";
+       cwchptr stWGen = L"TankEngine";
 
-extern al16 vui64  THREAD_LIFE;         // 'Thread active' flags
-extern al16 wchptr stThrdStat;         // Text strings for thread status
-extern al8  HWND   hWnd;               // Main window's handle
+extern al16 vui64  THREAD_LIFE; // 'Thread active' flags
+extern al16 wchptr stThrdStat;  // Text strings for thread status
+extern al8  HWND   hWnd;        // Main window's handle

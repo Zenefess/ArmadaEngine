@@ -14,16 +14,16 @@ extern SYSTEM_DATA sysData;
 #endif
 
 static cfl32 rcp1_5f   = 2.0f / 3.0f;
-static cfl64 rcp1_5d   = 2.0  / 3.0;
 static cfl32 rcp3f     = 1.0f / 3.0f;
-static cfl64 rcp3d     = 1.0  / 3.0;
 static cfl32 rcp6f     = 1.0f / 6.0f;
-static cfl64 rcp6d     = 1.0  / 6.0;
 static cfl32 rcp32768f = 1.0f / 32768.0f;
-static cfl64 rcp32768d = 1.0  / 32768.0;
 static cfl32 rcp65535f = 1.0f / 65535.0f;
-static cfl64 rcp65535d = 1.0  / 65535.0;
 static cfl32 rcp65536f = 1.0f / 65536.0f;
+static cfl64 rcp1_5d   = 2.0  / 3.0;
+static cfl64 rcp3d     = 1.0  / 3.0;
+static cfl64 rcp6d     = 1.0  / 6.0;
+static cfl64 rcp32768d = 1.0  / 32768.0;
+static cfl64 rcp65535d = 1.0  / 65535.0;
 static cfl64 rcp65536d = 1.0  / 65536.0;
 
 #include "typedefs.h"
@@ -90,12 +90,10 @@ inline cbool mfree(ptrc pointer) {
       ui32  index       = 0;
 
       // Find entry
-      while(pointer != location[index] && allocations >= index)
-         index++;
+      while(pointer != location[index] && allocations >= index) index++;
 
       // Is the pointer invalid?
-      if(index >= allocations)
-         return false;
+      if(index >= allocations) return false;
 
       sysData.memory.allocations--;
       sysData.memory.allocated -= sysData.memory.byteCount[index];
