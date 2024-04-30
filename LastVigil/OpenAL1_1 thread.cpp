@@ -21,15 +21,15 @@
 extern vui64 THREAD_LIFE; // 'Thread active' flags
 
 void OpenAL1_1Thread(void* argList) {
-   al16 ALCdevice            *ALdev = NULL;
+   al16 ALCdevice          *ALdev = NULL;
         ALCcontext         *ALdevcon = NULL;
    al16 CLASS_OAL11FILEOPS  files;
         ui64                threadLife = NULL;
-        GLOBALCOORDS          gcoLocal {};
+        GLOBALCOORDS        gcoLocal {};
    al16 vsi64ptr            gcoPtr = (vsi64ptr)&gco;
    al16 si64ptr             gcoLocalPtr = (si64ptr)&gcoLocal;
         si32                siSound[4096];
-        ui8                   uiMaxEAX = 0, uiNumBuffers = 4;
+        ui8                 uiMaxEAX = 0, uiNumBuffers = 4;
 
    // Prevent thread from shutting down (after engine reset)
    THREAD_LIFE &= ~AUDIO_THREAD_DIED;

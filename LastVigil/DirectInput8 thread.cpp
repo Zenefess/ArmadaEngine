@@ -1,6 +1,6 @@
 /************************************************************
  * File: DirectInput8 thread.cpp        Created: 2022/11/01 *
- *                                Last modified: 2024/04/19 *
+ *                                Last modified: 2024/04/23 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -12,10 +12,9 @@
 #include <intrin.h>
 #include "thread flags.h"
 #include "DirectInput8 thread.h"
+#include "Armada Intelligence/Input functions.h"
 
 #pragma intrinsic(_InterlockedExchange64)
-
-extern void ProcessGUIInputs(GLOBALCTRLVARS &); // Defined in "DirectInput8 thread.h"
 
 extern vui64 THREAD_LIFE; // 'Thread active' flags
 
@@ -256,6 +255,7 @@ Reinitialise_:
       // Stall if no state change requested
       if(!(gcv.misc[7] & 0x080)) {
          Sleep(1);
+         _mm_pause();
          continue;
       }
       gcv.misc[7] &= 0x07F;
@@ -268,15 +268,20 @@ Reinitialise_:
       gcvLocal.imm.button = _mm256_setzero_si256();
       gcvLocal.rel.button = _mm256_setzero_si256();
 
+      // Clear joypad states
+      gcvLocal.faxis32[0] = _mm256_setzero_ps();
+      gcvLocal.faxis16[2] = _mm_setzero_ps();
+
       PollKeyboard();
       PollMouse();
 
+      // Set mouse axes
       GetCursorPos((LPPOINT)gcvLocal.curCoord);
       ScreenToClient(hWnd, (LPPOINT)gcvLocal.curCoord);
-      gcvLocal.xy[1].x1 = float(mseState[0].x) * fMouseScale;
-      gcvLocal.xy[1].y2 = float(mseState[0].y) * fMouseScale;
-      gcvLocal.s32.z[1].x += mseState[0].z / 120;
-      gcvLocal.s32.z[1].y += mseState[0].w / 120;
+      gcvLocal.mouse.x = float(mseState[0].x) * fMouseScale;
+      gcvLocal.mouse.y = float(mseState[0].y) * fMouseScale;
+      gcvLocal.mouse.z += mseState[0].z / 120;
+      gcvLocal.mouse.w += mseState[0].w / 120;
 
       // Populate input arrays with keyboard data
       for(i = 0; i < 0x080; i++) {
@@ -370,22 +375,22 @@ Reinitialise_:
          if(keyState[0][i] & 0x080) {// Key is down
             switch(i) {
             case DIK_NUMPAD8:
-               gcvLocal.z[0].x = 1.0f;
+               gcvLocal.joy[0].ls.y = 1.0f;
                break;
             case DIK_NUMPAD5:
-               gcvLocal.z[0].y = 1.0f;
+               gcvLocal.joy[0].ls.y = -1.0f;
                break;
             case DIK_NUMPAD4:
-               gcvLocal.xy[0].x1 = 1.0f;
+               gcvLocal.joy[0].ls.x = -1.0f;
                break;
             case DIK_NUMPAD6:
-               gcvLocal.xy[0].x2 = 1.0f;
+               gcvLocal.joy[0].ls.x = 1.0f;
                break;
             case DIK_NUMPAD7:
-               gcvLocal.xy[0].y1 = 1.0f;
+               gcvLocal.joy[0].lt = 1.0f;
                break;
             case DIK_NUMPAD0:
-               gcvLocal.xy[0].y2 = 1.0f;
+               gcvLocal.joy[0].lt = -1.0f;
                break;
             case DIK_ESCAPE:
                THREAD_LIFE &= ~MAIN_THREAD_ALIVE;
@@ -394,33 +399,14 @@ Reinitialise_:
                gcvLocal.misc[3] |= 0x080;
             }
          } else {   // Key is up
-            switch(i) {
-            case DIK_NUMPAD8:
-               gcvLocal.z[0].x = 0.0f;
-               break;
-            case DIK_NUMPAD5:
-               gcvLocal.z[0].y = 0.0f;
-               break;
-            case DIK_NUMPAD4:
-               gcvLocal.xy[0].x1 = 0.0f;
-               break;
-            case DIK_NUMPAD6:
-               gcvLocal.xy[0].x2 = 0.0f;
-               break;
-            case DIK_NUMPAD7:
-               gcvLocal.xy[0].y1 = 0.0f;
-               break;
-            case DIK_NUMPAD0:
-               gcvLocal.xy[0].y2 = 0.0f;
-               break;
-            }
+            0;
          }
       }
 
-      ProcessGUIInputs(gcvLocal);
+      ProcessInputs(gcvLocal);
 
       // Forcing volatile copy to avoid glitches 
-      for(i = 0; i < 16; i++) _InterlockedExchange64(&((vsi64 (&)[16])gcv)[i], ((si64 (&)[16])gcvLocal)[i]);
+      for(i = 0; i < 18; i++) _InterlockedExchange64(&((vsi64 (&)[18])gcv)[i], ((si64 (&)[16])gcvLocal)[i]);
 
       Sleep(1);
    } while (threadLife & INPUT_THREAD_ALIVE);

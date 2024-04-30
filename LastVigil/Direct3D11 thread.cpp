@@ -1,6 +1,6 @@
 /************************************************************
  * File: Direct3D11 thread.cpp          Created: 2022/10/12 *
- *                               Code last mod.: 2024/04/19 *
+ *                               Code last mod.: 2024/04/23 *
  *                                                          *
  * Desc: Video rendering via Direct3D 11 API.               *
  *                                                          *
@@ -17,6 +17,7 @@
 #include "class_timers.h"
 #include "Direct3D11 thread.h"
 #include "Direct3D11 functions.h"
+#include "colours.h"
 #include "Armada Intelligence/class_mapmanager.h"
 #include "Armada Intelligence/class_entitymanager.h"
 #include "Armada Intelligence/D3D11 helper functions.h"
@@ -123,7 +124,8 @@ al16 HWND    hWnd; // Main window's handle
      cwchptr renderWndClass       = L"LV_D3D";
      cwchptr rndrWndTitle         = L"The Last Vigil :: Direct3D 11 render window";
      vui64   THREAD_LIFE_V        = 0; // D3D11 subthread flags
-     vui128  MAPMAN_THREAD_STATUS = {};
+     vui128  MAPMAN_THREAD_STATUS {};
+     vui128  ENTMAN_THREAD_STATUS {};
 
 // Early develepment only...
 RESOLUTION ScrRes = { 3600, 1600, 16.0f / 36.0f, 36.0f / 16.0f, 1.0f, DXGI_FORMAT_R10G10B10A2_UNORM, DXGI_FORMAT_R24_UNORM_X8_TYPELESS, 1, -1, 8, 0,
@@ -137,8 +139,8 @@ void Direct3D11Thread(ptr argList) {
    CLASS_TIMER  frameTimer;
    CLASS_TIMERS animTimer;
 
-   union { GLOBALCTRLVARS gcvLocal; __m256i gcvLocal32[4] {}; };
-   union { GLOBALCOORDS   gcoLocal; __m256i gcoLocal32[4] {}; };
+   union { GLOBALCTRLVARS gcvLocal; ui256 gcvLocal32[5] {}; };
+   union { GLOBALCOORDS   gcoLocal; ui256 gcoLocal32[2] {}; };
 
    vsi64ptr const gcoPtr      = (vsi64ptr)&gco;
    si64ptr  const gcoLocalPtr = (si64ptr)&gcoLocal;
@@ -184,7 +186,7 @@ Reinitialise_:
    gpu.tex.SetPS2D(0, siTextureSet[0], 20, 3);
    gpu.tex.SetPS2D(0, siTextureSet[1], 16, 3);
 
-   CLASS_MAPMANAGER    mapMan;
+   CLASS_MAPMAN    mapMan;
    CLASS_ENTITYMANAGER entMan;
    CLASS_D3D11HELPER   gpuHelper(gpu, mapMan, entMan);
 
@@ -218,14 +220,15 @@ Reinitialise_:
 
    mapMan.CreateWorld(0, 0, 1);
 
-   MAP_DESC md; ptrLib[8] = &md;
+   MAP_DESC md;
    md.stName   = (wchptrc)L"Test map";
    md.stInfo   = (wchptrc)L"Description text.";
    md.ptIndex  = 0;
    md.chunkDim = { 16, 16, 1 };
    md.mapDim   = { { 1024, 1024, 8 } }; // 256x144x1 -> 4,718,592 triangles -> Approx. 1.68 billion triangles per second @ 4K
    md.zso      = 4;
-   si32 mapID = mapMan.CreateMap(md, 0, -1, 0, 2);
+   csi32 mapID = mapMan.CreateMap(md, 0, -1, 0, 2);
+   mapMan.SetGlobalMapDescriptor(0, mapID);
 
    csi32 numEntities = 1024;
    csi32 numParts    = 32;
@@ -243,7 +246,7 @@ Reinitialise_:
    gpuHelper.map.CreateBuffers(0, 0, 0);
    gpuHelper.ent.CreateBuffers(0);
 
-   GUI_DESC gd {}; ptrLib[9] = &gd;
+   GUI_DESC gd(true);
 
    cui32 uiAtlasIndex[2] = { gpu.gui.LoadAtlas(L"font.c_a_gatintas.eng", 80), gpu.gui.LoadAtlas(L"panels.blue_rust", 82) };
 
@@ -256,30 +259,30 @@ Reinitialise_:
 
    GUI_EL_DESC elementDesc;
 
-   elementDesc.viewPos      = { 0.0f, 0.0f };
-   elementDesc.index        = { -1, 0, 34 };
-   elementDesc.size.panel   = { 1.0f, 1.0f };
-   elementDesc.colour.panel = { 1.0f, 1.0f, 1.0f, 1.0f };
-   elementDesc.panelAlign   = UI_ALIGN_T;
-   elementDesc.panelMods    = UI_DEFAULT ^ UI_TRANS;
+   elementDesc.viewPos     = { 0.0f, 0.0f };
+   elementDesc.index       = { -1, -1, 0, 34 };
+   elementDesc.size.panel  = { 1.0f, 1.0f };
+   elementDesc.tint.panel  = c4_white;
+   elementDesc.panel.align = UI_ALIGN_T;
+   elementDesc.panel.mods  = UI_DEFAULT ^ UI_TRANS;
    cui32 panelElement0 = gpu.gui.CreateToggle(elementDesc);
-   elementDesc.viewPos      = { 0.0f, 0.25f };
-   elementDesc.index        = { -1, 0, 34 };
-   elementDesc.size.panel   = { 1.0f, 1.0f };
-   elementDesc.colour.panel = { 1.0f, 1.0f, 1.0f, 1.0f };
-   elementDesc.panelAlign   = UI_ALIGN_L | UI_ALIGN_T;
-   elementDesc.panelMods    = UI_DEFAULT;
+   elementDesc.viewPos     = { 0.0f, 0.25f };
+   elementDesc.index       = { -1, -1, 0, 34 };
+   elementDesc.size.panel  = { 1.0f, 1.0f };
+   elementDesc.tint.panel  = c4_white;
+   elementDesc.panel.align = UI_ALIGN_L | UI_ALIGN_T;
+   elementDesc.panel.mods  = UI_DEFAULT;
    cui32 panelElement1 = gpu.gui.CreateButton(elementDesc);
-   elementDesc.viewPos       = { 0.0f, 0.5f };
-   elementDesc.index         = { -1, 0, 20, 75 };
-   elementDesc.size.panel    = { 2.0f, 2.0f };
-   elementDesc.size.cursor   = { 2.0f, 2.0f };
-   elementDesc.colour.panel  = { 1.0f, 1.0f, 1.0f, 1.0f };
-   elementDesc.colour.cursor = { 1.0f, 1.0f, 1.0f, 1.0f };
-   elementDesc.panelAlign    = UI_ALIGN_L | UI_ALIGN_T;
-   elementDesc.panelMods     = UI_DEFAULT;
-   elementDesc.cursorAlign   = UI_ALIGN_C;
-   elementDesc.cursorMods    = UI_ROT | UI_TRANS;
+   elementDesc.viewPos      = { 0.0f, 0.5f };
+   elementDesc.index        = { -1, -1, 0, 20, 75 };
+   elementDesc.size.panel   = { 2.0f, 2.0f };
+   elementDesc.size.cursor  = { 2.0f, 2.0f };
+   elementDesc.tint.panel   = c4_white;
+   elementDesc.tint.cursor  = c4_white;
+   elementDesc.panel.align  = UI_ALIGN_L | UI_ALIGN_T;
+   elementDesc.panel.mods   = UI_DEFAULT;
+   elementDesc.cursor.align = UI_ALIGN_C;
+   elementDesc.cursor.mods  = UI_ROT | UI_TRANS;
    cui32 panelElement2 = gpu.gui.CreateScalar(elementDesc);
 
    al32 char textBuffer[128]   = "TR-X \1\2\3\4\5\6\7";
@@ -290,42 +293,42 @@ Reinitialise_:
    elementDesc.viewPos        = { 0.0f, 0.0f };
    elementDesc.index.alphabet = alphabetIndex;
    elementDesc.size.text      = { 0.0468757f, 0.0468757f };
-   elementDesc.colour.text    = { 1.0f, 1.0f, 1.0f, 1.0f };
-   elementDesc.text           = textBuffer;
+   elementDesc.tint.text      = c4_white;
+   elementDesc.textPtr        = textBuffer;
    elementDesc.charCount      = 128;
-   elementDesc.textAlign      = UI_ALIGN_L | UI_ALIGN_B;
-   elementDesc.textMods       = UI_DEFAULT;
+   elementDesc.text.align     = UI_ALIGN_L | UI_ALIGN_B;
+   elementDesc.text.mods      = UI_DEFAULT;
    cui32 textElement = gpu.gui.CreateText(elementDesc);
    elementDesc.viewPos        = { 0.0f, 0.0f };
    elementDesc.index.alphabet = alphabetIndex;
    elementDesc.size.text      = { 0.0468757f, 0.0468757f };
-   elementDesc.colour.text    = { 1.0f, 1.0f, 1.0f, 1.0f };
-   elementDesc.text           = textInputs;
+   elementDesc.tint.text      = c4_white;
+   elementDesc.textPtr        = textInputs;
    elementDesc.charCount      = 128;
-   elementDesc.textAlign      = UI_ALIGN_R | UI_ALIGN_T;
-   elementDesc.textMods       = UI_DEFAULT ^ UI_TRANS;
+   elementDesc.text.align     = UI_ALIGN_R | UI_ALIGN_T;
+   elementDesc.text.mods      = UI_DEFAULT ^ UI_TRANS;
    cui32 textInputEl = gpu.gui.CreateText(elementDesc);
-   elementDesc.viewPos    = { 0.0f, 0.0f };
-   elementDesc.index      = { alphabetIndex, 0, 11 };
-   elementDesc.size       = { { 0.125f, 0.125f }, { 1.0f, 1.0f } };
-   elementDesc.colour     = { { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f } };
-   elementDesc.text       = textBoxText;
-   elementDesc.charCount  = 128;
-   elementDesc.panelAlign = UI_ALIGN_R;
-   elementDesc.panelMods  = UI_NONE;
-   elementDesc.textAlign  = UI_ALIGN_C;
-   elementDesc.textMods   = UI_ROT | UI_TRANS | UI_SCALE;
+   elementDesc.viewPos     = { 0.0f, 0.0f };
+   elementDesc.index       = { -1, alphabetIndex, 0, 11 };
+   elementDesc.size        = { { 0.125f, 0.125f }, { 1.0f, 1.0f } };
+   elementDesc.tint        = { c4_white, c4_white };
+   elementDesc.textPtr     = textBoxText;
+   elementDesc.charCount   = 128;
+   elementDesc.panel.align = UI_ALIGN_R;
+   elementDesc.panel.mods  = UI_NONE;
+   elementDesc.text.align  = UI_ALIGN_C;
+   elementDesc.text.mods   = UI_ROT | UI_TRANS | UI_SCALE;
    cVEC2Du32 textBox = gpu.gui.CreateTextPanel(elementDesc);
-   elementDesc.viewPos    = { 0.0f, -0.75f };
-   elementDesc.index      = { alphabetIndex, 0, 20, 75 };
-   elementDesc.size       = { { 0.15f, 0.15f }, { 2.0f, 2.0f }, { 0.5f, 0.5f } };
-   elementDesc.colour     = { { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f, 1.0f } };
-   elementDesc.text       = inputBoxText;
-   elementDesc.charCount  = 128;
-   elementDesc.panelAlign = UI_ALIGN_C;
-   elementDesc.panelMods  = UI_NONE;
-   elementDesc.textAlign  = UI_ALIGN_R;
-   elementDesc.textMods   = UI_ROT | UI_TRANS | UI_SCALE_X | UI_COMP;
+   elementDesc.viewPos     = { 0.0f, -0.75f };
+   elementDesc.index       = { -1, alphabetIndex, 0, 20, 75 };
+   elementDesc.size        = { { 0.15f, 0.15f }, { 2.0f, 2.0f }, { 0.5f, 0.5f } };
+   elementDesc.tint        = { c4_white, c4_white, c4_white };
+   elementDesc.textPtr     = inputBoxText;
+   elementDesc.charCount   = 128;
+   elementDesc.panel.align = UI_ALIGN_C;
+   elementDesc.panel.mods  = UI_NONE;
+   elementDesc.text.align  = UI_ALIGN_R;
+   elementDesc.text.mods   = UI_ROT | UI_TRANS | UI_SCALE_X | UI_COMP;
    cVEC3Du32 inputBox = gpu.gui.CreateInputPanel(elementDesc);
 
    cui32 interfaceMain = gpu.gui.CreateInterface(128, 16);
@@ -383,13 +386,13 @@ Reinitialise_:
    ui8 bMouseCursor = true;
 
    gpu.cam.CreateCamera(0, STAGES_VERTEX_GEOMETRY, 0);
-   gpu.cam.s[0].fXpos = 0.0f; gpu.cam.s[0].fYpos = 0.0f; gpu.cam.s[0].fZpos = -192.0f;
-   gpu.cam.s[0].fXrot = 0.0f; gpu.cam.s[0].fYrot = 0.0f; gpu.cam.s[0].fZrot = 0.0f;
-   gpu.cam.s[0].fZoom = 1.0f; gpu.cam.s[0].fSize = 256.0f;
-   gpu.cam.s[0].fWidth  = ScrRes.dims[ScrRes.state].aspectI;
-   gpu.cam.s[0].fHeight = 1.0f;
-   gpu.cam.s[0].fNearZ = 1.0f;
-   gpu.cam.s[0].fFarZ = 16384.0f;
+   gpu.cam.data[0].fXpos = 0.0f; gpu.cam.data[0].fYpos = 0.0f; gpu.cam.data[0].fZpos = -192.0f;
+   gpu.cam.data[0].fXrot = 0.0f; gpu.cam.data[0].fYrot = 0.0f; gpu.cam.data[0].fZrot = 0.0f;
+   gpu.cam.data[0].fZoom = 1.0f; gpu.cam.data[0].fSize = 256.0f;
+   gpu.cam.data[0].fWidth  = ScrRes.dims[ScrRes.state].aspectI;
+   gpu.cam.data[0].fHeight = 1.0f;
+   gpu.cam.data[0].fNearZ = 1.0f;
+   gpu.cam.data[0].fFarZ = 16384.0f;
 
    // Display the render window
    gpu.SetBorderedWindow(hWnd);
@@ -406,8 +409,8 @@ Reinitialise_:
    ui8 index = 0, step = 1;
    double dPlaneAnimTime = 0.0;
    VEC3Df vCurPos {};
-   si128 &siActiveLayer = gd.returnValues.xmm1;
-   si32  &siCell        = gd.returnValues.vector[0].w;
+   si128 &siActiveLayer = (*(MAP_DESC *)ptrLib[14]).mcrv.activeElements.xmm1;
+   si32  &siCell        = (*(MAP_DESC *)ptrLib[14]).mcrv.cellIndex[0].vector.w;
    si32   chunk         = 0;
 
    ui32 uiFrameCount = 0, uiVisChunks = 0;
@@ -449,19 +452,19 @@ Reinitialise_:
       TriggerInputProcessing;
 
       // Clamp camera rotation
-      if(gpu.cam.s[0].fXrot < -1.0f) gpu.cam.s[0].fXrot = -1.0f;
-      if(gpu.cam.s[0].fXrot > 1.0f) gpu.cam.s[0].fXrot = 1.0f;
-      if(gpu.cam.s[0].fYrot < -1.0f) gpu.cam.s[0].fYrot = -1.0f;
-      if(gpu.cam.s[0].fYrot > 1.0f) gpu.cam.s[0].fYrot = 1.0f;
+      if(gpu.cam.data[0].fXrot < -1.0f) gpu.cam.data[0].fXrot = -1.0f;
+      if(gpu.cam.data[0].fXrot > 1.0f) gpu.cam.data[0].fXrot = 1.0f;
+      if(gpu.cam.data[0].fYrot < -1.0f) gpu.cam.data[0].fYrot = -1.0f;
+      if(gpu.cam.data[0].fYrot > 1.0f) gpu.cam.data[0].fYrot = 1.0f;
 
       // Update local copy of global control variables
-      for(ui8 xx = 0; xx < 4; xx++)
-         gcvLocal32[xx] = _mm256_load_si256(&((ui256 (&)[4])gcv)[xx]);
+      for(ui8 xx = 0; xx < 5; xx++)
+         gcvLocal32[xx] = _mm256_load_si256(&((ui256 (&)[5])gcv)[xx]);
 
       // Update camera
-      gpu.cam.MoveCameraForwardXZ((gcvLocal.z[0].x - gcvLocal.z[0].y) * fElapsedTime * 32.0f, 0);
-      gpu.cam.MoveCameraRightXZ((gcvLocal.xy[0].x2 - gcvLocal.xy[0].x1) * fElapsedTime * 16.0f, 0);
-      gpu.cam.MoveCameraUpY((gcvLocal.xy[0].y1 - gcvLocal.xy[0].y2) * fElapsedTime * 16.0f, 0);
+      gpu.cam.MoveCameraForwardXZ(gcvLocal.joy[0].ls.y * fElapsedTime * 32.0f, 0);
+      gpu.cam.MoveCameraRightXZ(gcvLocal.joy[0].ls.x * fElapsedTime * 16.0f, 0);
+      gpu.cam.MoveCameraUpY(gcvLocal.joy[0].lt * fElapsedTime * 16.0f, 0);
       gpu.cam.TransformProjections(0);
       gpu.cam.TransformCamera(0, 0);
 
@@ -477,9 +480,9 @@ Reinitialise_:
       gcoLocal.vel.x = gcoLocal.pos.x;
       gcoLocal.vel.y = gcoLocal.pos.y;
       gcoLocal.vel.z = gcoLocal.pos.z;
-      gcoLocal.pos.x = gpu.cam.s[0].fXpos;
-      gcoLocal.pos.y = -gpu.cam.s[0].fYpos;
-      gcoLocal.pos.z = gpu.cam.s[0].fZpos;
+      gcoLocal.pos.x = gpu.cam.data[0].fXpos;
+      gcoLocal.pos.y = -gpu.cam.data[0].fYpos;
+      gcoLocal.pos.z = gpu.cam.data[0].fZpos;
       gcoLocal.ori.face.x = gpu.cam.vCamDir.m128_f32[0];
       gcoLocal.ori.face.y = -gpu.cam.vCamDir.m128_f32[1];
       gcoLocal.ori.face.z = gpu.cam.vCamDir.m128_f32[2];
@@ -503,12 +506,12 @@ Reinitialise_:
       // Render 3D overlays
       gpu.cfg.SetBlendState(0, 1);
       gpu.cfg.SetDepthStencilState(0, 0, 0);
-      if(siActiveLayer.m128i_i32[0] < 0 && siCell != 0x080000001) gpu.ren.DrawVoxel(gd.activeCell, { 223, 191, 255, 255 });
+      if(siActiveLayer.m128i_i32[0] < 0 && siCell != 0x080000001) gpu.ren.DrawVoxel((*(MAP_DESC *)ptrLib[14]).mcrv.activeCell, { 223, 191, 255, 255 });
 
       // Render GUI
       snprintf(textBuffer, 128, "Pos: <%.3f, %.3f, %.3f>   Rot: <%.3f, %.3f, %.3f>   Cull time: %.3fms   Mouse tilt: %d   Entities: %d",
-               gpu.cam.s[0].fXpos, gpu.cam.s[0].fYpos, gpu.cam.s[0].fZpos, gpu.cam.s[0].fXrot, gpu.cam.s[0].fYrot, gpu.cam.s[0].fZrot,
-               sysData.culling.entity.time, gcvLocal.s32.z[1].y, sysData.culling.entity.vis[0]);
+               gpu.cam.data[0].fXpos, gpu.cam.data[0].fYpos, gpu.cam.data[0].fZpos, gpu.cam.data[0].fXrot, gpu.cam.data[0].fYrot, gpu.cam.data[0].fZrot,
+               sysData.culling.entity.time, gcvLocal.mouse.w, sysData.culling.entity.vis[0]);
       snprintf(textInputs, 128, "0x0%02X 0x0%02X 0x0%02X 0x0%02X", inputsImmediate.x, inputsImmediate.y, inputsImmediate.z, inputsImmediate.w);
       gpu.gui.UpdateText(textBuffer, textElement);
       gpu.gui.UpdateText(textInputs, textInputEl);

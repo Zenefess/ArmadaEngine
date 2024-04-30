@@ -72,9 +72,6 @@
     <ClInclude Include="targetver.h">
       <Filter>Resource Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\GUI structures.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Include\Direct3D11 functions\class_config.h">
       <Filter>Header Files\Direct3D11 functions</Filter>
     </ClInclude>
@@ -105,20 +102,8 @@
     <ClInclude Include="Include\Command queue.h">
       <Filter>Header Files\Threads</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Vector structures.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Entity structures.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Map structures.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Include\Direct3D11 functions\class_render.h">
       <Filter>Header Files\Direct3D11 functions</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Direct3D11 functions.h">
-      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\File operations.h">
       <Filter>Header Files</Filter>
@@ -156,6 +141,21 @@
     <ClInclude Include="Include\DI8 scan code text labels.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Armada Intelligence\Input functions.h">
+      <Filter>Header Files\Armada Intelligence functions</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Direct3D11 functions.h">
+      <Filter>Header Files\Direct3D11 functions</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\GUI structures.h">
+      <Filter>Header Files\Armada Intelligence functions</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Map structures.h">
+      <Filter>Header Files\Armada Intelligence functions</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Entity structures.h">
+      <Filter>Header Files\Armada Intelligence functions</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LastVigil.cpp">
@@ -181,6 +181,9 @@
     </ClCompile>
     <ClCompile Include="Think bank.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Input functions.cpp">
+      <Filter>Source Files\Threads</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

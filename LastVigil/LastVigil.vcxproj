@@ -219,6 +219,7 @@
     <ClInclude Include="Include\Armada Intelligence\class_mapmanager.h" />
     <ClInclude Include="Include\Armada Intelligence\D3D11 helper functions.h" />
     <ClInclude Include="Include\Armada Intelligence\GUI functions.h" />
+    <ClInclude Include="Include\Armada Intelligence\Input functions.h" />
     <ClInclude Include="Include\class_timers.h" />
     <ClInclude Include="Include\Command queue.h" />
     <ClInclude Include="Include\Common functions.h" />
@@ -246,7 +247,6 @@
     <ClInclude Include="Include\Data structures.h" />
     <ClInclude Include="Include\OpenAL1_1 thread.h" />
     <ClInclude Include="Include\DirectInput8 thread.h" />
-    <ClInclude Include="Include\Vector structures.h" />
     <ClInclude Include="Include\WorldGen threads.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
@@ -254,6 +254,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Direct3D11 thread.cpp" />
+    <ClCompile Include="Input functions.cpp" />
     <ClCompile Include="LastVigil.cpp">
       <CallingConvention Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Cdecl</CallingConvention>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
