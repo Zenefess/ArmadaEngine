@@ -27,7 +27,8 @@
 
 typedef cENTMAN_THREAD_DATA * const cEMTDptr;
 
-vui128 ENTMAN_THREAD_STATUS = {};
+extern vui128 ENTMAN_THREAD_STATUS;
+
 static void _ET_Cull_Nonvisible_and_Unchanged(ptr);
 static void _ET_Cull_Nonvisible_Accurate(ptr);
 static void _ET_Cull_Unchanged(ptr);
@@ -46,7 +47,7 @@ al32 struct CLASS_ENTITYMANAGER {
    si32 siEntityGroups = 0, siObjectGroups = 0, siEntry = 0;
 
 #ifdef AE_PTR_LIB
-   CLASS_ENTITYMANAGER(void) { ptrLib[3] = this; }
+   CLASS_ENTITYMANAGER(void) { ptrLib[7] = this; }
 #endif
 
    inline cENT_PTRS const Pointers(csi16 objectGroup, csi16 entityGroup) const {
@@ -420,7 +421,7 @@ al32 struct CLASS_ENTITYMANAGER {
       if(!(threadBits & 0x02)) threadData[1] = { &entGroup[entityGroup], arrayUnchanged };
 
       ///- Stall/skip? if status if 'busy'
-      while(ENTMAN_THREAD_STATUS.m128i_u8[0] & 0x03) Sleep(1);
+      while(ENTMAN_THREAD_STATUS.m128i_u8[0] & 0x03) _mm_pause(); //Sleep(1);
       //if(bits) return si32(0x080000000 | bits);
       //ENTMAN_THREAD_STATUS.m128i_u8[0] &= 0x0FC;
 
@@ -475,7 +476,9 @@ al32 struct CLASS_ENTITYMANAGER {
    }
 
    inline cVEC4Du32 WaitForCulling(cDWORD sleepDelay) const {
-      while(ENTMAN_THREAD_STATUS.m128i_u8[0] & 0x03) Sleep(sleepDelay);
+      while(ENTMAN_THREAD_STATUS.m128i_u8[0] & 0x03)
+         //Sleep(sleepDelay);
+         _mm_pause();
 
       cVEC2Du64 entManThreadData = (cVEC2Du64 &)ENTMAN_THREAD_STATUS;
 
@@ -494,8 +497,8 @@ static void _ET_Cull_Nonvisible_and_Unchanged(ptr threadData) {
       static si64 frequencyTics, startTics, endTics;
       QueryPerformanceFrequency((LARGE_INTEGER *)&frequencyTics);
 
-   CLASS_CAMERAS       * const camMan = (CLASS_CAMERAS *)ptrLib[1];
-   CLASS_ENTITYMANAGER * const entMan = (CLASS_ENTITYMANAGER *)ptrLib[3];
+   CLASS_CAM    * const camMan = (CLASS_CAM *)ptrLib[5];
+   CLASS_ENTITYMANAGER * const entMan = (CLASS_ENTITYMANAGER *)ptrLib[7];
 
    cEMTDptr      data[2] = { (cEMTDptr)threadData, (cEMTDptr)threadData + 1 };
    ENTITY_GROUP &group   = *(*data[0]).group;
@@ -515,7 +518,8 @@ static void _ET_Cull_Nonvisible_and_Unchanged(ptr threadData) {
    ENTMAN_THREAD_STATUS.m128i_u8[0] |= 0x0C;
 
    do {
-      while(!(ENTMAN_THREAD_STATUS.m128i_u8[0] & 0x03)) Sleep(1);
+      ///- Stall/skip? if status if 'busy'
+      while(!(ENTMAN_THREAD_STATUS.m128i_u8[0] & 0x03)) _mm_pause(); //Sleep(1);
 
       QueryPerformanceCounter((LARGE_INTEGER *)&startTics);
 

@@ -20,7 +20,7 @@
 
 struct HELPFUNC_MAP {
    CLASS_GPU        *gpu = 0;
-   CLASS_MAPMANAGER *man = 0;
+   CLASS_MAPMAN *man = 0;
 
    ui32ptr (*visBuf)[3];
    ui32ptr  *modBuf;
@@ -74,6 +74,7 @@ struct HELPFUNC_MAP {
 
       // Wait until visibility & modification culling completes
       mapManThreadData = (*man).WaitForCulling(0);
+
       // Upload modified cell data
       CELL_DGS * const cellGeoData = (CELL_DGS *)(*gpu).buf.LockStructuredBeforeUpdate(0, gpuBuf[worldIndex][2]);
       CELL_DPS * const cellPixData = (CELL_DPS *)(*gpu).buf.LockStructuredBeforeUpdate(0, gpuBuf[worldIndex][3]);
@@ -172,6 +173,7 @@ al32 struct HELPFUNC_ENT {
 
       // Wait until visibility & modification culling completes
       entManThreadData = (*man).WaitForCulling(0);
+
       // Upload modified entity data
       BONE_DGS   * const boneGeoData = (BONE_DGS *)(*gpu).buf.LockStructuredBeforeUpdate(0, gpuBuf[groupIndex][2]);
       SPRITE_DPS * const bonePixData = (SPRITE_DPS *)(*gpu).buf.LockStructuredBeforeUpdate(0, gpuBuf[groupIndex][3]);
@@ -215,7 +217,7 @@ al32 struct CLASS_D3D11HELPER {
    HELPFUNC_MAP map;
    HELPFUNC_ENT ent;
 
-   CLASS_D3D11HELPER(CLASS_GPU &gpuAddr, CLASS_MAPMANAGER &mapAddr, CLASS_ENTITYMANAGER &entAddr) {
+   CLASS_D3D11HELPER(CLASS_GPU &gpuAddr, CLASS_MAPMAN &mapAddr, CLASS_ENTITYMANAGER &entAddr) {
       map.gpu = ent.gpu = &gpuAddr;
       map.man = &mapAddr;
       ent.man = &entAddr;

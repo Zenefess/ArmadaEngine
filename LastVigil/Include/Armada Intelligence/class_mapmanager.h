@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_mapmanager.h             Created: 2022/11/29 *
- *                                Last modified: 2023/05/27 *
+ *                                Last modified: 2024/05/29 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -37,7 +37,7 @@ static void _MM_Cull_Nonvisible_Accurate(ptr);
 static void _MM_Cull_Unchanged(ptr);
 
 // Map manager
-al32 struct CLASS_MAPMANAGER {
+al32 struct CLASS_MAPMAN {
    CLASS_FILEOPS files;
 
    cwchar stMapsDir[10] = L"map_data\\";
@@ -49,21 +49,22 @@ al32 struct CLASS_MAPMANAGER {
    ELEM_TYPE  *element;
    ELEM_IGS   *elem_igs;
 
-   si32 totalWorlds;
-   si32 elemTables;
-
    wchar      (*stPeriodicName)[MAX_TABLES];
    wchar      (*stElementName)[MAX_TABLES];
    LPDWORD      pBytes = (LPDWORD)&uiBytes;
-   VEC2Ds32     worldXY;         // Current world cell
-   VEC3Ds32     mapXYZ;            // Current map cell
-   ui32         uiBytes;         // Bytes written
-   ui16         uiMapBoundaries;   // Map edge flags: (Per bit... 0:Finite boundaries, 1:Wrap coordinates) 0-4==X axis, 5-9==Y axis, 10-14==Z axis
-   ui8          uiPeriodicName = 0, uiElementName = 0;
 
-   CLASS_MAPMANAGER(void) {
+   VEC2Ds32 worldXY;            // Current world cell
+   VEC3Ds32 mapXYZ;             // Current map cell
+   si32     totalWorlds;        // Number of worlds
+   si32     elemTables;         // Number of element tables
+   ui32     uiBytes;            // Bytes written
+   ui16     uiMapBoundaries;    // Map edge flags: (Per bit... 0:Finite boundaries, 1:Wrap coordinates) 0-4==X axis, 5-9==Y axis, 10-14==Z axis
+   ui8      uiPeriodicName = 0;
+   ui8      uiElementName  = 0;
+
+   CLASS_MAPMAN(void) {
 #ifdef AE_PTR_LIB
-      ptrLib[2] = this;
+      ptrLib[6] = this;
 #endif
       world    = (WORLD *)zalloc32(sizeof(WORLD[MAX_WORLDS]));
       table    = (ELEM_TABLE *)zalloc32(sizeof(ELEM_TABLE[MAX_TABLES]));
@@ -293,8 +294,8 @@ al32 struct CLASS_MAPMANAGER {
       ReadFile(hMapData, &curMap.oob.temp, sizeof(float), pBytes, NULL);
       ReadFile(hMapData, &curMap.oob.rad, sizeof(float), pBytes, NULL);
       ReadFile(hMapData, &curMap.oob.elec, sizeof(float), pBytes, NULL);
-      curMap.oob.geometry   = NULL;
-      curMap.oob.pixel      = NULL;
+      curMap.oob.geometry = NULL;
+      curMap.oob.pixel    = NULL;
       // Calculate cached values
       csi32 chunkCells  = curMap.desc.chunkDim.x * curMap.desc.chunkDim.y * curMap.desc.chunkDim.z;
       csi32 totalCells  = curMap.desc.mapDim.x * curMap.desc.mapDim.y * curMap.desc.mapDim.z;
@@ -305,20 +306,17 @@ al32 struct CLASS_MAPMANAGER {
                               ui8(curMap.desc.mapDim.z / curMap.desc.chunkDim.z) };
 
       curMap.pCB = (MAPDIMS_ICB *)malloc16(sizeof(MAPDIMS_ICB));
-      curMap.desc.chunkCells      = chunkCells;
-      curMap.desc.mapCells        = totalCells;
-      curMap.pCB->mapDims         = { curMap.desc.mapDim.x, curMap.desc.mapDim.y, curMap.desc.mapDim.z };
-      curMap.pCB->chunkDims       = { curMap.desc.chunkDim.x, curMap.desc.chunkDim.y, curMap.desc.chunkDim.z };
-      curMap.pCB->totalCells      = { ui32(chunkCells), ui32(totalCells) };
-      curMap.pCB->zsoL            = ui8(curMap.desc.zso & 0x0FF);
-      curMap.pCB->zsoH            = ui8(curMap.desc.zso >> 8);
-      curMap.pCB->chunkCount      = chunkCount;
-      curMap.pCB->bitFlags        = 0;
-      curMap.desc.chunkCellsE     = 31 - __lzcnt(chunkCells);
-      curMap.desc.chunkRowCellE   = curMap.desc.chunkCellsE + 31 - chunkCount.x;
-      curMap.desc.chunkPlaneCellE = curMap.desc.chunkRowCellE + 31 - chunkCount.y;
-      curMap.pCB->mapDimsE        = { ui8(31 - __lzcnt(curMap.desc.mapDim.x)), ui8(31 - __lzcnt(curMap.desc.mapDim.x)), ui8(31 - __lzcnt(curMap.desc.mapDim.x)) };
-      curMap.pCB->chunkDimsE      = { ui8(31 - __lzcnt(curMap.desc.chunkDim.x)), ui8(31 - __lzcnt(curMap.desc.chunkDim.y)), ui8(31 - __lzcnt(curMap.desc.chunkDim.z)) };
+      curMap.desc.chunkCells = chunkCells;
+      curMap.desc.mapCells   = totalCells;
+      curMap.pCB->mapDims    = { curMap.desc.mapDim.x, curMap.desc.mapDim.y, curMap.desc.mapDim.z };
+      curMap.pCB->chunkDims  = { curMap.desc.chunkDim.x, curMap.desc.chunkDim.y, curMap.desc.chunkDim.z };
+      curMap.pCB->totalCells = { ui32(chunkCells), ui32(totalCells) };
+      curMap.pCB->zsoL       = ui8(curMap.desc.zso & 0x0FF);
+      curMap.pCB->zsoH       = ui8(curMap.desc.zso >> 8);
+      curMap.pCB->chunkCount = chunkCount;
+      curMap.pCB->bitFlags   = 0;
+      curMap.pCB->mapDimsE   = { ui8(31 - __lzcnt(curMap.desc.mapDim.x)), ui8(31 - __lzcnt(curMap.desc.mapDim.x)), ui8(31 - __lzcnt(curMap.desc.mapDim.x)) };
+      curMap.pCB->chunkDimsE = { ui8(31 - __lzcnt(curMap.desc.chunkDim.x)), ui8(31 - __lzcnt(curMap.desc.chunkDim.y)), ui8(31 - __lzcnt(curMap.desc.chunkDim.z)) };
       // Read cell data
       curMap.cell = (CELL *)malloc32(sizeof(CELL) * curMap.desc.mapCells);
       for(si32 i = 0; i < curMap.desc.mapCells; i++) {
@@ -335,6 +333,23 @@ al32 struct CLASS_MAPMANAGER {
       curMap.chunkMod = (ui64 *)malloc16(ui64(totalChunks + 7) >> 3);
 
       return ++world[worldIndex].totalMaps;
+   }
+
+   // Allocate RAM for a map's .wlrv arrays
+   inline void CreateSelectionBuffers(csi32 worldIndex, csi32 mapIndex) const {
+      MAP       &curMap    = *world[worldIndex].map[mapIndex];
+      cSSE4Ds32  dimExp_   = { .xmm = _mm_cvtepi16_epi32((ui128 &)curMap.desc.mapDim) };
+      cSSE4Df32  dimExp    = { .xmm = _mm_cvtepi32_ps(_mm_mullo_epi32(dimExp_.xmm, dimExp_.xmm)) };
+      cui64      arraySize = ui64(sqrtf(dimExp.vector.x + dimExp.vector.y + dimExp.vector.z) * 2.0f);
+
+      curMap.desc.wlrv.cellIndex   = (si32ptr)zalloc32(arraySize * sizeof(si32));
+      curMap.desc.wlrv.entityIndex = (si32ptr)zalloc32(arraySize * 16 * sizeof(si32)); // Aerage of 16 units per cubic metre
+   }
+
+   // Deallocate a map's .wlrv arrays
+   inline void DestroySelectedCellBuffer(csi32 worldIndex, csi32 mapIndex) const {
+      mfree((*world[worldIndex].map[mapIndex]).desc.wlrv.cellIndex);
+      mfree((*world[worldIndex].map[mapIndex]).desc.wlrv.entityIndex);
    }
 
    cui32 SaveMap(wchptrc filename, csi32 worldIndex, csi32 mapIndex) {
@@ -375,7 +390,7 @@ al32 struct CLASS_MAPMANAGER {
       return 0;
    }
 
-   cui32 CreateMap(MAP_DESC &md, csi32 worldIndex, si32 mapIndex, cui8 openElement, cui8 solidElement) {   // Currently only compatible with chunk depth of 1
+   cui32 CreateMap(MAP_DESC &md, csi32 worldIndex, si32 mapIndex, cui8 openElement, cui8 solidElement) {
       si32 i = 0;
       // Find first available slot if mapIndex is -1
       if(mapIndex == -1)
@@ -432,14 +447,10 @@ al32 struct CLASS_MAPMANAGER {
       curMap.pCB->chunkCount  = { ui8(chunkCount.x - 1), ui8(chunkCount.y - 1), ui8(chunkCount.z - 1) };
       curMap.pCB->bitFlags    = 0;
 
-      curMap.desc.chunkCellsE      = 31 - __lzcnt(chunkCells);
-      curMap.desc.chunkRowCellE      = curMap.desc.chunkCellsE + 31 - chunkCount.x;
-      curMap.desc.chunkPlaneCellE   = curMap.desc.chunkRowCellE + 31 - chunkCount.y;
-      curMap.pCB->mapDimsE         = { ui8(31 - __lzcnt(md.mapDim.x)), ui8(31 - __lzcnt(md.mapDim.x)), ui8(31 - __lzcnt(md.mapDim.x)) };
-      curMap.pCB->chunkDimsE         = { ui8(31 - __lzcnt(md.chunkDim.x)), ui8(31 - __lzcnt(md.chunkDim.y)), ui8(31 - __lzcnt(md.chunkDim.z)) };
-      md.chunkCellsE     = curMap.desc.chunkCellsE;
-      md.chunkRowCellE   = curMap.desc.chunkRowCellE;
-      md.chunkPlaneCellE = curMap.desc.chunkPlaneCellE;
+      curMap.pCB->mapDimsE   = { ui8(31 - __lzcnt(md.mapDim.x)), ui8(31 - __lzcnt(md.mapDim.x)), ui8(31 - __lzcnt(md.mapDim.x)) };
+      curMap.pCB->chunkDimsE = { ui8(31 - __lzcnt(md.chunkDim.x)), ui8(31 - __lzcnt(md.chunkDim.y)), ui8(31 - __lzcnt(md.chunkDim.z)) };
+
+      CreateSelectionBuffers(worldIndex, mapIndex);
 
       si32 chunkIndex = 0;
       $LoopMT4 for(; chunkIndex < surfaceChOS; chunkIndex++) {
@@ -532,7 +543,10 @@ al32 struct CLASS_MAPMANAGER {
             curCell.elec           = 0.0f;
          }
       }
-      return ++world[worldIndex].totalMaps;
+
+      world[worldIndex].totalMaps++;
+
+      return mapIndex;
    }
 
    csi32 DestroyMap(si32 worldIndex, si32 mapIndex) {
@@ -545,15 +559,21 @@ al32 struct CLASS_MAPMANAGER {
       mfree(world[worldIndex].map[mapIndex]->pDGS);
       mfree(world[worldIndex].map[mapIndex]->cell);
       mfree(world[worldIndex].map[mapIndex]->pCB);
+      mfree(world[worldIndex].map[mapIndex]->desc.wlrv.cellIndex);
+      mfree(world[worldIndex].map[mapIndex]->desc.wlrv.entityIndex);
       mfree(world[worldIndex].map[mapIndex]->desc.stInfo);
       mfree(world[worldIndex].map[mapIndex]->desc.stName);
       mfree(world[worldIndex].map[mapIndex]);
       world[worldIndex].map[mapIndex] = 0;
 
-      return --world[worldIndex].totalMaps;
+      return world[worldIndex].totalMaps--;
    }
 
-   inline csi32 CalcCellIndex(cVEC3Ds32 coord, csi32 worldIndex, csi32 mapIndex) {
+   inline void SetGlobalMapDescriptor(csi32 worldIndex, csi32 mapIndex) const {
+      ptrLib[14] = &world[worldIndex].map[mapIndex]->desc;
+   }
+
+   inline csi32 CalcCellIndex(cVEC3Ds32 coord, csi32 worldIndex, csi32 mapIndex) const {
       cMAP_DESC &curDesc = world[worldIndex].map[mapIndex]->desc;
       cVEC3Ds32  vCell   = { coord.x + (curDesc.mapDim.x >> 1), coord.y + (curDesc.mapDim.y >> 1), coord.z + curDesc.zso };
 
@@ -576,7 +596,7 @@ al32 struct CLASS_MAPMANAGER {
       return (uiCell < world[worldIndex].map[mapIndex]->pCB->totalCells.y ? uiCell : 0x080000001);
    }
 
-   inline csi32 CalcCellIndex_(cVEC3Ds32 coord, csi32 worldIndex, csi32 mapIndex) {
+   inline csi32 CalcCellIndex_(cVEC3Ds32 coord, csi32 worldIndex, csi32 mapIndex) const {
       cMAP_DESC &curDesc = world[worldIndex].map[mapIndex]->desc;
 
       if(coord.x < 0 || coord.x >= curDesc.mapDim.x) return 0x80000001;
@@ -598,7 +618,7 @@ al32 struct CLASS_MAPMANAGER {
       return (uiCell < world[worldIndex].map[mapIndex]->pCB->totalCells.y ? uiCell : 0x080000001);
    }
 
-   inline csi32 CalcChunkIndex(cVEC3Ds32 coord, csi32 worldIndex, csi32 mapIndex) {
+   inline csi32 CalcChunkIndex(cVEC3Ds32 coord, csi32 worldIndex, csi32 mapIndex) const {
       cVEC3Ds16 &curCount = world[worldIndex].map[mapIndex]->desc.chunkCount;
       cVEC3Ds32  chunk    = { coord.x + (curCount.x >> 1), coord.y + (curCount.y >> 1), coord.z + (curCount.z >> 1) };
 
@@ -614,7 +634,7 @@ al32 struct CLASS_MAPMANAGER {
    }
 
 
-   inline csi32 CalcChunkIndex_(cVEC3Ds32 coord, csi32 worldIndex, csi32 mapIndex) {
+   inline csi32 CalcChunkIndex_(cVEC3Ds32 coord, csi32 worldIndex, csi32 mapIndex) const {
       cVEC3Ds16 &curCount = world[worldIndex].map[mapIndex]->desc.chunkCount;
 
       if(coord.x < 0 || coord.x >= curCount.x) return 0x080000001;
@@ -628,7 +648,7 @@ al32 struct CLASS_MAPMANAGER {
       return (siChunk < si32(world[worldIndex].map[mapIndex]->pCB->totalChunks) ? siChunk : 0x080000001);
    }
 
-   inline cbool CalcQuadCellIndices(VEC4Ds32 &results, cVEC3Ds32 *coord, csi32 worldIndex, csi32 mapIndex) {
+   inline cbool CalcQuadCellIndices(VEC4Ds32 &results, cVEC3Ds32 *coord, csi32 worldIndex, csi32 mapIndex) const {
       cMAP_DESC &curDesc = world[worldIndex].map[mapIndex]->desc;
 
       cVEC3Ds32 vCell[4] = { coord[0].x + (curDesc.mapDim.x >> 1), coord[0].y + (curDesc.mapDim.y >> 1), coord[0].z + (curDesc.zso),
@@ -674,7 +694,7 @@ al32 struct CLASS_MAPMANAGER {
       return false;
    }
 
-   inline void ModQuadCellDensity(cVEC3Ds32 coord, cfl32 densityMod, csi32 worldIndex, csi32 mapIndex) {
+   inline void ModQuadCellDensity(cVEC3Ds32 coord, cfl32 densityMod, csi32 worldIndex, csi32 mapIndex) const {
       cMAP &curMap = *world[worldIndex].map[mapIndex];
 
       si32 cell[4];
@@ -728,8 +748,34 @@ al32 struct CLASS_MAPMANAGER {
          }
    }
 
+   // Fill cell list with the index of every cell the line between endPoints touches
+   inline void PopulateCellList(const AVX8Df32 &endPoints, csi32 worldIndex, csi32 mapIndex) const {
+      MAP &curMap = *world[worldIndex].map[mapIndex];
+
+      si32ptrc cellList = curMap.desc.wlrv.cellIndex;
+
+      SSE4Df32 coord     = { .xmm = endPoints.xmm0 };
+      SSE4Df32 tempCoord = {};
+      SSE4Ds32 cellCoord = {};
+
+      cSSE4Df32 diff    = { .xmm = _mm_sub_ps(endPoints.xmm1, endPoints.xmm0) };
+      cVEC2Df   delta   = { diff.vector.x / diff.vector.z, diff.vector.y / diff.vector.z };
+      cVEC2Df   stepDir = { (delta.x >= 0 ? 1.0f : -1.0f), (delta.y >= 0 ? 1.0f : -1.0f) };
+
+      for(si32 &index = curMap.desc.wlrv.cellCount = 0; coord.vector.z < endPoints.vector1.z; index++, coord.vector.z++) {
+         tempCoord         = coord;
+         cellCoord         = { .xmm = _mm_cvtps_epi32(coord.xmm) };
+         cellList[index++] = CalcCellIndex((VEC3Ds32 &)cellCoord, worldIndex, mapIndex);
+
+         for(coord.vector.x += delta.x; floor(coord.vector.x) != floor(tempCoord.vector.x); tempCoord.vector.x += stepDir.x)
+            cellList[index++] = CalcCellIndex((VEC3Ds32 &)_mm_cvtps_epi32(coord.xmm), worldIndex, mapIndex);
+         for(coord.vector.y += delta.y; floor(coord.vector.y) != floor(tempCoord.vector.y); tempCoord.vector.y += stepDir.y)
+            cellList[index++] = CalcCellIndex((VEC3Ds32 &)_mm_cvtps_epi32(coord.xmm), worldIndex, mapIndex);
+      }
+   }
+
    private : inline void Cull_Nonvisible_and_Unchanged(ptr threadData) {
-      CLASS_CAMERAS * const camMan = (CLASS_CAMERAS *)ptrLib[1];
+      CLASS_CAM &camMan = *(CLASS_CAM *)ptrLib[5];
 
       cMMTDptr  data[2] = { (cMMTDptr)threadData, (cMMTDptr)threadData + 1 };
       MAP      *map     = data[0]->map;
@@ -749,7 +795,7 @@ al32 struct CLASS_MAPMANAGER {
       ui64 modCount, nearCount, medCount, farCount;
       ui32 i;
 
-      camMan->SetDimsf(map->desc.chunkDim, map->desc.chunkCount, 0);
+      camMan.SetDimsf(map->desc.chunkDim, map->desc.chunkCount, 0);
 
       nearCount = medCount = farCount = 0;
       modCount = 0;
@@ -769,14 +815,14 @@ al32 struct CLASS_MAPMANAGER {
       for(chunkOS.vector.z = mapChunksL.vector.z; chunkOS.vector.z < mapChunksH.vector.z; chunkOS.vector.z++) {
          for(chunkOS.vector.y = mapChunksL.vector.y; chunkOS.vector.y < mapChunksH.vector.y; chunkOS.vector.y++) {
             for(chunkOS.vector.x = mapChunksL.vector.x; chunkOS.vector.x < mapChunksH.vector.x;) {
-               cui8 visible = camMan->ChunkFrustumIntersect8(chunkOS, 0);
+               cui8 visible = camMan.ChunkFrustumIntersect8(chunkOS, 0);
 
                for(i = 0; i < 8; i++, chunkOS.vector.x++)
                   if(visible & 0x01 << i) {
                      csi32 chunkIndex = CalcChunkIndex((cVEC3Ds32 &)chunkOS, 0, 0);
                      cui32 QWordOS    = chunkIndex >> 6;
                      cui64 bitOS      = ui64(0x01) << (chunkIndex & 0x03F);
-                     cfl32 distance = camMan->DistanceFromCamera(chunkOS.xmm, 0);
+                     cfl32 distance = camMan.DistanceFromCamera(chunkOS.xmm, 0);
 
                      // Change hard limits to LOD scalars
                      if(map->chunkVis[QWordOS] & bitOS) {
@@ -807,7 +853,7 @@ al32 struct CLASS_MAPMANAGER {
       if(!(threadBits & 0x02)) threadData[1] = { world[worldIndex].map[mapIndex], arrayUnchanged };
 
       ///- Stall/skip? if status if 'busy'
-      while(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x03) Sleep(1);
+      while(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x03) _mm_pause(); //Sleep(1);
       //if(bits) return si32(0x080000000 | bits);
       //MAPMAN_THREAD_STATUS.m128i_u8[0] &= 0x0FC;
 
@@ -860,7 +906,9 @@ al32 struct CLASS_MAPMANAGER {
    }
 
    inline cVEC4Du32 WaitForCulling(cDWORD sleepDelay) const {
-      while(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x03) Sleep(sleepDelay);
+      while(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x03)
+         //Sleep(sleepDelay);
+         _mm_pause();
 
       cVEC2Du64 mapManThreadData = (cVEC2Du64 &)MAPMAN_THREAD_STATUS;
 
@@ -873,7 +921,7 @@ al32 struct CLASS_MAPMANAGER {
 };
 
 /*inline static void _Cull_Nonvisible_RasteriseLayer(cVEC4Ds32 lines[2]) {
-   extern CLASS_MAPMANAGER &mapMan;
+   extern CLASS_MAPMAN &mapMan;
    extern cMMTDptr          data;
    extern ui64              chunks;
 
@@ -935,8 +983,8 @@ static void _Cull_Nonvisible_Rasterise(cVEC4Ds32 lines[4]) {
 }*/
 
 static void _MM_Cull_Nonvisible_Simple(ptr threadData) {
-   CLASS_CAMERAS    * const camMan = (CLASS_CAMERAS *)ptrLib[1];
-   CLASS_MAPMANAGER * const mapMan = (CLASS_MAPMANAGER *)ptrLib[2];
+   CLASS_CAM    * const camMan = (CLASS_CAM *)ptrLib[5];
+   CLASS_MAPMAN * const mapMan = (CLASS_MAPMAN *)ptrLib[6];
 
    cMMTDptr  data       = (cMMTDptr)threadData;
    cVEC2Ds32 vScrDim    = { si32(ScrRes.dims[ScrRes.state].w) - 1, si32(ScrRes.dims[ScrRes.state].h) - 1 };
@@ -953,7 +1001,8 @@ static void _MM_Cull_Nonvisible_Simple(ptr threadData) {
    MAPMAN_THREAD_STATUS.m128i_u8[0] |= 0x04;
 
    do {
-      while(!(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x01)) Sleep(1);
+      ///- Stall/skip? if status if 'busy'
+      while(!(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x01)) _mm_pause(); //Sleep(1);
 
       chunks = 0;
 
@@ -1052,8 +1101,8 @@ static void _MM_Cull_Nonvisible_Simple(ptr threadData) {
 }
 
 static void _MM_Cull_Nonvisible_Accurate(ptr threadData) {
-   CLASS_CAMERAS    * const camMan = (CLASS_CAMERAS *)ptrLib[1];
-   CLASS_MAPMANAGER * const mapMan = (CLASS_MAPMANAGER *)ptrLib[2];
+   CLASS_CAM    * const camMan = (CLASS_CAM *)ptrLib[5];
+   CLASS_MAPMAN * const mapMan = (CLASS_MAPMAN *)ptrLib[6];
 
    cMMTDptr  data       = (cMMTDptr)threadData;
    cSSE4Ds32 mapChunksH = { .vector = { data->map->desc.chunkCount.x >> 1, data->map->desc.chunkCount.y >> 1, data->map->desc.chunkCount.z >> 1, 1 } };
@@ -1072,7 +1121,8 @@ static void _MM_Cull_Nonvisible_Accurate(ptr threadData) {
    MAPMAN_THREAD_STATUS.m128i_u8[0] |= 0x04;
 
    do {
-      while(!(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x01)) Sleep(1);
+      ///- Stall/skip? if status if 'busy'
+      while(!(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x01)) _mm_pause(); //Sleep(1);
 
       camMan->SetDimsf(data->map->desc.chunkDim, data->map->desc.chunkCount, 0);
 
@@ -1126,7 +1176,8 @@ static void _MM_Cull_Unchanged(ptr threadData) {
    MAPMAN_THREAD_STATUS.m128i_u8[0] |= 0x08;
 
    do {
-      while(!(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x02)) Sleep(1);
+      ///- Stall/skip? if status if 'busy'
+      while(!(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x02)) _mm_pause(); //Sleep(1);
 
       for(i = 0, j = 0; i < chunkCount; i++) {
          cui64 bitOS  = ui64(0x01) << (i & 0x03F);
@@ -1146,8 +1197,8 @@ static void _MM_Cull_Nonvisible_and_Unchanged(ptr threadData) {
       static si64 frequencyTics, startTics, endTics;
       QueryPerformanceFrequency((LARGE_INTEGER *)&frequencyTics);
 
-   CLASS_CAMERAS    * const camMan = (CLASS_CAMERAS *)ptrLib[1];
-   CLASS_MAPMANAGER * const mapMan = (CLASS_MAPMANAGER *)ptrLib[2];
+   CLASS_CAM    * const camMan = (CLASS_CAM *)ptrLib[5];
+   CLASS_MAPMAN * const mapMan = (CLASS_MAPMAN *)ptrLib[6];
 
    cMMTDptr  data[2] = { (cMMTDptr)threadData, (cMMTDptr)threadData + 1 };
    MAP      *map     = data[0]->map;
@@ -1170,7 +1221,8 @@ static void _MM_Cull_Nonvisible_and_Unchanged(ptr threadData) {
    MAPMAN_THREAD_STATUS.m128i_u8[0] |= 0x0C;
 
    do {
-      while(!(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x03)) Sleep(1);
+      ///- Stall/skip? if status if 'busy'
+      while(!(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x03)) _mm_pause(); //Sleep(1);
 
       QueryPerformanceCounter((LARGE_INTEGER *)&startTics);
 
