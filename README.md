@@ -1,10 +1,18 @@
+(I'll write a proper README.md soon enough)
+
+
+
+
+2024/05/06 update:
+   Currently preparing GUI backend to make creating/editing GUI profiles fully customisable. Support for custom input processing & triggered functions is almost complete.
+
+
+
 2024/04/07 update:
 
    Most of the GUI functionality is done, now. Soon enough I'll start creating a GUI editor.   ...Creating a GUI system from scratch is my biggest irritation when it comes to software development, I have discovered. I will be relieved when it's completed; then I can go back to working on terrain generation, as well as begin work on the AI system.
    At some point I'll decide on a license agreement that allows for attributed use of my code. Right now I'm not sure which elements will be core to the ArmadaEngine and which will be specific to future commerical products. Most will become core elements.
    On a related subject: My brain's progress is holding. Even with a massive 8+ months break due to my dominant arm needing more physiotherapy to stop my hand going numb.
-
-...Who knows; maybe this will go well enough that my AmStaff & I can move from Australia to Florida. Australia is full of dead memories, whereas Florida, maybe, possibly, could still have something worthwhile for me over there. It will be the least I do.
 
 
 
