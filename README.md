@@ -4,6 +4,7 @@
 
 
 2024/05/06 update:
+
    Currently preparing GUI backend to make creating/editing GUI profiles fully customisable. Support for custom input processing & triggered functions is almost complete.
 
 
