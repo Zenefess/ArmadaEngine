@@ -11,7 +11,8 @@
 #include "typedefs.h"
 #include "Vector structures.h"
 
-static cfl32 fl65535 = 65535.0f;
+static cfl32 _fpm_65535f    = 65535.0f;
+static cfl32 _fpm_rcp65535f = 1.0f / 65535.0f;
 
 /*********************************************
  *  Floating-point to fixed-point functions  *
@@ -22,7 +23,7 @@ static cfl32 fl65535 = 65535.0f;
  */
 
 // Convert 32-bit float (range 0.0~1.0) to 8-bit fixed
-inline cui8 Fix8(cfl32 scalar) { return ui32(scalar * 255.0f); }
+inline cui8 Fix8(cfl32 scalar) { return ui8(scalar * 255.0f); }
 
 // Convert 32-bit float (range 0.0~65535.99609375) to 16.8 fixed
 inline cui24 Fix16p8(cfl32 scalar) { return ui24(scalar * 256.0f); }
@@ -55,7 +56,7 @@ inline cVEC4Du16 Fix16x4(cVEC4Df scalars) {
 
 // Convert 4 32-bit floats (range 0.0~1.0) to 16-bit fixed
 inline cVEC4Du16 Fix16x4(cSSE4Df32 scalars) {
-   cSSE4Df32 result = { .xmm = _mm_mul_ps(scalars.xmm, _mm_broadcast_ss(&fl65535)) };
+   cSSE4Df32 result = { .xmm = _mm_mul_ps(scalars.xmm, _mm_broadcast_ss(&_fpm_65535f)) };
 
    return { ui16(result.xmm.m128_f32[0]), ui16(result.xmm.m128_f32[1]),
             ui16(result.xmm.m128_f32[2]), ui16(result.xmm.m128_f32[3]) };
@@ -63,7 +64,7 @@ inline cVEC4Du16 Fix16x4(cSSE4Df32 scalars) {
 
 // Convert 4 32-bit floats (range 0.0~1.0) to 16-bit fixed, then return 4 copies of the result
 inline cAVX16Du16 Fix16x4x4(cSSE4Df32 scalars) {
-   cSSE4Df32 interm = { .xmm = _mm_mul_ps(scalars.xmm, _mm_broadcast_ss(&fl65535)) };
+   cSSE4Df32 interm = { .xmm = _mm_mul_ps(scalars.xmm, _mm_broadcast_ss(&_fpm_65535f)) };
    cVEC4Du16 result = { ui16(interm.xmm.m128_f32[0]), ui16(interm.xmm.m128_f32[1]),
                         ui16(interm.xmm.m128_f32[2]), ui16(interm.xmm.m128_f32[3]) };
 
@@ -127,7 +128,7 @@ inline cVEC4Du8 Fix8x4(cVEC4Df floats, cfl32 floor, cfl32 range) {
 
 // Convert 4 32-bit floats to 16-bit fixeds
 inline cVEC4Du16 Fix16x4(cVEC4Df floats, cfl32 floor, cfl32 range) {
-   cfl32 rangeExp = fl65535 / range;
+   cfl32 rangeExp = _fpm_65535f / range;
 
    return { ui16((floats.x1 - floor) * rangeExp), ui16((floats.y1 - floor) * rangeExp),
             ui16((floats.x2 - floor) * rangeExp), ui16((floats.y2 - floor) * rangeExp) };
@@ -148,18 +149,18 @@ inline cVEC4Du16 Fix16x4(cVEC4Df floats, cfl32 floor, cfl32 range) {
  */
 
 // Convert 16-bit fixed to 32-bit float
-inline cfl32 Float16(cui16 input, cfl32 range) { return fl32(input) * range * rcp65535f; }
+inline cfl32 Float16(cui16 input, cfl32 range) { return fl32(input) * range * _fpm_rcp65535f; }
 
 // Convert 2 16-bit fixeds to 32-bit floats
 inline cVEC2Df Float16x2(cVEC2Du16 ui16s, cfl32 range) {
-   cfl32 rangeRCP = range * rcp65535f;
+   cfl32 rangeRCP = range * _fpm_rcp65535f;
 
    return { fl32(ui16s.x) * rangeRCP, fl32(ui16s.y) * rangeRCP };
 }
 
 // Convert 4 16-bit fixeds to 32-bit floats
 inline cVEC4Df Float16x4(cVEC4Du16 ui16s, cfl32 range) {
-   cfl32 rangeRCP = range * rcp65535f;
+   cfl32 rangeRCP = range * _fpm_rcp65535f;
 
    return { fl32(ui16s.x1) * rangeRCP, fl32(ui16s.y1) * rangeRCP,
             fl32(ui16s.x2) * rangeRCP, fl32(ui16s.y2) * rangeRCP };
@@ -171,7 +172,7 @@ inline cVEC4Df Float16x4(cVEC4Du16 ui16s, cfl32 range) {
 
 // Convert 4 16-bit fixeds to 32-bit floats
 inline cVEC4Df Float16x4(cVEC4Du16 ui16s, cfl32 floor, cfl32 range) {
-   cfl32 rangeRCP = range * rcp65535f;
+   cfl32 rangeRCP = range * _fpm_rcp65535f;
 
    return { fl32(ui16s.x1) * rangeRCP + floor, fl32(ui16s.y1) * rangeRCP + floor,
             fl32(ui16s.x2) * rangeRCP + floor, fl32(ui16s.y2) * rangeRCP + floor };

@@ -1,18 +1,17 @@
-/**********************************************************
- * File: typedefs.h                     Created: Jul.2007 *
- *                              Last modified: 2023/06/05 *
- *                                                        *
- * Desc: Shorthand type defines & composites, and static  *
- *       constant values of common data-type sizes.       *
- *                                                        *
- * Notes: 2023/05/23: Added SSE & AVX vector types.       *
- *        2023/06/05: Added ui24 data type.               *
- *                                                        *
- * To do: Swap naming scheme of constant pointer and      *
- *        pointer-to-constant                             *
- *                                                        *
- *                       Copyright (c) David William Bull *
- **********************************************************/
+/****************************************************************
+ * File: typedefs.h                           Created: Jul.2007 *
+ *                                    Last modified: 2024/05/11 *
+ *                                                              *
+ * Desc: Shorthand type defines & composites, and static        *
+ *       constant values of common data-type sizes.             *
+ *                                                              *
+ * Notes: 2023/05/23: Added SSE & AVX vector types              *
+ *        2023/06/05: Added ui24 data type                      *
+ *        2024/05/02: Added csize_t data type                   *
+ *        2024/05/11: Added all (~2) void pointer combinations  *
+ *                                                              *
+ *                             Copyright (c) David William Bull *
+ ****************************************************************/
 #pragma once
 
 #include <immintrin.h>
@@ -62,12 +61,10 @@ typedef          __m128d fl64x2;
 typedef          __m256d fl64x4;
 typedef          wchar_t wchar;
 
-// New pseudo-types
+// 24-bit unsigned integer
 struct ui24 {
-private:
    ui8 data[3];
 
-public:
    ui24(void) = default;
    ui24(const ui16 value) { (ui16 &)data = (const ui16 &)value; data[2] = 0; }
    ui24(const si16 value) { (ui16 &)data = (const ui16 &)value; data[2] = 0; }
@@ -91,49 +88,63 @@ public:
    operator const fl64(void) const { return fl64((const ui32 &)data & 0x0FFFFFF); }
 
    inline const bool operator==(const ui24 &value) const {
-      if(((const ui32 &)data & 0x0FFFFFF) == ((const ui32 &)value.data & 0x0FFFFFF))
-         return true;
-      return false;
+      return ((const ui32 &)data & 0x0FFFFFF) == ((const ui32 &)value.data & 0x0FFFFFF);
    }
 
    inline const bool operator!=(const ui24 &value) const {
-      if(((const ui32 &)data & 0x0FFFFFF) != ((const ui32 &)value.data & 0x0FFFFFF))
-         return true;
-      return false;
+      return ((const ui32 &)data & 0x0FFFFFF) != ((const ui32 &)value.data & 0x0FFFFFF);
    }
 
-   inline const void operator+(const ui24 &value) {
-      data[0] += value.data[0];
-      data[1] += value.data[1] + (data[0] < value.data[0]);
-      data[2] += value.data[2] + (data[1] < value.data[1]);
+   inline const ui24 operator+(const ui24 &value) const {
+      const ui8 temp[3] = {
+         ui8(data[0] + value.data[0]),
+         ui8(data[1] + value.data[1] + (data[0] < value.data[0])),
+         ui8(data[2] + value.data[2] + (data[1] < value.data[1]))
+      };
+
+      return (ui24 &)temp[0];
+   };
+
+   inline const ui24 operator-(const ui24 &value) const {
+      const ui8 temp[3] = {
+         ui8(data[0] - value.data[0]),
+         ui8(data[1] - value.data[1] + (data[0] > value.data[0])),
+         ui8(data[2] - value.data[2] + (data[1] > value.data[1]))
+      };
+
+      return (ui24 &)temp[0];
    };
 
    inline const ui24 operator+=(const ui24 &value) {
-      data[0] += value.data[0];
-      data[1] += value.data[1] + (data[0] < value.data[0]);
+      (ui16 &)data[0] += (ui16 &)value.data[0];
       data[2] += value.data[2] + (data[1] < value.data[1]);
 
-      return (ui24 &)data;
+      return (ui24 &)data[0];
    };
 
-   inline const void operator-(const ui24 &value) {
-      data[0] -= value.data[0];
-      data[1] -= value.data[1] + (data[0] > value.data[0]);
+   inline const ui24 operator-=(const ui24 &value) {
+      (ui16 &)data[0] -= (ui16 &)value.data[0];
       data[2] -= value.data[2] + (data[1] > value.data[1]);
+
+      return (ui24 &)data[0];
    };
 
-   inline const void operator*(const ui24 &value) {
+   inline const ui24 operator*=(const ui24 &value) {
       const ui32 result = ((const ui32 &)data & 0x0FFFFFF) * ((const ui32 &)value.data & 0x0FFFFFF);
 
       (ui16 &)data = (const ui16 &)result;
       data[2] = ((const ui8 (&)[3])result)[2];
+
+      return (ui24 &)data[0];
    };
 
-   inline const void operator/(const ui24 &value) {
+   inline const ui24 operator/=(const ui24 &value) {
       const ui32 result = ((const ui32 &)data & 0x0FFFFFF) / ((const ui32 &)value.data & 0x0FFFFFF);
 
       (ui16 &)data = (const ui16 &)result;
       data[2] = ((const ui8 (&)[3])result)[2];
+
+      return (ui24 &)data[0];
    };
 };
 
@@ -143,9 +154,10 @@ typedef const unsigned char    cBYTE;
 typedef const unsigned short   cWORD;
 typedef const unsigned long    cDWORD;
 typedef const unsigned __int64 cQWORD;
+typedef const          size_t  csize_t;
 typedef const unsigned __int8  cui8;
 typedef const unsigned __int16 cui16;
-typedef const             ui24 cui24;
+typedef const          ui24    cui24;
 typedef const unsigned __int32 cui32;
 typedef const unsigned __int64 cui64;
 typedef const          __m128i cui128;
@@ -201,9 +213,45 @@ typedef vol          double  vfl64;
 typedef vol     long double  vfl80;
 typedef vol          wchar_t vwchar;
 
-// Pointer types
-typedef          void     *ptr;
-typedef          void    **aptr;
+// Void pointer types
+typedef void       *               ptr;       // Pointer
+typedef void const *               cptr;      // Pointer to constant
+typedef void vol   *               vptr;      // Pointer to volatile
+typedef void       * const         ptrc;      // Constant pointer
+typedef void const * const         cptrc;     // Constant pointer to constant
+typedef void vol   * const         vptrc;     // Constant pointer to volatile
+typedef void       * vol           ptrv;      // Volatile pointer
+typedef void const * vol           cptrv;     // Volatile pointer to constant
+typedef void vol   * vol           vptrv;     // Volatile pointer to volatile
+typedef void       *       *       ptrptr;    // Pointer to pointer
+typedef void const *       *       cptrptr;   // Pointer to pointer to constant
+typedef void vol   *       *       vptrptr;   // Pointer to pointer to volatile
+typedef void       * const *       ptrcptr;   // Pointer to constant pointer
+typedef void const * const *       cptrcptr;  // Pointer to constant pointer to constant
+typedef void vol   * const *       vptrcptr;  // Pointer to constant pointer to volatile
+typedef void       * vol   *       ptrvptr;   // Pointer to volatile pointer
+typedef void const * vol   *       cptrvptr;  // Pointer to volatile pointer to constant
+typedef void vol   * vol   *       vptrvptr;  // Pointer to volatile pointer to volatile
+typedef void       *       * const ptrptrc;   // Constant pointer to pointer
+typedef void const *       * const cptrptrc;  // Constant pointer to pointer to constant
+typedef void vol   *       * const vptrptrc;  // Constant pointer to pointer to volatile
+typedef void       * const * const ptrcptrc;  // Constant pointer to constant pointer
+typedef void const * const * const cptrcptrc; // Constant pointer to constant pointer to constant
+typedef void vol   * const * const vptrcptrc; // Constant pointer to constant pointer to volatile
+typedef void       * vol   * const ptrvptrc;  // Constant pointer to volatile pointer
+typedef void const * vol   * const cptrvptrc; // Constant pointer to volatile pointer to constant
+typedef void vol   * vol   * const vptrvptrc; // Constant pointer to volatile pointer to volatile
+typedef void       *       * vol   ptrptrv;   // Volatile pointer to pointer
+typedef void const *       * vol   cptrptrv;  // Constant pointer to pointer to constant
+typedef void vol   *       * vol   vptrptrv;  // Volatile pointer to pointer to volatile
+typedef void       * const * vol   ptrcptrv;  // Volatile pointer to constant to pointer
+typedef void const * const * vol   cptrcptrv; // Volatile pointer to constant pointer to constant
+typedef void vol   * const * vol   vptrcptrv; // Volatile pointer to constant pointer to volatile
+typedef void       * vol   * vol   ptrvptrv;  // Volatile pointer to volatile pointer
+typedef void const * vol   * vol   cptrvptrv; // Volatile pointer to volatile pointer to constant
+typedef void vol   * vol   * vol   vptrvptrv; // Volatile pointer to volatile pointer to volatile
+
+// Pointer to types
 typedef unsigned char     *bptr;
 typedef unsigned short    *wptr;
 typedef unsigned long     *dwptr;
@@ -212,9 +260,9 @@ typedef unsigned __int8   *ui8ptr;
 typedef unsigned __int16  *ui16ptr;
 typedef             ui24  *ui24ptr;
 typedef unsigned __int32  *ui32ptr;
-typedef unsigned __int32 **ui32aptr;
+typedef unsigned __int32 **ui32ptrptr;
 typedef unsigned __int64  *ui64ptr;
-typedef unsigned __int64 **ui64aptr;
+typedef unsigned __int64 **ui64ptrptr;
 typedef   signed __int8   *si8ptr;
 typedef   signed __int16  *si16ptr;
 typedef   signed __int32  *si32ptr;
@@ -231,17 +279,7 @@ typedef          wchar_t **wstptr;
 typedef          FILE     *Fptr;
 #endif
 
-// Function pointer types
-typedef void (*func)(void);
-typedef void (*funcptr)(const void * const);
-
-// Pointer arrays
-struct PTR2 { ptr p0; ptr p1; };
-struct PTR4 { ptr p0; ptr p1; ptr p2; ptr p3; };
-
-// Pointer-to-constant types
-typedef const          void     *cptr;
-typedef const          void    **captr;
+// Pointer to constant types
 typedef const unsigned char     *cbptr;
 typedef const unsigned short    *cwptr;
 typedef const unsigned long     *cdwptr;
@@ -264,9 +302,49 @@ typedef const          float    *cfl32ptr;
 typedef const          double   *cfl64ptr;
 typedef const     long double   *cfl80ptr;
 
-// Pointer-to-volatile types
-typedef vol          void     *vptr;
-typedef vol          void    **vaptr;
+// Constant pointers
+typedef             char  * const chptrc;
+typedef          wchar_t  * const wchptrc;
+typedef unsigned  __int8  * const ui8ptrc;
+typedef             ui24  * const ui24ptrc;
+typedef unsigned __int32  * const ui32ptrc;
+typedef unsigned __int32 ** const ui32ptrptrc;
+typedef unsigned __int64  * const ui64ptrc;
+typedef unsigned __int64 ** const ui64ptrptrc;
+typedef   signed  __int8  * const si8ptrc;
+typedef   signed __int32  * const si32ptrc;
+typedef   signed __int32 ** const si32ptrptrc;
+typedef   signed __int64  * const si64ptrc;
+typedef   signed __int64 ** const si64ptrptrc;
+typedef            float  * const fl32ptrc;
+typedef            float ** const fl32ptrptrc;
+typedef           double  * const fl64ptrc;
+typedef           double ** const fl64ptrptrc;
+
+// Constant pointers to constant pointers
+typedef unsigned __int32 * const * const ui32ptrcptrc;
+typedef unsigned __int64 * const * const ui64ptrcptrc;
+typedef   signed __int32 * const * const si32ptrcptrc;
+typedef   signed __int64 * const * const si64ptrcptrc;
+typedef            float * const * const fl32ptrcptrc;
+typedef           double * const * const fl64ptrcptrc;
+
+// Constant pointers to constant types
+typedef unsigned __int16 const * const cui16ptrc;
+typedef   signed __int32 const * const csi32ptrc;
+typedef            float const * const cfl32ptrc;
+typedef             char const * const cchptrc;
+typedef          wchar_t const * const cwchptrc;
+
+// Constant pointers to constant pointers to constant types
+typedef unsigned __int32 const * const * const cui32ptrcptrc;
+typedef unsigned __int64 const * const * const cui64ptrcptrc;
+typedef   signed __int32 const * const * const csi32ptrcptrc;
+typedef   signed __int64 const * const * const csi64ptrcptrc;
+typedef            float const * const * const cfl32ptrcptrc;
+typedef           double const * const * const cfl64ptrcptrc;
+
+// Pointers to volatile types
 typedef vol unsigned char     *vbptr;
 typedef vol unsigned short    *vwptr;
 typedef vol unsigned long     *vdwptr;
@@ -289,65 +367,13 @@ typedef vol          float    *vfl32ptr;
 typedef vol          double   *vfl64ptr;
 typedef vol     long double   *vfl80ptr;
 
-// Constant-pointer types
-typedef             void  * const ptrc;
-typedef             void ** const aptrc;
-typedef             char  * const chptrc;
-typedef          wchar_t  * const wchptrc;
-typedef unsigned  __int8  * const ui8ptrc;
-typedef             ui24  * const ui24ptrc;
-typedef unsigned __int32  * const ui32ptrc;
-typedef unsigned __int32 ** const ui32aptrc;
-typedef unsigned __int64  * const ui64ptrc;
-typedef unsigned __int64 ** const ui64aptrc;
-typedef   signed  __int8  * const si8ptrc;
-typedef   signed __int32  * const si32ptrc;
-typedef   signed __int32 ** const si32aptrc;
-typedef   signed __int64  * const si64ptrc;
-typedef   signed __int64 ** const si64aptrc;
+// Function pointer types
+typedef void (*func)(void);
+typedef void (*funcptr)(const void * const);
 
-// Constant-pointer-to-constant types
-typedef const             void  * const cptrc;
-typedef const             void ** const captrc;
-typedef const unsigned __int16  * const cui16ptrc;
-typedef const             char  * const cchptrc;
-typedef const          wchar_t  * const cwchptrc;
-
-// Volatile-pointer types
-typedef void  * vol ptrv;
-typedef void ** vol aptrv;
-
-// Address types
-typedef unsigned char     &baddr;
-typedef unsigned short    &waddr;
-typedef unsigned long     &dwaddr;
-typedef unsigned __int64  &qwaddr;
-typedef unsigned __int8   &ui8addr;
-typedef unsigned __int16  &ui16addr;
-typedef             ui24  &ui24addr;
-typedef unsigned __int32  &ui32addr;
-typedef unsigned __int64  &ui64addr;
-typedef   signed __int8   &si8addr;
-typedef   signed __int16  &si16addr;
-typedef   signed __int32  &si32addr;
-typedef   signed __int64  &si64addr;
-typedef          char     &chaddr;
-typedef          char    &&staddr;
-typedef          wchar_t  &wchaddr;
-typedef          wchar_t &&wstaddr;
-typedef       __bfloat16  &fl16addr;
-typedef          float    &fl32addr;
-typedef          double   &fl64addr;
-typedef     long double   &fl80addr;
-
-// 64-bit register size automation...
-typedef       unsigned __int64  uint;
-typedef         signed __int64  sint;
-typedef const unsigned __int64  cuint;
-typedef const   signed __int64  csint;
-typedef vol   unsigned __int64  vuint;
-typedef vol     signed __int64  vsint;
-typedef vol     signed __int64 *vsintptr;
+// Pointer arrays
+struct PTR2 { ptr p0; ptr p1; };
+struct PTR4 { ptr p0; ptr p1; ptr p2; ptr p3; };
 
 // Data-type sizes
 al4 static const int PTR_SIZE  = sizeof(void *),
@@ -356,6 +382,7 @@ al4 static const int PTR_SIZE  = sizeof(void *),
                      WCH_SIZE  = sizeof(wchar_t),
                      INT_SIZE  = sizeof(int),
                      LONG_SIZE = sizeof(long),
+                     LLNG_SIZE = sizeof(long long),
                      FL16_SIZE = sizeof(__bfloat16),
                      FL32_SIZE = sizeof(float),
                      FL64_SIZE = sizeof(double),
@@ -366,3 +393,12 @@ al4 static const int PTR_SIZE  = sizeof(void *),
 #if defined(_WINCON_)
 al4 static const int CHI_SIZE = sizeof(_CHAR_INFO);
 #endif
+
+// Pointer array macros
+#define defpa(dataType, dimension, varName) dataType (*varName)[dimension]
+#define defpa2(dataType, dimension1, dimension2, varName) dataType (*varName)[dimension1][dimension2]
+#define defp1a1(dataType, dimension1, dimension2, varName) dataType (*varName[dimension1])[dimension2]
+
+#define refpa(dataType, dimension) (dataType (*)[dimension])
+#define refpa2(dataType, dimension1, dimesnion2) (dataType (*)[dimension1][dimension2])
+#define refp1a1(dataType, dimension1, dimension2) (dataType (*[dimension1])[dimension2])

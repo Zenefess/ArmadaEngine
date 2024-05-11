@@ -1,6 +1,6 @@
 /************************************************************
 * File: Data tracking.h                Created: 2024/03/30 *
-*                                Last modified: 2024/03/30 *
+*                                Last modified: 2024/05/06 *
 *                                                          *
 * Desc:                                                    *
 *                                                          *
@@ -11,66 +11,72 @@
 #include "typedefs.h"
 #include "Shlobj.h"
 
-al32 struct SYSTEM_DATA {   // 1,192 bytes
+// Input: Maxmimum memory allocations
+al32 struct SYSTEM_DATA {
    ///--- APU read-outs?
-   ///--- Disk read-outs
    ///--- Network read-outs
    ///--- CPU read-outs
-   al8 struct { // Hardware information
+   struct { // Hardware information
+      ui64 processorMask;
+      ui32 processorCount; // Number of virtual CPU cores
    } cpu;
    ///--- GPU read-outs
-   al8 struct {
+   struct {
       struct {
-         fl64 rate          = 0.0;
-         fl64 time          = 0.0;
-         ui32 curDrawCalls  = 0;
-         ui32 prevDrawCalls = 0;
+         vfl64 rate          = 0.0;
+         vfl64 time          = 0.0;
+         vui32 curDrawCalls  = 0;
+         vui32 prevDrawCalls = 0;
       } frame;
       struct {
-         ui64 frames    = 0;
-         ui64 drawCalls = 0;
+         vui64 frames    = 0;
+         vui64 drawCalls = 0;
       } total;
    } gpu;
+   ///--- RAM read-outs
+   struct {
+      vptrptr  location       = NULL;
+      vui64ptr byteCount      = NULL;
+      vui64    allocated      = 0;
+      vui32    allocations    = 0;
+      vui32    maxAllocations = 0;
+   } mem;
+   ///--- Storage read-outs
+   struct {
+      vui64 bytesRead    = 0;
+      vui64 bytesWritten = 0;
+      vui32 filesOpened  = 0;
+      vui32 filesClosed  = 0;
+   } storage;
    ///--- Misc. read-outs
-   al8 struct { // Culling information
+   struct { // Culling information
       struct {
-         fl64 time   = 0.0;
-         ui32 mod    = 0;
-         ui32 vis[7] = {};
+         vfl64 time   = 0.0;
+         vui32 mod    = 0;
+         vui32 vis[7] = {};
       } map;
       struct {
-         fl64 time   = 0.0;
-         ui32 mod    = 0;
-         ui32 vis[7] = {};
+         vfl64 time   = 0.0;
+         vui32 mod    = 0;
+         vui32 vis[7] = {};
       } entity;
       // More?
    } culling;
-   ///--- RAM read-outs
-   al8 struct {
-      aptr    location       = NULL;
-      ui64ptr byteCount      = NULL;
-      ui64    allocated      = 0;
-      ui32    allocations    = 0;
-      ui32    maxAllocations = 0;
-   } memory;
 
    wchar folderProgramData[256];
    wchar folderAppData[256];
-
-   ui64 processorMask;
-   ui32 processorCount; // Number of virtual CPU cores
 
    SYSTEM_DATA(cui32 maxMemAllocations) {
       SYSTEM_INFO sysInfo;
       wchptr      stPath;
 
-      memory.location  = (aptr)_aligned_malloc(maxMemAllocations << 3, 32);
-      memory.byteCount = (ui64ptr)_aligned_malloc(maxMemAllocations << 3, 32);
+      mem.location  = (vptrptr)_aligned_malloc(maxMemAllocations << 3, 32);
+      mem.byteCount = (vui64ptr)_aligned_malloc(maxMemAllocations << 3, 32);
       for(ui32 i = 0; i < maxMemAllocations; i++) {
-         memory.location[i]  = 0;
-         memory.byteCount[i] = 0;
+         mem.location[i]  = 0;
+         mem.byteCount[i] = 0;
       }
-      memory.maxAllocations = maxMemAllocations;
+      mem.maxAllocations = maxMemAllocations;
 
       SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, 0, &stPath);
       wcscpy(folderAppData, stPath);
@@ -80,25 +86,25 @@ al32 struct SYSTEM_DATA {   // 1,192 bytes
       CoTaskMemFree(stPath);
 
       GetSystemInfo(&sysInfo);
-      processorMask  = sysInfo.dwActiveProcessorMask;
-      processorCount = sysInfo.dwNumberOfProcessors;
+      cpu.processorMask  = sysInfo.dwActiveProcessorMask;
+      cpu.processorCount = sysInfo.dwNumberOfProcessors;
    }
 
    ~SYSTEM_DATA(void) {
-      processorCount = 0;
-      processorMask  = 0;
+      cpu.processorCount = 0;
+      cpu.processorMask  = 0;
 
       // Clear file path strings
       for(ui32 i = 0; i < 256; i++)
          folderProgramData[i] = folderAppData[i] = 0;
 
       // Free all memory still allocated
-      for(ui32 i = 0; i < memory.allocations; i++)
-         if(memory.location[i])
-            _aligned_free(memory.location[i]);
+      for(ui32 i = 0; i < mem.allocations; i++)
+         if(mem.location[i])
+            _aligned_free((ptr)mem.location[i]);
 
-      _aligned_free(memory.byteCount);
-      _aligned_free(memory.location);
-      memory.maxAllocations = 0;
+      _aligned_free((ptr)mem.byteCount);
+      _aligned_free(mem.location);
+      mem.maxAllocations = 0;
    }
 };
