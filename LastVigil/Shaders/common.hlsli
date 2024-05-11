@@ -4,7 +4,7 @@
  *                                                          *
  * Desc: Common shader presets.                             *
  *                                                          *
- *  Copyright (c) David William Bull. All rights reserved.  *
+ * Copyright (c) David William Bull.   All rights reserved. *
  ************************************************************/
 
 #ifndef COMMON

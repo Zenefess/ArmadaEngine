@@ -6,7 +6,7 @@
  *                                                                    *
  *       Method categories: 0~7==Quad2 wave, 8~15==Acute edge         *
  *                                                                    *
- *       Copyright (c) David William Bull. All rights reserved.       *
+ * Copyright (c) David William Bull.             All rights reserved. *
  **********************************************************************/
 
 #include "common.hlsli"
@@ -18,15 +18,15 @@ inline const float3 WarpCoord(in const float3 position, in const float warpStren
 }
 
 inline const float3x18 WarpCoord(in const float3x18 position, in const float warpStrength) {
-   const  int2x18 seed = { asint(position[0].yx * 0.125f + position[0].xy), asint(position[1].yx * 0.125f + position[1].xy),
-                           asint(position[2].yx * 0.125f + position[2].xy), asint(position[3].yx * 0.125f + position[3].xy),
-                           asint(position[4].yx * 0.125f + position[4].xy), asint(position[5].yx * 0.125f + position[5].xy),
-                           asint(position[6].yx * 0.125f + position[6].xy), asint(position[7].yx * 0.125f + position[7].xy),
-                           asint(position[8].yx * 0.125f + position[8].xy), asint(position[9].yx * 0.125f + position[9].xy),
-                           asint(position[10].yx * 0.125f + position[10].xy), asint(position[11].yx * 0.125f + position[11].xy),
-                           asint(position[12].yx * 0.125f + position[12].xy), asint(position[13].yx * 0.125f + position[13].xy),
-                           asint(position[14].yx * 0.125f + position[14].xy), asint(position[15].yx * 0.125f + position[15].xy),
-                           asint(position[16].yx * 0.125f + position[16].xy), asint(position[17].yx * 0.125f + position[17].xy) };
+   const int2x18 seed = { asint(position[0].yx * 0.125f + position[0].xy), asint(position[1].yx * 0.125f + position[1].xy),
+                          asint(position[2].yx * 0.125f + position[2].xy), asint(position[3].yx * 0.125f + position[3].xy),
+                          asint(position[4].yx * 0.125f + position[4].xy), asint(position[5].yx * 0.125f + position[5].xy),
+                          asint(position[6].yx * 0.125f + position[6].xy), asint(position[7].yx * 0.125f + position[7].xy),
+                          asint(position[8].yx * 0.125f + position[8].xy), asint(position[9].yx * 0.125f + position[9].xy),
+                          asint(position[10].yx * 0.125f + position[10].xy), asint(position[11].yx * 0.125f + position[11].xy),
+                          asint(position[12].yx * 0.125f + position[12].xy), asint(position[13].yx * 0.125f + position[13].xy),
+                          asint(position[14].yx * 0.125f + position[14].xy), asint(position[15].yx * 0.125f + position[15].xy),
+                          asint(position[16].yx * 0.125f + position[16].xy), asint(position[17].yx * 0.125f + position[17].xy) };
 
    cfloat3x18 result = { (float2(rand_ui15(seed[0]) - 16384).xy * rcp16384.xx * warpStrength.xx + position[0].xy), position[0].z,
                          (float2(rand_ui15(seed[1]) - 16384).xy * rcp16384.xx * warpStrength.xx + position[1].xy), position[1].z,

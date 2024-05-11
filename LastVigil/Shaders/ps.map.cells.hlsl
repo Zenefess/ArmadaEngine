@@ -4,7 +4,7 @@
  *                                                          *
  * Desc:                                                    *
  *                                                          *
- *  Copyright (c) David William Bull. All rights reserved.  *
+ * Copyright (c) David William Bull.   All rights reserved. *
  ************************************************************/
 
 #include "common.hlsli"
@@ -17,7 +17,7 @@ struct LIGHT { // 32 bytes (2 vectors)
    uint2  RES;
 };
 
-cbuffer cbLight { // 8192 bytes (512 vectors)
+cbuffer cbLight { // 8,192 bytes (512 vectors)
    const LIGHT l[256] : register(b0);
 }
 

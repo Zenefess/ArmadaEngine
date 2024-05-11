@@ -4,7 +4,7 @@
  *                                                            *
  * Desc: Functions for sampling across all 128 registers.     *
  *                                                            *
- *   Copyright (c) David William Bull. All rights reserved.   *
+ * Copyright (c) David William Bull.     All rights reserved. *
  **************************************************************/
 
 const Texture2D    Texture[128] : register(t0); // Atlas library: t0~t15==Miscellaneous textures, t16-t79==Terrain & sprite, t80~t127==GUI atlas'

@@ -7,25 +7,26 @@
  * 2023/07/01: Moved input data to structured buffer        *
  * 2024/04/01: GUI_EL_DYN SRV+Adj.coords replaced by UAV    *
  *                                                          *
- *  Copyright (c) David William Bull. All rights reserved.  *
+ * Copyright (c) David William Bull.   All rights reserved. *
  ************************************************************/
 
 #include "common.hlsli"
  
-cbuffer CB_VIEW : register(b0) { // 144 bytes (9 vectors)
+cbuffer CB_VIEW : register(b0) { // 160 bytes (10 vectors)
    const matrix projection;   // Perspective transformation
    const matrix orthographic; // Orthographic transformation
    const float2 guiScale;     // Final X & Y scaling factors for GUI
    const uint2  bitField;     // 0-63==???
+   const uint4  RES;
 };
 
-struct CHAR_IMM { // 16 bytes (1 scalar)
+struct CHAR_IMM { // 16 bytes (1 vector)
    uint2 tc;   // Texture coordinates : 4x(1p15)
    uint  size; // Relative X & Y dimensions : p16n0.0~1.0
    uint  os;   // Relative X & Y offsets : p16n-1.0~1.0
 };
 
-struct GUI_EL_DYN { // 96 bytes (24 scalars)
+struct GUI_EL_DYN { // 96 bytes (6 scalars)
    float4 coords[2]; // Text: view coordinates per 8 characters | Element: View position, bounding space for children, x2 texture coordinates
    uint4  tint[2];   // Text: RGBA values per 8 characters | Element: TL/BL/TR/BR RGBA values : p16n0.0~2.0
    float2 size;      // Scale of text | Size of element

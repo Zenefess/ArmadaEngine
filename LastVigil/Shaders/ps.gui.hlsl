@@ -5,7 +5,7 @@
  * Desc: 8 characters per instance.                         *
  * To do:                                                   *
  *                                                          *
- *  Copyright (c) David William Bull. All rights reserved.  *
+ * Copyright (c) David William Bull.   All rights reserved. *
  ************************************************************/
 
 #include "common.hlsli"

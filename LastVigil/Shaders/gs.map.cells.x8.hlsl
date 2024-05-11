@@ -4,25 +4,27 @@
  *                                                          *
  * Notes:                                                   *
  *                                                          *
- *  Copyright (c) David William Bull. All rights reserved.  *
+ * Copyright (c) David William Bull.   All rights reserved. *
  ************************************************************/
 
 #include "common.hlsli"
 #include "gs.mesh displacement functions.hlsli"
 
-cbuffer CB_VIEW : register(b0) { // 144 bytes (9 vectors)
-   cmatrix projection;   // Perspective transformation
-   cmatrix orthographic; // Orthographic transformation
-   cfloat2 guiScale;     // Final X, Y scaling factors for GUI
-   cuint2  bitField;     // 0-63==???
+cbuffer CB_VIEW : register(b0) { // 160 bytes (10 vectors)
+   const matrix projection;   // Perspective transformation
+   const matrix orthographic; // Orthographic transformation
+   const float2 guiScale;     // Final X & Y scaling factors for GUI
+   const uint2  bitField;     // 0-63==???
+   const uint4  RES;
 };
 
-cbuffer CB_MAIN : register(b1) { // 80 bytes (5 vectors)
+cbuffer CB_MAIN : register(b1) { // 96 bytes (6 vectors)
    cmatrix camera;     // Camera transformation
    cuint   frameCount; // Total number of frames presented
    cfloat  frameTime;  // Duration of last frame
    cfloat  secsDelta;  // == (Time elapsed - SecsTotal)
    cuint   st_bf;      // 0-23==secsTotal (Elapsed seconds), 24==Draw transparent sprites, 25-31==???
+   cuint4  RES2;
 };
 
 cbuffer MAPDIMS_ICB : register(b2) { // 48 bytes (3 vectors)
@@ -32,7 +34,7 @@ cbuffer MAPDIMS_ICB : register(b2) { // 48 bytes (3 vectors)
    cuint  chunkDimsE; // Exponenets of .iChunkDim, 24-31==High byte of .zDim spawning offset
    cuint  chunkCount; // X, Y, Z chunk counts - 1, 24-31==bitFlags
    cuint2 totalCells; // Cells per chunk, Cells per map
-   cuint  RES;
+   cuint  RES3;
 }
 
 struct ELEMENT_IMM { // 16 bytes (1 vector)

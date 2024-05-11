@@ -1,42 +1,44 @@
-/**************************************************************
- * File: gs.entities.sprites.x32.hlsl     Created: 2023/06/10 *
- *                                      Last mod.: 2023/06/11 *
- *                                                            *
- * Desc: Generates 3-space sprites from point lists.          *
- *       Animation support, optional billboard orienting, and *
- *       choice between tri and quad.                         *
- *       32 sprites per instance.                             *
- *                                                            *
- *   Copyright (c) David William Bull. All rights reserved.   *
- **************************************************************/
+/**********************************************************************
+ * File: gs.entities.sprites.x32.hlsl             Created: 2023/06/10 *
+ *                                          Last modified: 2023/06/11 *
+ *                                                                    *
+ * Desc: Generates 3-space sprites from point lists.                  *
+ *       Animation support, optional billboard orienting, and choice  *
+ *       between tri and quad.                                        *
+ *       32 sprites per instance.                                     *
+ *                                                                    *
+ * Copyright (c) David William Bull.             All rights reserved. *
+ **********************************************************************/
 
 #include "common.hlsli"
 
-cbuffer CB_VIEW : register(b0) {   // 144 bytes (9 vectors)
-   cmatrix projection;   // Perspective transformation
-   cmatrix orthographic; // Orthographic transformation
-   cfloat2 guiScale;     // Final X, Y scaling factors for GUI
-   cuint2  bitField;     // 0~63==???
+cbuffer CB_VIEW : register(b0) { // 160 bytes (10 vectors)
+   const matrix projection;   // Perspective transformation
+   const matrix orthographic; // Orthographic transformation
+   const float2 guiScale;     // Final X & Y scaling factors for GUI
+   const uint2  bitField;     // 0-63==???
+   const uint4  RES;
 };
 
-cbuffer CB_MAIN : register(b1) {   // 80 bytes (5 vectors)
+cbuffer CB_MAIN : register(b1) { // 96 bytes (6 vectors)
    cmatrix camera;     // Camera transformation
    cuint   frameCount; // Total number of frames presented
    cfloat  frameTime;  // Duration of last frame
    cfloat  secsDelta;  // == (Time elapsed - SecsTotal)
-   cuint   st_bf;      // 0~23==secsTotal (Elapsed seconds), 24==Draw transparent sprites, 25-31==???
+   cuint   st_bf;      // 0-23==secsTotal (Elapsed seconds), 24==Draw transparent sprites, 25-31==???
+   cuint4  RES2;
 };
 
-struct OBJECT_IGS {   // (2 scalar)
+struct OBJECT_IGS { // 8 bytes (2 scalar)
    uint ppi;     // Parent PART_IGS index
    uint qc_bits; // 0~7==Part count - 1 (~256), 6~31==Bitfield
 };
 
-struct PART_IGS {   // (5 vectors)
+struct PART_IGS { // 80 bytes (5 vectors)
    float3 pos;     // Relative position
    uint   ai_bits; // 0~7==Runtime index of atlas texture, 8==Shape (quad/tri), 9==Billboard, 10=31==???
    float3 rot;     // Relative rotation
-   uint   oppi;    // Object's parent part index (this==No owner)
+   uint   oppi;    // Owner's parent part index (this==No owner)
    float2 size;    // Relative to parent
    uint2  tc;      // tex[0] == Diffuse map | tex[2].x == Paint map    | tex[3].x == Highlight map
                    // tex[1] == Normal map  | tex[2].y == Emission map | tex[3].y == Occlusion map
@@ -46,7 +48,7 @@ struct PART_IGS {   // (5 vectors)
    uint   RES2;      
 };
 
-struct BONE_DGS {   // (4 vectors)
+struct BONE_DGS { // 64 bytes (4 vectors)
    float3 pos;      // Current position (relative to owner or world)
    float  lerp;     // pos->mt.s & rot->mt.r (current recoil state)
    float3 rot;      // Current rotation (relative to owner or world)
@@ -56,10 +58,10 @@ struct BONE_DGS {   // (4 vectors)
    float  aft;      // Animation frame time
    uint   afco_oai; // 0~7==Animation frame count - 1, 8~15==Animation frame offset, 16~31==Object array index
    uint   pbi;      // Parent's bone index (this==No owner)
-   uint   obi;     // Owner's bone index (this==No owner)
+   uint   obi;      // Owner's bone index (this==No owner)
 };
 
-struct GOut {   // 56 bytes (3 vectors + 2 scalars)
+struct GOut { // 56 bytes (3 vectors + 2 scalars)
    float4 pos      : SV_Position;
    float3 position : POSITION;
    uint   si       : SPRITEINDEX;

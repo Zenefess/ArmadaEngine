@@ -4,20 +4,20 @@
  *                                                          *
  * Desc:                                                    *
  *                                                          *
- *  Copyright (c) David William Bull. All rights reserved.  *
+ * Copyright (c) David William Bull.   All rights reserved. *
  ************************************************************/
 
 #include "common.hlsli"
 #include "ps.full register access.hlsli"
 
-struct LIGHT {
+struct LIGHT { // 32 bytes (2 vectors)
    float3 position;
    float  range;
-   uint2  col_hl;   // 0-47==RGB (s7p8), 48-63==highlight: Size (0p8-1), intensity (4p4-1)
+   uint2  col_hl;   // 0-47==RGB: s7p8, 48-55==Highlight size : 0p8-1, 56-63==Highlight intensity : 4p4-1
    uint2  RES;
 };
 
-cbuffer cbLight {   // 512 bytes
+cbuffer cbLight { // 512 bytes (32 vectors)
    const LIGHT l[256] : register(b0);
 }
 
