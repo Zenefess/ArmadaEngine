@@ -214,7 +214,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\include\DirectInput8 keyboard scan codes.h" />
-    <ClInclude Include="..\..\..\include\Fixed-point math.h" />
     <ClInclude Include="Include\Armada Intelligence\class_entitymanager.h" />
     <ClInclude Include="Include\Armada Intelligence\class_mapmanager.h" />
     <ClInclude Include="Include\Armada Intelligence\D3D11 helper functions.h" />

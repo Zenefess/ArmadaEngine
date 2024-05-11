@@ -29,7 +29,7 @@ extern void DirectInput8Thread(ptr);
 extern HWND hWnd; // Defined in "Direct3D11 thread.cpp"
 
 #ifdef DATA_TRACKING
-al32 SYSTEM_DATA sysData(1024);
+SYSTEM_DATA sysData(1024);
 #endif
 
 //     COMMAND_MANAGER cmd;

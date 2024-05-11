@@ -26,8 +26,8 @@
  // For development only
 al32 struct GUI_SPRITE_DEFAULTS {
    cwchptrc name;
-   cVEC4Df tc;
-   cVEC2Df aa;
+   cVEC4Df  tc;
+   cVEC2Df  aa;
 } defaultUISprite[81] = { // !!! Double reduction amount of bounding values !!!
    { L"Opaque 2048x88r6", { 0.0f, 0.765625f, 1.0f, 0.80859375f }, { 2004.0f / 2048.0f, 44.0f / 88.0f } },                             // 0
    { L"Opaque 1024x392r6", { 0.0f, 0.80859375f, 0.5f, 1.0f }, { 980.0f / 1024.0f, 348.0f / 392.0f } },
@@ -186,9 +186,9 @@ Reinitialise_:
    gpu.tex.SetPS2D(0, siTextureSet[0], 20, 3);
    gpu.tex.SetPS2D(0, siTextureSet[1], 16, 3);
 
-   CLASS_MAPMAN    mapMan;
-   CLASS_ENTITYMANAGER entMan;
-   CLASS_D3D11HELPER   gpuHelper(gpu, mapMan, entMan);
+   CLASS_MAPMAN      mapMan;
+   CLASS_ENTMAN      entMan;
+   CLASS_D3D11HELPER gpuHelper(gpu, mapMan, entMan);
 
    // Test map
    mapMan.CreatePeriodicTable((wchptrc)L"Main periodic table", 5, 0);
@@ -221,12 +221,13 @@ Reinitialise_:
    mapMan.CreateWorld(0, 0, 1);
 
    MAP_DESC md;
-   md.stName   = (wchptrc)L"Test map";
-   md.stInfo   = (wchptrc)L"Description text.";
-   md.ptIndex  = 0;
-   md.chunkDim = { 16, 16, 1 };
-   md.mapDim   = { { 1024, 1024, 8 } }; // 256x144x1 -> 4,718,592 triangles -> Approx. 1.68 billion triangles per second @ 4K
-   md.zso      = 4;
+   md.stName     = (wchptrc)L"Test map";
+   md.stInfo     = (wchptrc)L"Description text.";
+   md.ptIndex    = 0;
+   md.chunkDim   = { 16, 16, 1 };
+   md.mapDim     = { { 1024, 1024, 8 } }; // 256x144x1 -> 4,718,592 triangles -> Approx. 1.68 billion triangles per second @ 4K
+   md.zso        = 4;
+   md.entListDim = 16;
    csi32 mapID = mapMan.CreateMap(md, 0, -1, 0, 2);
    mapMan.SetGlobalMapDescriptor(0, mapID);
 
@@ -385,7 +386,7 @@ Reinitialise_:
    al16 fl32 fAngle = 0.0f, fScale = 1.0f;
    ui8 bMouseCursor = true;
 
-   gpu.cam.CreateCamera(0, STAGES_VERTEX_GEOMETRY, 0);
+   gpu.cam.CreateCamera(0, STAGES_VERTEX_GEOMETRY, 0, true);
    gpu.cam.data[0].fXpos = 0.0f; gpu.cam.data[0].fYpos = 0.0f; gpu.cam.data[0].fZpos = -192.0f;
    gpu.cam.data[0].fXrot = 0.0f; gpu.cam.data[0].fYrot = 0.0f; gpu.cam.data[0].fZrot = 0.0f;
    gpu.cam.data[0].fZoom = 1.0f; gpu.cam.data[0].fSize = 256.0f;

@@ -135,9 +135,6 @@
     <ClInclude Include="Include\Armada Intelligence\GUI functions.h">
       <Filter>Header Files\Armada Intelligence functions</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\include\Fixed-point math.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Include\DI8 scan code text labels.h">
       <Filter>Header Files</Filter>
     </ClInclude>
