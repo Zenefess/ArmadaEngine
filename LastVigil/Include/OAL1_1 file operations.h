@@ -1,12 +1,17 @@
 /************************************************************
  * File: OAL1_1 file operations.h       Created: 2022/11/12 *
- *                                Last modified: 2022/11/12 *
+ *                                Last modified: 2024/05/06 *
  *                                                          *
- * Desc:                                                    *
+ * Notes: 2024/05/06: Added support for data tracking       *
  *                                                          *
  *                         Copyright (c) David William Bull *
  ************************************************************/
 #pragma once
+
+#ifdef DATA_TRACKING
+#include "data tracking.h"
+extern SYSTEM_DATA sysData;
+#endif
 
 // .WAV data structures
 struct RIFFHEADER {
@@ -32,24 +37,42 @@ struct DATACHUNK {
 };
 
 al16 struct CLASS_OAL11FILEOPS {
-   al16 HANDLE          hSound[1024] {};
+   al16 HANDLE        hSound = 0; // [1024] {};
         void         *pAudioData[1024] {};
-        ALuint          alBuffers[1024] {};
-        ui32          uiSourceObject[1024] {}, uiBytesRead;
+        ALuint        alBuffers[1024] {};
+        ui32          uiSourceObject[1024] {}, uiBytes;
         si32          siSoundCount = 0;
    al16 RIFFHEADER    rhWAV;
         WAVEFORMCHUNK wcWAV;
-        DATACHUNK       dcWAV;
+        DATACHUNK     dcWAV;
 
    si32 LoadWAV(wchptr filename) {
-      hSound[siSoundCount] = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
-
+      hSound = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
+#ifdef DATA_TRACKING
+      sysData.storage.filesOpened++;
+#endif
       // Read .WAV header data
-      bool bOK = ReadFile(hSound[siSoundCount], &rhWAV, sizeof(rhWAV), (LPDWORD)&uiBytesRead, NULL);
-      bOK = ReadFile(hSound[siSoundCount], &wcWAV, sizeof(wcWAV), (LPDWORD)&uiBytesRead, NULL);
-      bOK = ReadFile(hSound[siSoundCount], &dcWAV, sizeof(dcWAV), (LPDWORD)&uiBytesRead, NULL);
-      pAudioData[siSoundCount] = _aligned_malloc(dcWAV.len, 16);
-      bOK = ReadFile(hSound[siSoundCount], pAudioData[siSoundCount], dcWAV.len, (LPDWORD)&uiBytesRead, NULL);
+      bool bOK = ReadFile(hSound, &rhWAV, sizeof(rhWAV), (LPDWORD)&uiBytes, NULL);
+#ifdef DATA_TRACKING
+      sysData.storage.bytesRead += uiBytes;
+#endif
+      bOK = ReadFile(hSound, &wcWAV, sizeof(wcWAV), (LPDWORD)&uiBytes, NULL);
+#ifdef DATA_TRACKING
+      sysData.storage.bytesRead += uiBytes;
+#endif
+      bOK = ReadFile(hSound, &dcWAV, sizeof(dcWAV), (LPDWORD)&uiBytes, NULL);
+#ifdef DATA_TRACKING
+      sysData.storage.bytesRead += uiBytes;
+#endif
+      pAudioData[siSoundCount] = malloc16(dcWAV.len);
+      bOK = ReadFile(hSound, pAudioData[siSoundCount], dcWAV.len, (LPDWORD)&uiBytes, NULL);
+#ifdef DATA_TRACKING
+      sysData.storage.bytesRead += uiBytes;
+#endif
+      CloseHandle(hSound);
+#ifdef DATA_TRACKING
+      sysData.storage.filesClosed++;
+#endif
 
       alGenBuffers(1, &alBuffers[siSoundCount]);
       alBufferData(alBuffers[siSoundCount], 0x01100 + ((wcWAV.ch - 1) << 1) + (wcWAV.bd >> 4), pAudioData[siSoundCount], dcWAV.len, wcWAV.sr);

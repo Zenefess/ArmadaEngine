@@ -1,8 +1,8 @@
 /************************************************************
  * File: D3D11 file operations.h        Created: 2022/11/06 *
- *                                Last modified: 2023/03/24 *
+ *                                Last modified: 2024/05/06 *
  *                                                          *
- * Desc:                                                    *
+ * Notes: 2024/05/06: Added support for data tracking       *
  *                                                          *
  *                         Copyright (c) David William Bull *
  ************************************************************/
@@ -12,20 +12,26 @@
 #include "pch.h"
 #include <stdio.h>
 
+#ifdef DATA_TRACKING
+#include "data tracking.h"
+extern SYSTEM_DATA sysData;
+#endif
+
 al16 struct CLASS_FILEOPS {
    al16 wchptr  pathWorking = (wchar *)_aligned_malloc(sizeof(wchar[512]), 16);
         wchptr  stTemp = (wchar *)_aligned_malloc(sizeof(wchar[4096]), 16);
         wchar (*stShader)[100][256] = NULL;
-        ui32    uiShaders = 0, uiBanks[6] {}, uiBytes = 0;
+        ui32    uiShaders = 0, uiBytes = 0, uiBanks[6]{};
         ui8     uiIndex[6][100] = {};
-   al16 LPDWORD pBytes = (LPDWORD)&uiBytes;
 
-   inline csi32 ReadLine(wchar *stDest, HANDLE handle) const {
+   // Returns number of bytes read
+   inline cui32 ReadLine(wchar *stDest, HANDLE handle) const {
       static wchar chCurrent = NULL;
-             ui32  xx = 0;
+
+      ui32 xx = 0;
 
       for(xx = 0; xx < 255; xx++) {
-         bool bOK = ReadFile(handle, &chCurrent, 1, pBytes, NULL);
+         bool bOK = ReadFile(handle, &chCurrent, 1, (LPDWORD)&uiBytes, NULL);
          if(!bOK || !uiBytes) {
             stDest[xx] = NULL;
             return 0;
@@ -44,23 +50,37 @@ al16 struct CLASS_FILEOPS {
          }
       }
       stDest[xx] = NULL;
-      return 1;
+#ifdef DATA_TRACKING
+      sysData.storage.bytesRead += uiBytes;
+#endif
+      return uiBytes;
    }
 
-   csi32 LoadShaderList(void) {
+   // Returns number of shaders loaded. 0x080000001 if shader list file does not exist
+   cui32 LoadShaderList(void) {
       al16 cwchar stShadersDir[] = L"shaders\\";
            cwchar stExtension[]  = L".cso";
 
-      if(!stShader)
-         stShader = (wchar(*)[100][256])malloc16(sizeof(wchar[6][100][256]));
+      if(!stShader) stShader = (wchar(*)[100][256])malloc16(sizeof(wchar[6][100][256]));
 
       HANDLE hShaderGroups = CreateFile(L"config\\Shader list.cfg", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
 
+      if(!hShaderGroups) return 0x080000001;
+#ifdef DATA_TRACKING
+      sysData.storage.filesOpened++;
+#endif
+
       // Read (and discard) tag line
-      ReadLine(stTemp, hShaderGroups);
+      uiBytes = ReadLine(stTemp, hShaderGroups);
+#ifdef DATA_TRACKING
+      sysData.storage.bytesRead += uiBytes;
+#endif
       if(wcsncmp(stTemp, L"Stages: ", 8)) Try(stLoadShaders, -1);
       // Read line
-      while(ReadLine(stTemp, hShaderGroups))
+      while(uiBytes = ReadLine(stTemp, hShaderGroups)) {
+#ifdef DATA_TRACKING
+         sysData.storage.bytesRead += uiBytes;
+#endif
          if(stTemp[0] >= '0' && stTemp[0] <= '9') {
             ui8 uiBank = ui8(stTemp[0] - '0');
             ui8 xx = 1;
@@ -155,9 +175,12 @@ al16 struct CLASS_FILEOPS {
                return uiShaders;
                //   Try(VIDEO_THREAD_ERROR);
             }
-
+      }
       CloseHandle(hShaderGroups);
 
+#ifdef DATA_TRACKING
+      sysData.storage.filesClosed++;
+#endif
       return uiShaders;
    }
 

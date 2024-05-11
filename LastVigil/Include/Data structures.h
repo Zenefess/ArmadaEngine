@@ -16,7 +16,7 @@ extern SYSTEM_DATA sysData;
 #include "typedefs.h"
 #include "Vector structures.h"
 
-al4 const union ID32 {
+al4 union ID32 {
    struct {
       ui16 index;
       ui16 group;
@@ -24,13 +24,50 @@ al4 const union ID32 {
    ui32 id;
 };
 
-al8 const union ID64 {
+al8 union ID64 {
    struct {
       ui32 index;
       ui32 group;
    };
    ui64 id;
 };
+
+al4 union ID32c {
+   struct {
+      cui16 index;
+      cui16 group;
+   };
+   cui32 id;
+};
+
+al8 union ID64c {
+   struct {
+      cui32 index;
+      cui32 group;
+   };
+   cui64 id;
+};
+
+typedef const ID32          cID32;
+typedef const ID64          cID64;
+typedef const ID32c         cID32c;
+typedef const ID64c         cID64c;
+typedef       ID32  *       ID32ptr;
+typedef       ID64  *       ID64ptr;
+typedef       ID32c *       ID32cptr;
+typedef       ID64c *       ID64cptr;
+typedef const ID32  *       cID32ptr;
+typedef const ID64  *       cID64ptr;
+typedef const ID32c *       cID32cptr;
+typedef const ID64c *       cID64cptr;
+typedef       ID32  * const ID32ptrc;
+typedef       ID64  * const ID64ptrc;
+typedef       ID32c * const ID32cptrc;
+typedef       ID64c * const ID64cptrc;
+typedef const ID32  * const cID32ptrc;
+typedef const ID64  * const cID64ptrc;
+typedef const ID32c * const cID32cptrc;
+typedef const ID64c * const cID64cptrc;
 
 al8 union UNIPTR {
    ptr     p;
@@ -97,22 +134,22 @@ al32 struct BUFFER64 {
 };
 
 al32 struct TEXTBUFFER {
-   BUFFER16 source; // Source text array
+   BUFFER16 source {}; // Source text array
    // bitField: 0==Active, 1==Confirm, 2==Cancel, 3==Clear temporary array after copy
-   BUFFER16 temp;  // Text array for temporary copy of source
+   BUFFER16 temp {};   // Text array for temporary copy of source
    // bitField: 0==???
 
    // maxCharCount == Maximum number of characters in array
-   // wideChars    == Allocate 2 bytes per character
+   // wideChars == Allocate 2 bytes per character
    TEXTBUFFER(cui16 maxCharCount, cbool wideChars) {
       cui32 byteCount = temp.byteMax = maxCharCount << (wideChars ? 1 : 0);
       ptrc  pointer   = _aligned_malloc(byteCount, 16);
 
       if(pointer) {
 #ifdef DATA_TRACKING
-         sysData.memory.byteCount[sysData.memory.allocations]  = byteCount;
-         sysData.memory.location[sysData.memory.allocations++] = pointer;
-         sysData.memory.allocated += byteCount;
+         sysData.mem.byteCount[sysData.mem.allocations]  = byteCount;
+         sysData.mem.location[sysData.mem.allocations++] = pointer;
+         sysData.mem.allocated += byteCount;
 #endif
          temp.p = pointer;
       }
@@ -120,9 +157,10 @@ al32 struct TEXTBUFFER {
 
    ~TEXTBUFFER(void) {
 #ifdef DATA_TRACKING
-      cui32 allocations = sysData.memory.allocations;
-      aptrc location    = sysData.memory.location;
-      ui32  index       = 0;
+      cui32     allocations = sysData.mem.allocations;
+      vptrcptrc location    = sysData.mem.location;
+
+      ui32 index = 0;
 
       // Find entry
       while(temp.p != location[index] && allocations >= index)
@@ -130,10 +168,10 @@ al32 struct TEXTBUFFER {
 
       // Is the pointer valid?
       if(index < allocations) {
-         sysData.memory.allocations--;
-         sysData.memory.allocated -= sysData.memory.byteCount[index];
-         sysData.memory.location[index] = NULL;
-         sysData.memory.byteCount[index] = 0;
+         sysData.mem.allocations--;
+         sysData.mem.allocated -= sysData.mem.byteCount[index];
+         sysData.mem.location[index] = NULL;
+         sysData.mem.byteCount[index] = 0;
       }
 #endif
       _aligned_free(temp.p);
@@ -141,7 +179,7 @@ al32 struct TEXTBUFFER {
 };
 
 // Global control variables
-al32 struct GLOBALCTRLVARS { // 160 bytes
+al32 struct GLOBALCTRLVARS {
    union {
       struct {
          struct {
@@ -188,19 +226,19 @@ al32 struct GLOBALCTRLVARS { // 160 bytes
 };
 
 // Global coordinates
-al16 struct GLOBALCOORDS {   // 48 bytes
+al16 struct GLOBALCOORDS {
    union {
       float co[12];
       struct {
-         union {   // Position
+         union { // Position
             VEC3Df pos;
             float  p[3];
          };
-         union {   // Velocity
+         union { // Velocity
             VEC3Df vel;
             float  v[3];
          };
-         union {   // Orientation
+         union { // Orientation
             VEC6Df ori;
             float  o[6];
          };
@@ -208,27 +246,27 @@ al16 struct GLOBALCOORDS {   // 48 bytes
    };
 };
 
-struct RESDATA {   // 36 bytes
+struct RESDATA { // 36 bytes
    union {
       float  dim[2];
       VEC2Df dims;
       struct {
-         float w;   // Width
-         float h;   // Height
+         float w; // Width
+         float h; // Height
       };
    };
-   float aspect;   // Aspect ratio (height / width)
-   float aspectI;   // Inverted aspect ratio (width / height)
+   float aspect;  // Aspect ratio (height / width)
+   float aspectI; // Inverted aspect ratio (width / height)
    float gamma;   // Gamma ramp scalar
    UINT  fmtBB;   // Back buffer format
    UINT  fmtDB;   // Depth buffer format
-   si16  msaa;      // (Multi)sample count
+   si16  msaa;    // (Multi)sample count
    si16  msaaQ;   // Multisample quality
-   si16  buffers;   // Number of back buffers in swap chain
+   si16  buffers; // Number of back buffers in swap chain
    si16  RES;
 };
 
-al16 struct RESOLUTION {   // 112 bytes
+al16 struct RESOLUTION { // 112 bytes
    union {
       RESDATA dims[3];
       struct {
@@ -239,6 +277,6 @@ al16 struct RESOLUTION {   // 112 bytes
    };
    VEC2Du16 windowOS;
    VEC2Du16 borderlessOS;
-   si8      state;   // 0 == Windowed | 1 == Borderless | 2 = Fullscreen
+   si8      state;        // 0 == Windowed | 1 == Borderless | 2 = Fullscreen
    ui8      RES[7];
 };

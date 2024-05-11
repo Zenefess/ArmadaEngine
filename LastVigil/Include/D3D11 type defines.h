@@ -9,49 +9,49 @@
 #pragma once
 
 #define DX DirectX
+#define dxmtrx DirectX::XMMATRIX &
+#define aemtrx cmatrix &
 
 #include "typedefs.h"
 #include "Vector structures.h"
 
- // DirectXMath type analogues
-typedef al16       __m128 vector;
-typedef al32 DX::XMMATRIX matrix;
-typedef al16 const vector cvector;
-typedef al32 const matrix cmatrix;
+typedef al16       __m128    vector;
+typedef al16 const vector    cvector;
+typedef al32       AVXmatrix matrix;
+typedef al32 const matrix    cmatrix;
 
 // Constant buffers
-al32 struct CB_VIEW {   // 144 bytes
+al32 struct CB_VIEW {
    matrix projection;   // Projection transformation
-   matrix orthographic;   // Projection transformation
-   VEC2Df guiScale;      // Final scaling factors for GUI
+   matrix orthographic; // Projection transformation
+   VEC2Df guiScale;     // Final scaling factors for GUI
    ui64   bitField;
 };
 
-al32 struct CB_MAIN {   // 80 bytes
-   matrix camera;         // Camera transformation
-   ui32   frameCount;   // Total number of frames presented
-   float  frameTime;      // Duration of last frame
-   float  secsDelta;      // == (Elpased time - SecsTotal)
+al32 struct CB_MAIN {
+   matrix camera;     // Camera transformation
+   ui32   frameCount; // Total number of frames presented
+   float  frameTime;  // Duration of last frame
+   float  secsDelta;  // == (Elpased time - SecsTotal)
    union {
       ui32 st_bf;
       struct {
-         ui8 secsTotal[3];   // Elapsed seconds
-         ui8 bitField;      // 0==Draw transparent sprites, 1-7==???
+         ui8 secsTotal[3]; // Elapsed seconds
+         ui8 bitField;     // 0==Draw transparent sprites, 1-7==???
       };
    };
 };
 
-al16 struct CB_LIGHT {   // 32 bytes
+al16 struct CB_LIGHT { // 32 bytes
    VEC3Df   pos;
-   float      range;
-   VEC3Du16   col;   // s7p8
-   VEC2Du8   hl;   // Highlight: Size & intensity : 0p8-1, 4p4-1
-
+   float    range;
+   VEC3Du16 col;   // s7p8
+   VEC2Du8  hl;    // Highlight: Size & intensity : 0p8-1, 4p4-1
    //--- Add radius% cos, and direction
    ui8      RES[8];
 };
 
-struct PLANEfl32 {   // 16 bytes
+struct PLANEfl32 { // 16 bytes
    union {
       fl32x4 xmm;
       struct {
@@ -61,7 +61,7 @@ struct PLANEfl32 {   // 16 bytes
    };
 };
 
-struct PLANEfl64 {   // 32 bytes
+struct PLANEfl64 { // 32 bytes
    union {
       fl64x4 ymm;
       struct {
@@ -71,9 +71,9 @@ struct PLANEfl64 {   // 32 bytes
    };
 };
 
-struct FRUSTUM_DATA {   // 192 bytes
+struct FRUSTUM_DATA { // 192 bytes
    union {
-      struct {
+      union {
          fl64x4 ymm[6];
          fl64x2 xmm[12];
          struct {
@@ -99,7 +99,7 @@ struct FRUSTUM_DATA {   // 192 bytes
             fl64x2 xmm11;
          };
       } f64;
-      struct {
+      union {
          fl32x8 ymm[3];
          fl32x4 xmm[6];
          struct {
@@ -137,7 +137,7 @@ struct FRUSTUM_DATA {   // 192 bytes
    };
 };
 
-al32 struct CAMERA_DATA {   // 352 bytes
+al32 struct CAMERA_DATA {
    union {
       struct {
          AVX4Df64 pos64;
@@ -152,21 +152,21 @@ al32 struct CAMERA_DATA {   // 352 bytes
          double dXpos;
          double dYpos;
          double dZpos;
-         double dZoom;
+         double dSize;
          double dXrot;
          double dYrot;
          double dZrot;
-         double dSize;
+         double dZoom;
       };
       struct {
          float fXpos;
          float fYpos;
          float fZpos;
-         float fZoom;
+         float fSize;
          float fXrot;
          float fYrot;
          float fZrot;
-         float fSize;
+         float fZoom;
       };
    };
    FRUSTUM_DATA frustum;

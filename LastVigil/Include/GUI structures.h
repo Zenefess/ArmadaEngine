@@ -243,15 +243,15 @@ al32 struct GUI_EL_DESC { // 160 bytes
 
 // Passing-in true when decalring will set it as globally accessible.
 // Set .interfaceIndex before executing "gcv.misc[7] |= 0x080;"
-al32 struct GUI_DESC { // 32 bytes
-   ui32 interfaceIndex = 0;    // Currently active interface
-   ui32 defaultInterface = 0;  // Default user interface index
-   ui32 prevInterface = 0;     // User interface transitioned from
-   ui32 nextInterface = 0;     // User interface to transition to
-   fl32 transitionTime = 0.0f; // Period of time (in seconds) to transition between user interfaces
-   fl32 elapsedTime = 0;       // Current elapsed time (in seconds) of transition
-   ui16 noInputTime = 0;       // Period of time (in milliseconds) GUI input is inactive between interface transitions
-   ui8  transitionMods = 0;    // 0==Delayed, 1==Overlaid, 2==Fade in, 3==Fade out, 4~7==???
+al32 struct GUI_DESC {
+   ui32 interfaceIndex   = 0;    // Currently active interface
+   ui32 defaultInterface = 0;    // Default user interface index
+   ui32 prevInterface    = 0;    // User interface transitioned from
+   ui32 nextInterface    = 0;    // User interface to transition to
+   fl32 transitionTime   = 0.0f; // Period of time (in seconds) to transition between user interfaces
+   fl32 elapsedTime      = 0.0f; // Current elapsed time (in seconds) of transition
+   ui16 noInputTime      = 0;    // Period of time (in milliseconds) GUI input is inactive between interface transitions
+   ui8  transitionMods   = 0;    // 0==Delayed, 1==Overlaid, 2==Fade in, 3==Fade out, 4~7==???
    ui8  RES[5];
 
    GUI_DESC(cbool makeGlobal) { if(makeGlobal) ptrLib[15] = this; }

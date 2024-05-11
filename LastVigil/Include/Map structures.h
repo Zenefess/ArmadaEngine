@@ -96,9 +96,9 @@ al16 struct MAPDIMS_ICB { // 48 bytes
    VEC3Du8  mapDimsE;    // Exponenets of .iMapDim
    ui8      zsoL;        // Low byte of Z spawning offset
    VEC3Ds32 chunkDims;   // X, Y, Z cell counts
-   VEC3Du8   chunkDimsE; // Exponenets of .iChunkDim
+   VEC3Du8  chunkDimsE;  // Exponenets of .iChunkDim
    ui8      zsoH;        // High byte of Z spawning offset
-   VEC3Du8   chunkCount; // X, Y, Z chunk counts - 1
+   VEC3Du8  chunkCount;  // X, Y, Z chunk counts - 1
    ui8      bitFlags;
    VEC2Du32 totalCells;  // Cells/chunk, Cells/map
    ui32     totalChunks; // Chunks/map
@@ -106,9 +106,9 @@ al16 struct MAPDIMS_ICB { // 48 bytes
 
 al16 struct MAPDIMS_ICB_ { // 48 bytes
    VEC3Ds32 mapDims;     // X, Y, Z cell counts
-   si32      zso;        // Z spawning offset
+   si32     zso;         // Z spawning offset
    VEC3Ds32 chunkDims;   // X, Y, Z cell counts
-   VEC3Du8   chunkCount; // X, Y, Z chunk counts
+   VEC3Du8  chunkCount;  // X, Y, Z chunk counts
    ui8      bitFlags;
    VEC2Du32 totalCells;  // Cells/chunk, Cells/map
    ui32     totalChunks; // Chunks/map
@@ -120,9 +120,7 @@ al32 struct MAP_CELL_RV {
    AVX8Ds32 activeElements;
    union {
       AVX8Ds32 activeCells;
-      struct {
-         SSE4Ds32 cellIndex[2];
-      };
+      SSE4Ds32 cellIndex[2];
       struct {
          VEC3Ds32 activeCell;
          si32     cell;
@@ -134,14 +132,12 @@ al32 struct MAP_CELL_RV {
          si32     RES2[6];
       };
       AVX8Df32 activeLocations;
+      SSE4Df32 locationOS[2];
       struct {
-         SSE4Df32 locationOS[2];
-      };
-      struct {
-         VEC3Df activeLocation;
-         fl32   location;
-         fl32   activeMajorLoc;
-         fl32   fRES1[3];
+         VEC3Df activeLocation0;
+         fl32   magnitude0;
+         VEC3Df activeLocation1;
+         fl32   magnitude1;
       };
       struct {
          VEC2Df fActivePlane;
@@ -157,11 +153,11 @@ al32 struct WORLD_LIST_RV {
    si32    cellCount;   // Selected cell count
    si32    entityCount; // Selected entity count
    si32ptr cellIndex;   // Array of cell indices
-   si32ptr entityIndex; // Array of entity indices
+   ID64ptr entityIndex; // Array of entity indices
 };
 
 // Critical information for maps, including input return values
-al32 struct MAP_DESC { // 160 bytes
+al32 struct MAP_DESC {
    wchptr stName; // Text label
    wchptr stInfo; // Extended text
    union {
@@ -183,9 +179,9 @@ al32 struct MAP_DESC { // 160 bytes
       };
    };
 
-   si16    maxListIndices; // Maximum entity associations per cell
-   ui32    RES;
-   si32ptr entityList;     // Entity indices associated with map cells
+   si16  entListDim; // Maximum entity associations per cell
+   ui32  RES;
+   ID64 *entityList; // Entity IDs associated with map cells
 
    MAP_CELL_RV   mcrv;
    WORLD_LIST_RV wlrv;
@@ -221,23 +217,23 @@ al32 struct WORLD { // 64 bytes
 al32 struct MAPMAN_THREAD_DATA {
    MAP *map;
    union {
-      ptr      p;
-      ui32aptr chunkVis;
-      ui32ptr  chunkMod;
+      ptr        p;
+      ui32ptrptr chunkVis;
+      ui32ptr    chunkMod;
    };
 };
 
-al32 struct cMAPMAN_THREAD_DATA {
+al32 struct MAPMAN_THREAD_DATAc {
    MAP * const map;
    union {
-      ptrc      p;
-      ui32aptrc chunkVis;
-      ui32ptrc  chunkMod;
+      ptrc         p;
+      ui32ptrcptrc chunkVis;
+      ui32ptrc     chunkMod;
    };
 };
 
 // Pointers to vertex buffers for input assembler
-al32 struct MAP_PTRS {   // 64 bytes
+al32 struct MAP_PTRS { // 64 bytes
    union {
       ptr p[8];
       struct { ptr p0, p1, p2, p3, p4, p5, p6, p7; };
@@ -251,8 +247,49 @@ al32 struct MAP_PTRS {   // 64 bytes
    };
 };
 
-typedef const ELEM_TABLE cELEM_TABLE;
-typedef const CELL       cCELL;
-typedef const MAP_DESC   cMAP_DESC;
-typedef const MAP        cMAP;
-typedef const WORLD      cWORLD;
+// Pointers to vertex buffers for input assembler
+al32 struct MAP_PTRSc { // 64 bytes
+   union {
+      ptrc p[8];
+      struct { ptrc p0, p1, p2, p3, p4, p5, p6, p7; };
+      struct { ui32ptrc mod; ui32ptrc vis[7]; };
+      struct {
+         MAPDIMS_ICB * const mapDims;
+         ELEM_IGS    * const elements;
+         CELL_DGS    * const cell_dgs;
+         CELL_DPS    * const cell_dps;
+      };
+   };
+};
+
+typedef const ELEM_TABLE                  cELEM_TABLE;
+typedef const CELL                        cCELL;
+typedef       CELL                *       CELLptr;
+typedef const CELL                *       cCELLptr;
+typedef       CELL                * const CELLptrc;
+typedef const CELL                * const cCELLptrc;
+typedef       CELL_DGS            *       CELL_DGSptr;
+typedef       CELL_DGS            * const CELL_DGSptrc;
+typedef       CELL_DPS            *       CELL_DPSptr;
+typedef       CELL_DPS            * const CELL_DPSptrc;
+typedef const MAP_DESC                    cMAP_DESC;
+typedef const MAP                         cMAP;
+typedef       MAP                 *       MAPptr;
+typedef const MAP                 *       cMAPptr;
+typedef       MAP                 * const MAPptrc;
+typedef const MAP                 * const cMAPptrc;
+typedef const MAP_PTRS                    cMAP_PTRS;
+typedef const MAP_PTRSc                   cMAP_PTRSc;
+typedef       MAPMAN_THREAD_DATA  *       MMTDptr;
+typedef const MAPMAN_THREAD_DATA  *       cMMTDptr;
+typedef       MAPMAN_THREAD_DATA  * const MMTDptrc;
+typedef const MAPMAN_THREAD_DATA  * const cMMTDptrc;
+typedef       MAPMAN_THREAD_DATAc *       MMTDcptr;
+typedef const MAPMAN_THREAD_DATAc *       cMMTDcptr;
+typedef       MAPMAN_THREAD_DATAc * const MMTDcptrc;
+typedef const MAPMAN_THREAD_DATAc * const cMMTDcptrc;
+typedef const WORLD                       cWORLD;
+typedef       WORLD               *       WORLDptr;
+typedef const WORLD               *       cWORLDptr;
+typedef       WORLD               * const WORLDptrc;
+typedef const WORLD               * const cWORLDptrc;
