@@ -19,7 +19,7 @@
 #include "Armada Intelligence/class_entitymanager.h"
 
 struct HELPFUNC_MAP {
-   CLASS_GPU        *gpu = 0;
+   CLASS_GPU    *gpu = 0;
    CLASS_MAPMAN *man = 0;
 
    ui32ptr (*visBuf)[3];
@@ -44,7 +44,7 @@ struct HELPFUNC_MAP {
       mfree(gpuBuf);
    }
 
-   inline void CreateBuffers(csi16 worldIndex, csi16 mapIndex, csi16 elementTableIndex) {
+   void CreateBuffers(csi16 worldIndex, csi16 mapIndex, csi16 elementTableIndex) {
       cMAP        &map   = *(*man).world[worldIndex].map[mapIndex];
       cELEM_TABLE &table = (*man).table[elementTableIndex];
       csi32        count = map.desc.mapChunks;
@@ -68,7 +68,7 @@ struct HELPFUNC_MAP {
 
    ///--- !!! Expand to 7 LODs !!!
    // Returns counts for { Chunks uploaded, LOD 0 chunks, LOD 1 chunks, LOD 2 chunks }
-   inline cVEC4Du32 WaitThenUploadAndRender(csi16 worldIndex, csi16 mapIndex) {
+   cVEC4Du32 WaitThenUploadAndRender(csi16 worldIndex, csi16 mapIndex) {
       cMAP &map = *(*man).world[worldIndex].map[mapIndex];
       ui32  i;
 
@@ -76,8 +76,8 @@ struct HELPFUNC_MAP {
       mapManThreadData = (*man).WaitForCulling(0);
 
       // Upload modified cell data
-      CELL_DGS * const cellGeoData = (CELL_DGS *)(*gpu).buf.LockStructuredBeforeUpdate(0, gpuBuf[worldIndex][2]);
-      CELL_DPS * const cellPixData = (CELL_DPS *)(*gpu).buf.LockStructuredBeforeUpdate(0, gpuBuf[worldIndex][3]);
+      CELL_DGSptr cellGeoData = (CELL_DGS *)(*gpu).buf.LockStructuredBeforeUpdate(0, gpuBuf[worldIndex][2]);
+      CELL_DPSptr cellPixData = (CELL_DPS *)(*gpu).buf.LockStructuredBeforeUpdate(0, gpuBuf[worldIndex][3]);
       
       cui64 chunkDGS = sizeof(CELL_DGS) * map.desc.chunkCells;
       cui64 chunkDPS = sizeof(CELL_DPS) * map.desc.chunkCells;
@@ -117,8 +117,8 @@ struct HELPFUNC_MAP {
 };
 
 al32 struct HELPFUNC_ENT {
-   CLASS_GPU           *gpu = 0;
-   CLASS_ENTITYMANAGER *man = 0;
+   CLASS_GPU    *gpu = 0;
+   CLASS_ENTMAN *man = 0;
 
    ui32ptr (*visBuf)[3];
    ui32ptr  *modBuf;
@@ -132,7 +132,7 @@ al32 struct HELPFUNC_ENT {
       gpuBuf  = (si32 (*)[4])zalloc32(sizeof(si32 (*)[4]) * MAX_ENTITY_GROUPS);
       vertBuf = (si32 (*)[3])zalloc32(sizeof(si32 (*)[3]) * MAX_ENTITY_GROUPS);
       visBuf  = (ui32ptr (*)[3])zalloc32(sizeof(ui32ptr (*)[3]) * MAX_ENTITY_GROUPS);
-      modBuf  = (ui32aptr)zalloc32(sizeof(ui32ptr) * MAX_ENTITY_GROUPS);
+      modBuf  = (ui32ptrptr)zalloc32(sizeof(ui32ptr) * MAX_ENTITY_GROUPS);
    }
 
    ~HELPFUNC_ENT() {
@@ -142,7 +142,7 @@ al32 struct HELPFUNC_ENT {
       mfree(gpuBuf);
    }
 
-   inline void CreateBuffers(csi16 groupIndex) {
+   void CreateBuffers(csi16 groupIndex) {
       OBJECT_GROUP &objGroup = (*man).objGroup[groupIndex];
       ENTITY_GROUP &entGroup = (*man).entGroup[groupIndex];
 
@@ -166,7 +166,7 @@ al32 struct HELPFUNC_ENT {
 
    ///--- !!! Expand to 7 LODs !!!
    // Returns counts for { Entities uploaded, LOD 0 entities, LOD 1 entities, LOD 2 entities }
-   inline cVEC4Du32 WaitThenUploadAndRender(csi16 groupIndex) {
+   cVEC4Du32 WaitThenUploadAndRender(csi16 groupIndex) {
       const ENTITY_GROUP &group = (*man).entGroup[groupIndex];
 
       ui32 i;
@@ -175,8 +175,8 @@ al32 struct HELPFUNC_ENT {
       entManThreadData = (*man).WaitForCulling(0);
 
       // Upload modified entity data
-      BONE_DGS   * const boneGeoData = (BONE_DGS *)(*gpu).buf.LockStructuredBeforeUpdate(0, gpuBuf[groupIndex][2]);
-      SPRITE_DPS * const bonePixData = (SPRITE_DPS *)(*gpu).buf.LockStructuredBeforeUpdate(0, gpuBuf[groupIndex][3]);
+      BONE_DGSptrc   boneGeoData = (BONE_DGSptr)(*gpu).buf.LockStructuredBeforeUpdate(0, gpuBuf[groupIndex][2]);
+      SPRITE_DPSptrc bonePixData = (SPRITE_DPSptr)(*gpu).buf.LockStructuredBeforeUpdate(0, gpuBuf[groupIndex][3]);
 
       for(i = 0; i < entManThreadData.w; i++) {
          csi32 boneIndex = modBuf[groupIndex][i];
@@ -217,7 +217,7 @@ al32 struct CLASS_D3D11HELPER {
    HELPFUNC_MAP map;
    HELPFUNC_ENT ent;
 
-   CLASS_D3D11HELPER(CLASS_GPU &gpuAddr, CLASS_MAPMAN &mapAddr, CLASS_ENTITYMANAGER &entAddr) {
+   CLASS_D3D11HELPER(CLASS_GPU &gpuAddr, CLASS_MAPMAN &mapAddr, CLASS_ENTMAN &entAddr) {
       map.gpu = ent.gpu = &gpuAddr;
       map.man = &mapAddr;
       ent.man = &entAddr;

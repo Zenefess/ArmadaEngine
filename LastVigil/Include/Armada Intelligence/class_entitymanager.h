@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_entitymanager.h          Created: 2023/05/06 *
- *                                Last modified: 2023/05/08 *
+ *                                Last modified: 2024/05/03 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -11,6 +11,7 @@
 #include "pch.h"
 #include "Data structures.h"
 #include "Entity structures.h"
+#include "Map structures.h"
 #include "Common functions.h"
 
 #define MAX_OBJECT_GROUPS    64
@@ -25,7 +26,6 @@
 #define MAX_OPAQUE_SPRITES   1048576
 #define MAX_TRANS_SPRITES    1048576
 
-typedef cENTMAN_THREAD_DATA * const cEMTDptr;
 
 extern vui128 ENTMAN_THREAD_STATUS;
 
@@ -35,11 +35,11 @@ static void _ET_Cull_Unchanged(ptr);
 
 inline void transrotate(BONE_DGS &bone, cfl32 dist) { bone.pos.x -= dist * sinf(bone.rot.z); bone.pos.y += dist * cosf(bone.rot.z); }
 
-al32 struct CLASS_ENTITYMANAGER {
+al32 struct CLASS_ENTMAN {
    OBJECT_GROUP objGroup[MAX_OBJECT_GROUPS] {};
    ENTITY_GROUP entGroup[MAX_ENTITY_GROUPS] {};
 
-   ENTMAN_THREAD_DATA *threadData = (ENTMAN_THREAD_DATA *)zalloc32(sizeof(ENTMAN_THREAD_DATA) * 2);
+   EMTDptrc threadData = (EMTDptr)zalloc32(sizeof(ENTMAN_THREAD_DATA) * 2);
 
    si32 siObjects[MAX_OBJECT_GROUPS] {}, siParts[MAX_OBJECT_GROUPS] {};
    si32 siEntities[MAX_ENTITY_GROUPS] {}, siBones[MAX_ENTITY_GROUPS] {};
@@ -47,10 +47,10 @@ al32 struct CLASS_ENTITYMANAGER {
    si32 siEntityGroups = 0, siObjectGroups = 0, siEntry = 0;
 
 #ifdef AE_PTR_LIB
-   CLASS_ENTITYMANAGER(void) { ptrLib[7] = this; }
+   CLASS_ENTMAN(void) { ptrLib[7] = this; }
 #endif
 
-   inline cENT_PTRS const Pointers(csi16 objectGroup, csi16 entityGroup) const {
+   inline cENT_PTRSc Pointers(csi16 objectGroup, csi16 entityGroup) const {
       return { objGroup[objectGroup].object, objGroup[objectGroup].part, entGroup[entityGroup].bone_dgs, entGroup[entityGroup].spriteO, entGroup[entityGroup].spriteT };
    }
 
@@ -127,14 +127,14 @@ al32 struct CLASS_ENTITYMANAGER {
       return 0x80000001;
    }
 
-   cID32 CreateObject(cui16 group, cVEC3Df position, cVEC3Df orientation, cVEC2Df size, cVEC6Df recoilState, cVEC4Df texCoords, cui8 atlasIndex, csi8 partCount) {
+   cID32c CreateObject(cui16 group, cVEC3Df position, cVEC3Df orientation, cVEC2Df size, cVEC6Df recoilState, cVEC4Df texCoords, cui8 atlasIndex, csi8 partCount) {
       cui16 index = objGroup[group].totalObjects++;
 
       if(index >= MAX_OBJECTS) return { 0x08000, 0x01 };
 
       OBJECT_GROUP &curGroup = objGroup[group];
 
-      csi32 partIndex = curGroup.totalParts;
+      cui32 partIndex = curGroup.totalParts;
       csi32 lastIndex = (curGroup.totalParts += partCount);
 
       curGroup.object[index].ppi = partIndex;
@@ -142,29 +142,15 @@ al32 struct CLASS_ENTITYMANAGER {
 
       PART_IGS &curPart = curGroup.part[partIndex];
 
-      curGroup.part[partIndex] = { position, atlasIndex, orientation, NULL, size, Fix16x4(texCoords, 32768.0f), { recoilState.pos, NULL, recoilState.ori } };
-/*      curPart.pos     = position;
-      curPart.ai_bits = atlasIndex;
-      curPart.rot     = orientation;
-      curPart.size    = size;
-      curPart.tc      = Fix16x4(texCoords, 32768.0f);
-      curPart.trans   = { recoilState.pos, NULL, recoilState.ori };*/
+      curGroup.part[partIndex] = { position, atlasIndex, orientation, partIndex, size, Fix16x4(texCoords, 32768.0f), { recoilState.pos, NULL, recoilState.ori } };
 
-      for(ui8 i = partIndex + 1; i < lastIndex; i++) {
-         curGroup.part[i] = { { 0.0f, 0.0f, 0.0f }, atlasIndex, { 0.0f, 0.0f, 0.0f }, NULL, { 1.0f, 1.0f },
-                              Fix16x4(texCoords, 32768.0f), { { 0.0f, 0.0f, 0.0f }, NULL, { 0.0f, 0.0f, 0.0f } } };
-/*         part[group][i].pos     = { 0.0f, 0.0f, 0.0f };
-         part[group][i].ai_bits = atlasIndex;
-         part[group][i].rot     = { 0.0f, 0.0f, 0.0f };
-         part[group][i].size    = { 1.0f, 1.0f };
-         part[group][i].tc      = Fix16x4(texCoords, 32768.0f);
-         part[group][i].trans   = { { 0.0f, 0.0f, 0.0f }, NULL, { 0.0f, 0.0f, 0.0f } };*/
-      }
+      for(ui8 i = partIndex + 1; i < lastIndex; i++)
+         curGroup.part[i] = { null3Df, atlasIndex, null3Df, partIndex, {1.0f, 1.0f}, Fix16x4(texCoords, 32768.0f), { .sliderot = { null128f, null128f } } };
 
       return { index, group };
    }
 
-   cID64 CreateEntity(cui32 group, ID32 object, cbool transparent) {
+   cID64c CreateEntity(cui32 group, ID32 object, cbool transparent) {
       cui32 index = entGroup[group].totalEntities++;
 
       if(index >= MAX_ENTITIES) return { 0x080000001, 0x0 };
@@ -224,7 +210,7 @@ al32 struct CLASS_ENTITYMANAGER {
       return { index, group };
    }
 
-   cID64 CreateEntity(cui32 group, ID32 object, cVEC3Df position, cVEC3Df orientation, cVEC3Df size) {
+   cID64c CreateEntity(cui32 group, ID32 object, cVEC3Df position, cVEC3Df orientation, cVEC3Df size) {
       cui32 index = entGroup[group].totalEntities++;
 
       if(index >= MAX_ENTITIES) return { 0x080000001, 0x0 };
@@ -290,7 +276,7 @@ al32 struct CLASS_ENTITYMANAGER {
          entity[group][entityIndex].brain.tb  = -1;
          entity[group][entityIndex].soundBank = -1;
 */
-         curGroup.bone[i] = { { 0.0f, 0.0f, 0.0f }, 1.0f, 1.0f, 100.0f, 293.0f, 273.0f, 373.0f, 1.0f, { 0.875f, 0.875f, 0.875f }, 3 };
+         curGroup.bone[i] = { null3Df, 1.0f, 1.0f, 100.0f, 293.0f, 273.0f, 373.0f, 1.0f, { 0.875f, 0.875f, 0.875f }, 3 };
          curGroup.bone_dgs[i].size = { 1.0f, 1.0f, 1.0f };
          curGroup.bone_dgs[i].sai  = curGroup.totalSpritesO++;
          curGroup.bone_dgs[i].opi  = srcGroup.object[object.index].ppi + i - boneIndex;
@@ -342,7 +328,7 @@ al32 struct CLASS_ENTITYMANAGER {
       return boneIndex;
    }
 
-   inline void SetPart(cID32 object, csi8 part, cVEC3Df position, cVEC3Df orientation, cVEC2Df size, cVEC6Df recoilState, cVEC4Df texCoords, cui8 atlasIndex) const {
+   inline void SetPart(cID32c object, csi8 part, cVEC3Df position, cVEC3Df orientation, cVEC2Df size, cVEC6Df recoilState, cVEC4Df texCoords, cui8 atlasIndex) const {
 ///--- To do...
    }
 
@@ -409,7 +395,64 @@ al32 struct CLASS_ENTITYMANAGER {
                                                    Fix16(emissionMap, 0.0f, 128.0f), Fix8(normalMap), Fix8(roughnessMap), Fix8(paintMap) };
    }
 
-   inline si32 Cull(ui32aptrc arrayVisible, ui32ptrc arrayUnchanged, csi32 entityGroup, csi8 threadCount) {
+   void UpdateEntityAssociation(cID64c index) {
+
+   }
+
+   // Fill association list with the ID of every entity the line between endPoints touches. Returns ID of closest entity; 0x080000001 if list is empty
+   cID64 PopulateEntityList(MAP_DESC &md, cVEC2Ds32 curPos, cVEC2Du8 camProj) const {
+      ///--- Be smarter... ---///
+      static fl32ptrc dist = (fl32ptr)malloc16(1024 * sizeof(fl32));
+
+      CLASS_CAM &cam = *(CLASS_CAM *)ptrLib[5];
+      ID64ptrc   ei  = md.wlrv.entityIndex;
+
+      fl32x4  sphere;
+      VEC3Df &position = (VEC3Df &)sphere;
+      si32    cell     = 0;
+      si32    index    = 0;
+
+      md.wlrv.entityCount = 0;
+
+      for(; cell < md.wlrv.cellCount; cell++) {
+         for(; index < (md.entListDim * cell); index++) {
+            ///--- Add test for bounding shape ---///
+            position           = entGroup[md.entityList[index].group].entity[md.entityList[index].index].geometry->pos;
+            sphere.m128_f32[3] = entGroup[md.entityList[index].group].entity[md.entityList[index].index].vbd.x;
+
+            if(cam.CursorSphereIntersect(sphere, curPos, camProj) >= 0.0f)
+               ei[md.wlrv.entityCount++] = md.entityList[index];
+         }
+      }
+
+      // List is empty
+      if(!md.wlrv.entityCount) return { 0x080000001 };
+
+      // Calculate distances from camera
+      dist[0] = cam.DistanceFromCamera((fl32x4 &)entGroup[ei[0].group].entity[ei[0].index].geometry->pos, 0);
+      for(index = 1; index < md.wlrv.entityCount; index++) {
+         // Remov if duplicate
+         if(ei[index - 1].id == ei[index].id) {
+            ei[index].id = ei[--md.wlrv.entityCount].id;
+            continue;
+         }
+         dist[index] = cam.DistanceFromCamera((fl32x4 &)entGroup[ei[index].group].entity[ei[index].index].geometry->pos, 0);
+      }
+
+      // Insertion sort
+      for(cell = 1; cell < md.wlrv.entityCount;)
+         for(index = cell; index >= 1;) {
+            cfl32x4 &prevPos = (fl32x4 &)entGroup[ei[index - 1].group].entity[ei[index - 1].index].geometry->pos;
+            cfl32x4 &currPos = (fl32x4 &)entGroup[ei[index].group].entity[ei[index].index].geometry->pos;
+
+            // Compare by distance
+            if(dist[index - 1] > dist[index]) { swap(ei[index - 1].id, ei[index].id); swap(dist[index - 1], dist[index--]); }
+         }
+
+      return ei[0];
+   }
+
+   si32 Cull(ui32ptrptrc arrayVisible, ui32ptrc arrayUnchanged, csi32 entityGroup, csi8 threadCount) {
       static ui8 uiTHREADS = 0;
 
 //      if(!arrayVisible) { MAN_THREAD_STATUS.m128i_u8[0] &= 0x0F3; return 0; }
@@ -476,9 +519,8 @@ al32 struct CLASS_ENTITYMANAGER {
    }
 
    inline cVEC4Du32 WaitForCulling(cDWORD sleepDelay) const {
-      while(ENTMAN_THREAD_STATUS.m128i_u8[0] & 0x03)
-         //Sleep(sleepDelay);
-         _mm_pause();
+      if(sleepDelay) while(ENTMAN_THREAD_STATUS.m128i_u8[0] & 0x03) Sleep(sleepDelay);
+      else while(ENTMAN_THREAD_STATUS.m128i_u8[0] & 0x03) _mm_pause();
 
       cVEC2Du64 entManThreadData = (cVEC2Du64 &)ENTMAN_THREAD_STATUS;
 
@@ -497,10 +539,10 @@ static void _ET_Cull_Nonvisible_and_Unchanged(ptr threadData) {
       static si64 frequencyTics, startTics, endTics;
       QueryPerformanceFrequency((LARGE_INTEGER *)&frequencyTics);
 
-   CLASS_CAM    * const camMan = (CLASS_CAM *)ptrLib[5];
-   CLASS_ENTITYMANAGER * const entMan = (CLASS_ENTITYMANAGER *)ptrLib[7];
+   CLASS_CAM    &camMan = *(CLASS_CAM *)ptrLib[5];
+   CLASS_ENTMAN &entMan = *(CLASS_ENTMAN *)ptrLib[7];
 
-   cEMTDptr      data[2] = { (cEMTDptr)threadData, (cEMTDptr)threadData + 1 };
+   cEMTDptrc     data[2] = { (cEMTDptrc)threadData, (cEMTDptrc)threadData + 1 };
    ENTITY_GROUP &group   = *(*data[0]).group;
 
    cui32 entityCount = group.totalEntities;
@@ -551,7 +593,7 @@ static void _ET_Cull_Nonvisible_and_Unchanged(ptr threadData) {
             sphereData[j].vector.w = group.entity[entityIndex].vbd.x;
          }
 
-         cui8 visible = camMan->SphereFrustumIntersect8(sphereData, 0);
+         cui8 visible = camMan.SphereFrustumIntersect8(sphereData, 0);
 
          for(k = 0; k < j; k++)
             if(visible & (0x01 << k)) {
@@ -560,16 +602,16 @@ static void _ET_Cull_Nonvisible_and_Unchanged(ptr threadData) {
 //               cui64 bitOS   = (ui64)0x01 << (index & 0x03F);
                cENTITY &curEntity = group.entity[entityIndex];
 
-               cfl32 distance = camMan->DistanceFromCamera(sphereData[k].xmm, 0);
+               cfl32 distance = camMan.DistanceFromCamera(sphereData[k].xmm, 0);
                // Change hard limits to LOD scalars
                if(curEntity.geometry->size.x > 0.0f) {
-//                        if(distance < 128.0f)
+//                  if(distance < 128.0f)
                   for(l = 0; l <= curEntity.numParts; l++)
                      nearBones[nearCount++] = curEntity.boneIndex + l;
-//                        else if(distance < 512.0f)
-//                           medBones[medCount++] = index;
-//                        else if(distance < 2048.0f)
-//                           farBones[farCount++] = index;
+//                  else if(distance < 512.0f)
+//                     medBones[medCount++] = index;
+//                  else if(distance < 2048.0f)
+//                     farBones[farCount++] = index;
                }
             }
       }

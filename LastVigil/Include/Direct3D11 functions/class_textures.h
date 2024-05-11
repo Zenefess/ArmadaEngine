@@ -1,17 +1,24 @@
 /************************************************************
  * File: class_textures.h               Created: 2022/10/20 *
- *                                Last modified: 2023/01/13 *
+ *                                Last modified: 2024/05/06 *
  *                                                          *
  * Desc: 4 textures per material.                           *
+ *                                                          *
+ * Notes: 2024/05/06: Added support for data tracking       *
  *                                                          *
  *  Copyright (c) David William Bull. All rights reserved.  *
  ************************************************************/
 #pragma once
 
-#define MAX_TEXTURES   1024
-#define MAX_SRVS      1024
+#ifdef DATA_TRACKING
+#include "data tracking.h"
+extern SYSTEM_DATA sysData;
+#endif
 
-enum TEXTYPE {   GUI, TERRAIN, SPRITE   };
+#define MAX_TEXTURES 1024
+#define MAX_SRVS     1024
+
+enum TEXTYPE { GUI, TERRAIN, SPRITE };
 
 al32 struct CLASS_TEXTURES {
 
@@ -23,26 +30,31 @@ al32 struct CLASS_TEXTURES {
    D3DX11_IMAGE_LOAD_INFO    ilo;
    si32                      index = 0;
 
-   void ConfigData(UINT width, UINT height, UINT depth, UINT mipLevels, UINT usage, bool cpuRead, bool cpuWrite, bool shaderResource, bool renderTarget, bool unorderedAccess) {
-      ilo.Width = width;
-      ilo.Height = height;
-      ilo.Depth = depth;
-      ilo.FirstMipLevel = 0;
-      ilo.MipLevels = mipLevels;
-      ilo.Usage = (D3D11_USAGE)usage;
-      ilo.BindFlags = ((shaderResource & 1) << 3) | ((renderTarget & 1) << 5) | ((unorderedAccess & 1) << 7);
+   void ConfigData(cDWORD width, cDWORD height, cDWORD depth, cDWORD mipLevels, cDWORD usage, cbool cpuRead, cbool cpuWrite, cbool shaderResource, cbool renderTarget, cbool unorderedAccess) {
+      ilo.Width          = width;
+      ilo.Height         = height;
+      ilo.Depth          = depth;
+      ilo.FirstMipLevel  = 0;
+      ilo.MipLevels      = mipLevels;
+      ilo.Usage          = (D3D11_USAGE)usage;
+      ilo.BindFlags      = ((shaderResource & 1) << 3) | ((renderTarget & 1) << 5) | ((unorderedAccess & 1) << 7);
       ilo.CpuAccessFlags = ((cpuRead & 1) << 16) | ((cpuWrite & 1) << 17);
-      ilo.MiscFlags = NULL;
-      ilo.Format = DXGI_FORMAT_FROM_FILE;
-      ilo.Filter = D3DX11_FILTER_TRIANGLE;
-      ilo.MipFilter = D3DX11_FILTER_TRIANGLE;
+      ilo.MiscFlags      = NULL;
+      ilo.Format         = DXGI_FORMAT_FROM_FILE;
+      ilo.Filter         = D3DX11_FILTER_TRIANGLE;
+      ilo.MipFilter      = D3DX11_FILTER_TRIANGLE;
    }
 
    si32 Load2D(LPCTSTR filename) {
       if(index > MAX_TEXTURES) return -1;
-      D3DX11CreateTextureFromFile(dev, filename, &ilo, NULL, (ID3D11Resource **)&pTexture[index], &hr);
+      D3DX11CreateTextureFromFileW(dev, filename, &ilo, NULL, (ID3D11Resource **)&pTexture[index], &hr);
       if(FAILED(hr)) Try(stTexFromFile, -2);
       pTexture[index]->GetDesc(&td);
+#ifdef DATA_TRACKING
+      sysData.storage.filesOpened++;
+      sysData.storage.filesClosed++;
+      sysData.storage.bytesRead += td.ArraySize;
+#endif
       dev->CreateShaderResourceView(pTexture[index], NULL, &pSRV[index]);
       return index++;
    }
@@ -60,14 +72,29 @@ al32 struct CLASS_TEXTURES {
       D3DX11CreateTextureFromFile(dev, stFilename[0], &ilo, NULL, (ID3D11Resource **)&pTexture[index], &hr);
       if(FAILED(hr)) Try(stTexFromFile, -2);
       pTexture[index]->GetDesc(&td);
+#ifdef DATA_TRACKING
+      sysData.storage.filesOpened++;
+      sysData.storage.filesClosed++;
+      sysData.storage.bytesRead += td.ArraySize;
+#endif
       dev->CreateShaderResourceView(pTexture[index], NULL, &pSRV[index]);
       D3DX11CreateTextureFromFile(dev, stFilename[1], &ilo, NULL, (ID3D11Resource **)&pTexture[++index], &hr);
       if(FAILED(hr)) Try(stTexFromFile, -3);
       pTexture[index]->GetDesc(&td);
+#ifdef DATA_TRACKING
+      sysData.storage.filesOpened++;
+      sysData.storage.filesClosed++;
+      sysData.storage.bytesRead += td.ArraySize;
+#endif
       dev->CreateShaderResourceView(pTexture[index], NULL, &pSRV[index]);
       D3DX11CreateTextureFromFile(dev, stFilename[2], &ilo, NULL, (ID3D11Resource **)&pTexture[++index], &hr);
       if(FAILED(hr)) Try(stTexFromFile, -4);
       pTexture[index]->GetDesc(&td);
+#ifdef DATA_TRACKING
+      sysData.storage.filesOpened++;
+      sysData.storage.filesClosed++;
+      sysData.storage.bytesRead += td.ArraySize;
+#endif
       dev->CreateShaderResourceView(pTexture[index], NULL, &pSRV[index]);
       return index++ - 2;
    }

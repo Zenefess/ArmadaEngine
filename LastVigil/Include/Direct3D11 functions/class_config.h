@@ -8,6 +8,11 @@
  ************************************************************/
 #pragma once
 
+#ifdef DATA_TRACKING
+#include "data tracking.h"
+extern SYSTEM_DATA sysData;
+#endif
+
 al16 struct CLASS_CONFIG {   // malloc pointers and change to "&" where appropriate
    al16 ID3DBlob                *pBlob[6][100] {};
         ID3D11VertexShader      *pVS[100] {};
@@ -37,6 +42,11 @@ al16 struct CLASS_CONFIG {   // malloc pointers and change to "&" where appropri
          for(ui16 index = 0; index < files->uiBanks[type]; index++)
             if(files->stShader[type][index]) {
                Try(stReadToBlob, D3DReadFileToBlob(files->stShader[type][index], &pBlob[type][index]));
+#ifdef DATA_TRACKING
+               sysData.storage.filesOpened++;
+               sysData.storage.filesClosed++;
+               sysData.storage.bytesRead += pBlob[type][index]->GetBufferSize();
+#endif
                switch(type) {
                case 1:
                   if(pBlob[type][index]) Try(stCreateVS, dev->CreateVertexShader(pBlob[type][index]->GetBufferPointer(), pBlob[type][index]->GetBufferSize(), NULL, &pVS[index]));

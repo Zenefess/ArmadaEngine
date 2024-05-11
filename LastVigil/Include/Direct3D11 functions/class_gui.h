@@ -1147,10 +1147,13 @@ al32 struct CLASS_GUI {
       cfl32   pixPos[2] = { float(ctrlVars.curCoord[0]), float(ctrlVars.curCoord[1]) };
       cVEC2Df curPos    = { (pixPos[0] / scrDim[0]), pixPos[1] / scrDim[1] };
 
+      VEC2Df      adjPos;
       GUI_INDICES indices[8];
       si32        siElement = -1;
+      si16        i = 0;
+      si16        j = 0;
 
-      for(si16 i = 0, j = 0; i < interfaceProfile[interfaceIndex].vertCount; ++i, j = i & 0x07) {
+      for(; i < interfaceProfile[interfaceIndex].vertCount; ++i, j = i & 0x07) {
          csi32 index = interfaceProfile[interfaceIndex].vertex[i];
          // If element inactive
          if(!(element[index].stateBits & 0x080)) continue;
@@ -1162,7 +1165,7 @@ al32 struct CLASS_GUI {
 
          const GUI_EL_DGS &curElVert = element_dgs[indices[j].vertex + ((element[index].elementType & 0x080) >> 7)];
 
-         VEC2Df adjPos = { (curPos.x - 0.5f) * ScrRes.dims[ScrRes.state].aspectI * 2.0f, curPos.y * 2.0f - 1.0f };
+         adjPos = { (curPos.x - 0.5f) * ScrRes.dims[ScrRes.state].aspectI * 2.0f, curPos.y * 2.0f - 1.0f };
 
          switch(curElVert.mods & 0x03) {
          case 1: // Rotate around element's center
@@ -1220,12 +1223,16 @@ al32 struct CLASS_GUI {
       cfl32   pixPos[2] = { float(ctrlVars.curCoord[0]), float(ctrlVars.curCoord[1]) };
       cVEC2Df curPos    = { (pixPos[0] / scrDim[0]), pixPos[1] / scrDim[1] };
 
+      VEC2Df      adjPos;
       GUI_INDICES indices[8];
+      si16        i = 0;
+      si16        j = 0;
       ui8         funcCount;
+      ui8         nextFuncIndex;
 
       activeElement.ymm.m256i_i32[7] = -1;
 
-      for(si16 i = 0, j = 0; i < interfaceProfile[interfaceIndex].vertCount; ++i, j = i & 0x07) {
+      for(; i < interfaceProfile[interfaceIndex].vertCount; ++i, j = i & 0x07) {
          csi32 index = interfaceProfile[interfaceIndex].vertex[i];
 
          // If element inactive
@@ -1234,12 +1241,12 @@ al32 struct CLASS_GUI {
          const GUI_EL_DGS &curElVert = element_dgs[element[index].vertexIndex + ((element[index].elementType & 0x080) >> 7)];
          const VEC4Df      coords    = element[index].activeCoords;
 
-         VEC2Df adjPos = { (curPos.x - 0.5f) * ScrRes.dims[ScrRes.state].aspectI * 2.0f, curPos.y * 2.0f - 1.0f };
+         adjPos = { (curPos.x - 0.5f) * ScrRes.dims[ScrRes.state].aspectI * 2.0f, curPos.y * 2.0f - 1.0f };
 
          indices[j].element = index;
          indices[j].vertex  = element[index].vertexIndex;
 
-         ipd.nextFuncIndex = 0;
+         nextFuncIndex = ipd.input.global; // Offset into UI function list
 
          switch(curElVert.mods & 0x03) {
          case 1: // Rotate around element's center
@@ -1265,27 +1272,27 @@ al32 struct CLASS_GUI {
                element[index].func.hover[0](indices[j].data);
 
             // onActivate for inputMask[0]
-            if(ipd.input.GUI >= 1 && !_mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[0])) {
+            if(ipd.input.ui >= 1 && !_mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[0])) {
                activeElement.ymm.m256i_i32[1] = index;
                if(element[index].function[2]) element[index].func.activate0[0](indices[j].data);
-               for(funcCount = 0; funcCount < ipd.funcCount[0].x; funcCount++, ipd.nextFuncIndex++)
-                  ipd.function[ipd.nextFuncIndex](indices[j].data);
+               for(funcCount = 0; funcCount < ipd.funcCount[0].x; funcCount++, nextFuncIndex++)
+                  ipd.function[nextFuncIndex](indices[j].data);
             }
 
             // onActivate for inputMask[1]
-            if(ipd.input.GUI >= 2 && !_mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[1])) {
+            if(ipd.input.ui >= 2 && !_mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[1])) {
                activeElement.ymm.m256i_i32[2] = index;
                if(element[index].function[4]) element[index].func.activate1[0](indices[j].data);
-               for(funcCount = 0; funcCount < ipd.funcCount[1].x; funcCount++, ipd.nextFuncIndex++)
-                  ipd.function[ipd.nextFuncIndex](indices[j].data);
+               for(funcCount = 0; funcCount < ipd.funcCount[1].x; funcCount++, nextFuncIndex++)
+                  ipd.function[nextFuncIndex](indices[j].data);
             }
 
             // onActivate for inputMask[2~]
-            for(ui8 imCount = 2; imCount < ipd.input.GUI; imCount++) {
+            for(ui8 imCount = 2; imCount < ipd.input.ui; imCount++) {
                if(!_mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[imCount])) {
                   if(imCount < 7) activeElement.ymm.m256i_i32[imCount + 1] = index;
-                  for(funcCount = 0; funcCount < ipd.funcCount[imCount].x; funcCount++, ipd.nextFuncIndex++)
-                     ipd.function[ipd.nextFuncIndex](indices[j].data);
+                  for(funcCount = 0; funcCount < ipd.funcCount[imCount].x; funcCount++, nextFuncIndex++)
+                     ipd.function[nextFuncIndex](indices[j].data);
                }
             }
          } else
@@ -1294,27 +1301,27 @@ al32 struct CLASS_GUI {
                element[index].func.hover[1](indices[j].data);
 
          // offActivate for inputMask[0]
-         if(ipd.input.GUI >= 1 && _mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[0])) {
+         if(ipd.input.ui >= 1 && _mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[0])) {
             activeElement.ymm.m256i_i32[0] = -1;
             if(element[index].function[3]) element[index].func.activate0[1](indices[j].data);
-            for(funcCount = 0; funcCount < ipd.funcCount[0].y; funcCount++, ipd.nextFuncIndex++)
-               ipd.function[ipd.nextFuncIndex](indices[j].data);
+            for(funcCount = 0; funcCount < ipd.funcCount[0].y; funcCount++, nextFuncIndex++)
+               ipd.function[nextFuncIndex](indices[j].data);
          }
 
          // offActivate for inputMask[1]
-         if(ipd.input.GUI >= 2 && _mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[1])) {
+         if(ipd.input.ui >= 2 && _mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[1])) {
             activeElement.ymm.m256i_i32[1] = -1;
             if(element[index].function[5]) element[index].func.activate1[1](indices[j].data);
-            for(funcCount = 0; funcCount < ipd.funcCount[1].y; funcCount++, ipd.nextFuncIndex++)
-               ipd.function[ipd.nextFuncIndex](indices[j].data);
+            for(funcCount = 0; funcCount < ipd.funcCount[1].y; funcCount++, nextFuncIndex++)
+               ipd.function[nextFuncIndex](indices[j].data);
          }
 
          // onActivate for inputMask[2~]
-         for(ui8 imCount = 2; imCount < ipd.input.GUI; imCount++) {
+         for(ui8 imCount = 2; imCount < ipd.input.ui; imCount++) {
             if(!_mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[imCount])) {
                if(imCount < 7) activeElement.ymm.m256i_i32[imCount + 1] = -1;
-               for(funcCount = 0; funcCount < ipd.funcCount[imCount].x; funcCount++, ipd.nextFuncIndex++)
-                  ipd.function[ipd.nextFuncIndex](indices[j].data);
+               for(funcCount = 0; funcCount < ipd.funcCount[imCount].x; funcCount++, nextFuncIndex++)
+                  ipd.function[nextFuncIndex](indices[j].data);
             }
          }
       }

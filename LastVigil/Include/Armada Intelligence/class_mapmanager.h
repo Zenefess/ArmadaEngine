@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_mapmanager.h             Created: 2022/11/29 *
- *                                Last modified: 2024/05/29 *
+ *                                Last modified: 2024/05/01 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -19,13 +19,11 @@
 #define MAX_CELL_Z 1024
 #define MAX_CELLS  (MAX_CELL_X * MAX_CELL_Y * MAX_CELL_Z)
 
-#define MAX_MAPS   2097152
+#define MAX_MAPS   2097152 // 2 * 1,024 * 1,024
 #define MAX_WORLDS 512
 
 #define MAX_TABLES   64
 #define MAX_ELEMENTS (MAX_TABLES * 256)
-
-typedef cMAPMAN_THREAD_DATA * const cMMTDptr;
 
 extern vui128 MAPMAN_THREAD_STATUS;
 
@@ -42,22 +40,21 @@ al32 struct CLASS_MAPMAN {
 
    cwchar stMapsDir[10] = L"map_data\\";
 
-   MAPMAN_THREAD_DATA *threadData = (MAPMAN_THREAD_DATA *)zalloc32(sizeof(MAPMAN_THREAD_DATA) * 2);
+   MMTDptrc threadData = (MMTDptr)zalloc32(sizeof(MAPMAN_THREAD_DATA) * 2);
 
-   WORLD      *world;
+   WORLDptr    world;
    ELEM_TABLE *table;
    ELEM_TYPE  *element;
    ELEM_IGS   *elem_igs;
 
-   wchar      (*stPeriodicName)[MAX_TABLES];
-   wchar      (*stElementName)[MAX_TABLES];
-   LPDWORD      pBytes = (LPDWORD)&uiBytes;
+   wchar (*stPeriodicName)[MAX_TABLES];
+   wchar (*stElementName)[MAX_TABLES];
 
    VEC2Ds32 worldXY;            // Current world cell
    VEC3Ds32 mapXYZ;             // Current map cell
    si32     totalWorlds;        // Number of worlds
    si32     elemTables;         // Number of element tables
-   ui32     uiBytes;            // Bytes written
+   ui32     uiBytes = 0;        // Bytes written
    ui16     uiMapBoundaries;    // Map edge flags: (Per bit... 0:Finite boundaries, 1:Wrap coordinates) 0-4==X axis, 5-9==Y axis, 10-14==Z axis
    ui8      uiPeriodicName = 0;
    ui8      uiElementName  = 0;
@@ -66,13 +63,13 @@ al32 struct CLASS_MAPMAN {
 #ifdef AE_PTR_LIB
       ptrLib[6] = this;
 #endif
-      world    = (WORLD *)zalloc32(sizeof(WORLD[MAX_WORLDS]));
+      world    = (WORLDptr)zalloc32(sizeof(WORLD[MAX_WORLDS]));
       table    = (ELEM_TABLE *)zalloc32(sizeof(ELEM_TABLE[MAX_TABLES]));
       element  = (ELEM_TYPE *)zalloc16(sizeof(ELEM_TYPE[MAX_ELEMENTS]));
       elem_igs = (ELEM_IGS *)zalloc32(sizeof(ELEM_IGS[MAX_ELEMENTS]));
 }
 
-   inline MAP_PTRS const Pointers(csi16 worldIndex, csi16 mapIndex) const {
+   inline cMAP_PTRSc Pointers(csi16 worldIndex, csi16 mapIndex) const {
       return { NULL, world[worldIndex].map[mapIndex]->pDGS, world[worldIndex].map[mapIndex]->pDPS, world[worldIndex].map[mapIndex]->pCB };
    }
 
@@ -155,26 +152,26 @@ al32 struct CLASS_MAPMAN {
       // Read primary data
       files.ReadLine(stPeriodicName[uiPeriodicName], hElementData);
       table[index].stName = stPeriodicName[uiPeriodicName++];
-      ReadFile(hElementData, &table[index].numElements, sizeof(ui32), pBytes, NULL);
+      ReadFile(hElementData, &table[index].numElements, sizeof(ui32), (LPDWORD)&uiBytes, NULL);
       // Read element data
       table[index].element = (ELEM_TYPE *)malloc32(sizeof(ELEM_TYPE) * table[index].numElements);
       for(i = 0; i < table[index].numElements; i++) {
-         ReadFile(hElementData, stElementName[uiElementName], DWORD(wcslen(table[index].element[i].stName) + 1) * sizeof(wchar), pBytes, NULL);
+         ReadFile(hElementData, stElementName[uiElementName], DWORD(wcslen(table[index].element[i].stName) + 1) * sizeof(wchar), (LPDWORD)&uiBytes, NULL);
          table[index].element[i].stName = stElementName[uiElementName++];
-         ReadFile(hElementData, &table[index].element[i].tmp, sizeof(float), pBytes, NULL);
-         ReadFile(hElementData, &table[index].element[i].tbp, sizeof(float), pBytes, NULL);
-         ReadFile(hElementData, &table[index].element[i].tip, sizeof(float), pBytes, NULL);
-         ReadFile(hElementData, &table[index].element[i].tp, sizeof(float), pBytes, NULL);
-         ReadFile(hElementData, &table[index].element[i].eft, sizeof(float), pBytes, NULL);
-         ReadFile(hElementData, &table[index].element[i].edr, sizeof(float), pBytes, NULL);
-         ReadFile(hElementData, &table[index].element[i].er, sizeof(VEC2Du16), pBytes, NULL);
-         ReadFile(hElementData, &table[index].element[i].ad, sizeof(VEC2Du16), pBytes, NULL);
-         ReadFile(hElementData, &table[index].element[i].acid, sizeof(ui16), pBytes, NULL);
-         ReadFile(hElementData, &table[index].element[i].ede, sizeof(ui8), pBytes, NULL);
-         ReadFile(hElementData, &table[index].element[i].efe, sizeof(ui8), pBytes, NULL);
+         ReadFile(hElementData, &table[index].element[i].tmp, sizeof(float), (LPDWORD)&uiBytes, NULL);
+         ReadFile(hElementData, &table[index].element[i].tbp, sizeof(float), (LPDWORD)&uiBytes, NULL);
+         ReadFile(hElementData, &table[index].element[i].tip, sizeof(float), (LPDWORD)&uiBytes, NULL);
+         ReadFile(hElementData, &table[index].element[i].tp, sizeof(float), (LPDWORD)&uiBytes, NULL);
+         ReadFile(hElementData, &table[index].element[i].eft, sizeof(float), (LPDWORD)&uiBytes, NULL);
+         ReadFile(hElementData, &table[index].element[i].edr, sizeof(float), (LPDWORD)&uiBytes, NULL);
+         ReadFile(hElementData, &table[index].element[i].er, sizeof(VEC2Du16), (LPDWORD)&uiBytes, NULL);
+         ReadFile(hElementData, &table[index].element[i].ad, sizeof(VEC2Du16), (LPDWORD)&uiBytes, NULL);
+         ReadFile(hElementData, &table[index].element[i].acid, sizeof(ui16), (LPDWORD)&uiBytes, NULL);
+         ReadFile(hElementData, &table[index].element[i].ede, sizeof(ui8), (LPDWORD)&uiBytes, NULL);
+         ReadFile(hElementData, &table[index].element[i].efe, sizeof(ui8), (LPDWORD)&uiBytes, NULL);
       }
       table[index].pIGS = (ELEM_IGS *)malloc32(sizeof(ELEM_IGS) * table[index].numElements);
-      ReadFile(hElementData, table[index].pIGS, sizeof(ELEM_IGS) * table[index].numElements, pBytes, NULL);
+      ReadFile(hElementData, table[index].pIGS, sizeof(ELEM_IGS) * table[index].numElements, (LPDWORD)&uiBytes, NULL);
 
       return index;
    }
@@ -188,26 +185,26 @@ al32 struct CLASS_MAPMAN {
       HANDLE hElementData = CreateFile(files.stTemp, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
       // Write tag line: 2[Engine].Elements.2[Format version]1[Compression method]
-      WriteFile(hElementData, "AE.Elements.01u\0", 16, pBytes, NULL);
+      WriteFile(hElementData, "AE.Elements.01u\0", 16, (LPDWORD)&uiBytes, NULL);
       // Write primary data
-      WriteFile(hElementData, table[index].stName, DWORD(wcslen(table[index].stName) + 1) * sizeof(wchar), pBytes, NULL);
-      WriteFile(hElementData, &table[index].numElements, sizeof(ui32), pBytes, NULL);
+      WriteFile(hElementData, table[index].stName, DWORD(wcslen(table[index].stName) + 1) * sizeof(wchar), (LPDWORD)&uiBytes, NULL);
+      WriteFile(hElementData, &table[index].numElements, sizeof(ui32), (LPDWORD)&uiBytes, NULL);
       // Write element data
       for(si32 i = 0; i < table[index].numElements; i++) {
-         WriteFile(hElementData, table[index].element[i].stName, DWORD(wcslen(table[index].element[i].stName) + 1) * sizeof(wchar), pBytes, NULL);
-         WriteFile(hElementData, &table[index].element[i].tmp, sizeof(float), pBytes, NULL);
-         WriteFile(hElementData, &table[index].element[i].tbp, sizeof(float), pBytes, NULL);
-         WriteFile(hElementData, &table[index].element[i].tip, sizeof(float), pBytes, NULL);
-         WriteFile(hElementData, &table[index].element[i].tp, sizeof(float), pBytes, NULL);
-         WriteFile(hElementData, &table[index].element[i].eft, sizeof(float), pBytes, NULL);
-         WriteFile(hElementData, &table[index].element[i].edr, sizeof(float), pBytes, NULL);
-         WriteFile(hElementData, &table[index].element[i].er, sizeof(VEC2Du16), pBytes, NULL);
-         WriteFile(hElementData, &table[index].element[i].ad, sizeof(VEC2Du16), pBytes, NULL);
-         WriteFile(hElementData, &table[index].element[i].acid, sizeof(ui16), pBytes, NULL);
-         WriteFile(hElementData, &table[index].element[i].ede, sizeof(ui8), pBytes, NULL);
-         WriteFile(hElementData, &table[index].element[i].efe, sizeof(ui8), pBytes, NULL);
+         WriteFile(hElementData, table[index].element[i].stName, DWORD(wcslen(table[index].element[i].stName) + 1) * sizeof(wchar), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hElementData, &table[index].element[i].tmp, sizeof(float), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hElementData, &table[index].element[i].tbp, sizeof(float), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hElementData, &table[index].element[i].tip, sizeof(float), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hElementData, &table[index].element[i].tp, sizeof(float), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hElementData, &table[index].element[i].eft, sizeof(float), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hElementData, &table[index].element[i].edr, sizeof(float), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hElementData, &table[index].element[i].er, sizeof(VEC2Du16), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hElementData, &table[index].element[i].ad, sizeof(VEC2Du16), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hElementData, &table[index].element[i].acid, sizeof(ui16), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hElementData, &table[index].element[i].ede, sizeof(ui8), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hElementData, &table[index].element[i].efe, sizeof(ui8), (LPDWORD)&uiBytes, NULL);
       }
-      WriteFile(hElementData, table[index].pIGS, sizeof(ELEM_IGS) * table[index].numElements, pBytes, NULL);
+      WriteFile(hElementData, table[index].pIGS, sizeof(ELEM_IGS) * table[index].numElements, (LPDWORD)&uiBytes, NULL);
 
       CloseHandle(hElementData);
 
@@ -287,13 +284,13 @@ al32 struct CLASS_MAPMAN {
          curMap.desc.ptIndex = i;
       }
 
-      ReadFile(hMapData, &curMap.desc.mapDim, sizeof(VEC3Ds16), pBytes, NULL);
-      ReadFile(hMapData, &curMap.desc.chunkDim, sizeof(VEC3Ds16), pBytes, NULL);
-      ReadFile(hMapData, &curMap.desc.zso, sizeof(si16), pBytes, NULL);
-      ReadFile(hMapData, &curMap.oob.vel, sizeof(VEC2Df), pBytes, NULL);
-      ReadFile(hMapData, &curMap.oob.temp, sizeof(float), pBytes, NULL);
-      ReadFile(hMapData, &curMap.oob.rad, sizeof(float), pBytes, NULL);
-      ReadFile(hMapData, &curMap.oob.elec, sizeof(float), pBytes, NULL);
+      ReadFile(hMapData, &curMap.desc.mapDim, sizeof(VEC3Ds16), (LPDWORD)&uiBytes, NULL);
+      ReadFile(hMapData, &curMap.desc.chunkDim, sizeof(VEC3Ds16), (LPDWORD)&uiBytes, NULL);
+      ReadFile(hMapData, &curMap.desc.zso, sizeof(si16), (LPDWORD)&uiBytes, NULL);
+      ReadFile(hMapData, &curMap.oob.vel, sizeof(VEC2Df), (LPDWORD)&uiBytes, NULL);
+      ReadFile(hMapData, &curMap.oob.temp, sizeof(float), (LPDWORD)&uiBytes, NULL);
+      ReadFile(hMapData, &curMap.oob.rad, sizeof(float), (LPDWORD)&uiBytes, NULL);
+      ReadFile(hMapData, &curMap.oob.elec, sizeof(float), (LPDWORD)&uiBytes, NULL);
       curMap.oob.geometry = NULL;
       curMap.oob.pixel    = NULL;
       // Calculate cached values
@@ -320,15 +317,15 @@ al32 struct CLASS_MAPMAN {
       // Read cell data
       curMap.cell = (CELL *)malloc32(sizeof(CELL) * curMap.desc.mapCells);
       for(si32 i = 0; i < curMap.desc.mapCells; i++) {
-         ReadFile(hMapData, &curMap.cell[i].vel, sizeof(VEC2Df), pBytes, NULL);
-         ReadFile(hMapData, &curMap.cell[i].temp, sizeof(float), pBytes, NULL);
-         ReadFile(hMapData, &curMap.cell[i].rad, sizeof(float), pBytes, NULL);
-         ReadFile(hMapData, &curMap.cell[i].elec, sizeof(float), pBytes, NULL);
+         ReadFile(hMapData, &curMap.cell[i].vel, sizeof(VEC2Df), (LPDWORD)&uiBytes, NULL);
+         ReadFile(hMapData, &curMap.cell[i].temp, sizeof(float), (LPDWORD)&uiBytes, NULL);
+         ReadFile(hMapData, &curMap.cell[i].rad, sizeof(float), (LPDWORD)&uiBytes, NULL);
+         ReadFile(hMapData, &curMap.cell[i].elec, sizeof(float), (LPDWORD)&uiBytes, NULL);
       }
       curMap.pDGS = (CELL_DGS *)malloc32(sizeof(CELL_DGS) * curMap.desc.mapCells);
-      ReadFile(hMapData, curMap.pDGS, sizeof(CELL_DGS) * curMap.desc.mapCells, pBytes, NULL);
+      ReadFile(hMapData, curMap.pDGS, sizeof(CELL_DGS) * curMap.desc.mapCells, (LPDWORD)&uiBytes, NULL);
       curMap.pDPS = (CELL_DPS *)malloc32(sizeof(CELL_DPS) * curMap.desc.mapCells);
-      ReadFile(hMapData, curMap.pDPS, sizeof(CELL_DPS) * curMap.desc.mapCells, pBytes, NULL);
+      ReadFile(hMapData, curMap.pDPS, sizeof(CELL_DPS) * curMap.desc.mapCells, (LPDWORD)&uiBytes, NULL);
       curMap.chunkVis = (ui64 *)malloc16(ui64(totalChunks + 7) >> 3);
       curMap.chunkMod = (ui64 *)malloc16(ui64(totalChunks + 7) >> 3);
 
@@ -343,13 +340,23 @@ al32 struct CLASS_MAPMAN {
       cui64      arraySize = ui64(sqrtf(dimExp.vector.x + dimExp.vector.y + dimExp.vector.z) * 2.0f);
 
       curMap.desc.wlrv.cellIndex   = (si32ptr)zalloc32(arraySize * sizeof(si32));
-      curMap.desc.wlrv.entityIndex = (si32ptr)zalloc32(arraySize * 16 * sizeof(si32)); // Aerage of 16 units per cubic metre
+      curMap.desc.wlrv.entityIndex = (ID64ptr)zalloc32(arraySize * 16 * sizeof(ID64)); // Average of 16 units per cubic metre
    }
 
-   // Deallocate a map's .wlrv arrays
    inline void DestroySelectedCellBuffer(csi32 worldIndex, csi32 mapIndex) const {
       mfree((*world[worldIndex].map[mapIndex]).desc.wlrv.cellIndex);
       mfree((*world[worldIndex].map[mapIndex]).desc.wlrv.entityIndex);
+   }
+
+   // Allocate RAM for a map's .entityList array
+   inline void CreateAssociationBuffer(csi32 worldIndex, csi32 mapIndex) const {
+      MAP &curMap = *world[worldIndex].map[mapIndex];
+
+      curMap.desc.entityList = (ID64ptr)salloc32((ui64)curMap.desc.entListDim * (ui64)curMap.desc.mapCells * sizeof(ID64), max256);
+   }
+
+   inline void DestroyAssociationBuffer(csi32 worldIndex, csi32 mapIndex) const {
+      mfree((*world[worldIndex].map[mapIndex]).desc.entityList);
    }
 
    cui32 SaveMap(wchptrc filename, csi32 worldIndex, csi32 mapIndex) {
@@ -363,27 +370,27 @@ al32 struct CLASS_MAPMAN {
       HANDLE hMapData = CreateFile(files.stTemp, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
       // Write tag line: 2[Engine].4[Frontend].2[Data type].3[Format version]1[Compression method]
-      WriteFile(hMapData, "AE.LV01.MD.001u\0", 16, pBytes, NULL);
+      WriteFile(hMapData, "AE.LV01.MD.001u\0", 16, (LPDWORD)&uiBytes, NULL);
       // Write critical map information
-      WriteFile(hMapData, curMap.desc.stName, DWORD(wcslen(curMap.desc.stName) + 1) * sizeof(wchar), pBytes, NULL);
-      WriteFile(hMapData, curMap.desc.stInfo, DWORD(wcslen(curMap.desc.stInfo) + 1) * sizeof(wchar), pBytes, NULL);
-      WriteFile(hMapData, table[curMap.desc.ptIndex].stName, DWORD(wcslen(table[curMap.desc.ptIndex].stName) + 1) * sizeof(wchar), pBytes, NULL);
-      WriteFile(hMapData, &curMap.desc.mapDim, sizeof(VEC3Ds16), pBytes, NULL);
-      WriteFile(hMapData, &curMap.desc.chunkDim, sizeof(VEC3Ds16), pBytes, NULL);
-      WriteFile(hMapData, &curMap.desc.zso, sizeof(si16), pBytes, NULL);
-      WriteFile(hMapData, &curMap.oob.vel, sizeof(VEC2Df), pBytes, NULL);
-      WriteFile(hMapData, &curMap.oob.temp, sizeof(float), pBytes, NULL);
-      WriteFile(hMapData, &curMap.oob.rad, sizeof(float), pBytes, NULL);
-      WriteFile(hMapData, &curMap.oob.elec, sizeof(float), pBytes, NULL);
+      WriteFile(hMapData, curMap.desc.stName, DWORD(wcslen(curMap.desc.stName) + 1) * sizeof(wchar), (LPDWORD)&uiBytes, NULL);
+      WriteFile(hMapData, curMap.desc.stInfo, DWORD(wcslen(curMap.desc.stInfo) + 1) * sizeof(wchar), (LPDWORD)&uiBytes, NULL);
+      WriteFile(hMapData, table[curMap.desc.ptIndex].stName, DWORD(wcslen(table[curMap.desc.ptIndex].stName) + 1) * sizeof(wchar), (LPDWORD)&uiBytes, NULL);
+      WriteFile(hMapData, &curMap.desc.mapDim, sizeof(VEC3Ds16), (LPDWORD)&uiBytes, NULL);
+      WriteFile(hMapData, &curMap.desc.chunkDim, sizeof(VEC3Ds16), (LPDWORD)&uiBytes, NULL);
+      WriteFile(hMapData, &curMap.desc.zso, sizeof(si16), (LPDWORD)&uiBytes, NULL);
+      WriteFile(hMapData, &curMap.oob.vel, sizeof(VEC2Df), (LPDWORD)&uiBytes, NULL);
+      WriteFile(hMapData, &curMap.oob.temp, sizeof(float), (LPDWORD)&uiBytes, NULL);
+      WriteFile(hMapData, &curMap.oob.rad, sizeof(float), (LPDWORD)&uiBytes, NULL);
+      WriteFile(hMapData, &curMap.oob.elec, sizeof(float), (LPDWORD)&uiBytes, NULL);
       // Write cell data
       for(si32 i = 0; i < curMap.desc.mapCells; i++) {
-         WriteFile(hMapData, &curMap.cell[i].vel, sizeof(VEC2Df), pBytes, NULL);
-         WriteFile(hMapData, &curMap.cell[i].temp, sizeof(float), pBytes, NULL);
-         WriteFile(hMapData, &curMap.cell[i].rad, sizeof(float), pBytes, NULL);
-         WriteFile(hMapData, &curMap.cell[i].elec, sizeof(float), pBytes, NULL);
+         WriteFile(hMapData, &curMap.cell[i].vel, sizeof(VEC2Df), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hMapData, &curMap.cell[i].temp, sizeof(float), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hMapData, &curMap.cell[i].rad, sizeof(float), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hMapData, &curMap.cell[i].elec, sizeof(float), (LPDWORD)&uiBytes, NULL);
       }
-      WriteFile(hMapData, curMap.pDGS, sizeof(CELL_DGS) * curMap.desc.mapCells, pBytes, NULL);
-      WriteFile(hMapData, curMap.pDPS, sizeof(CELL_DPS) * curMap.desc.mapCells, pBytes, NULL);
+      WriteFile(hMapData, curMap.pDGS, sizeof(CELL_DGS) * curMap.desc.mapCells, (LPDWORD)&uiBytes, NULL);
+      WriteFile(hMapData, curMap.pDPS, sizeof(CELL_DPS) * curMap.desc.mapCells, (LPDWORD)&uiBytes, NULL);
 
       CloseHandle(hMapData);
 
@@ -420,8 +427,8 @@ al32 struct CLASS_MAPMAN {
       curMap.pDGS     = (CELL_DGS *)malloc32(sizeof(CELL_DGS) * totalCells);
       curMap.pDPS     = (CELL_DPS *)malloc32(sizeof(CELL_DPS) * totalCells);
       curMap.cell     = (CELL *)malloc32(sizeof(CELL) * totalCells);
-      curMap.chunkVis = (ui64 *)malloc16(ui64(totalChunks + 7) >> 3);
-      curMap.chunkMod = (ui64 *)malloc16(ui64(totalChunks + 7) >> 3);
+      curMap.chunkVis = (ui64ptr)malloc16(ui64(totalChunks + 7) >> 3);
+      curMap.chunkMod = (ui64ptr)malloc16(ui64(totalChunks + 7) >> 3);
       curMap.oob.geometry = NULL;
       curMap.oob.pixel    = NULL;
       curMap.oob.vel      = { 0.0f, 0.0f };
@@ -451,6 +458,7 @@ al32 struct CLASS_MAPMAN {
       curMap.pCB->chunkDimsE = { ui8(31 - __lzcnt(md.chunkDim.x)), ui8(31 - __lzcnt(md.chunkDim.y)), ui8(31 - __lzcnt(md.chunkDim.z)) };
 
       CreateSelectionBuffers(worldIndex, mapIndex);
+      CreateAssociationBuffer(worldIndex, mapIndex);
 
       si32 chunkIndex = 0;
       $LoopMT4 for(; chunkIndex < surfaceChOS; chunkIndex++) {
@@ -559,6 +567,7 @@ al32 struct CLASS_MAPMAN {
       mfree(world[worldIndex].map[mapIndex]->pDGS);
       mfree(world[worldIndex].map[mapIndex]->cell);
       mfree(world[worldIndex].map[mapIndex]->pCB);
+      mfree(world[worldIndex].map[mapIndex]->desc.entityList);
       mfree(world[worldIndex].map[mapIndex]->desc.wlrv.cellIndex);
       mfree(world[worldIndex].map[mapIndex]->desc.wlrv.entityIndex);
       mfree(world[worldIndex].map[mapIndex]->desc.stInfo);
@@ -762,7 +771,7 @@ al32 struct CLASS_MAPMAN {
       cVEC2Df   delta   = { diff.vector.x / diff.vector.z, diff.vector.y / diff.vector.z };
       cVEC2Df   stepDir = { (delta.x >= 0 ? 1.0f : -1.0f), (delta.y >= 0 ? 1.0f : -1.0f) };
 
-      for(si32 &index = curMap.desc.wlrv.cellCount = 0; coord.vector.z < endPoints.vector1.z; index++, coord.vector.z++) {
+      for(si32 &index = curMap.desc.wlrv.cellCount = 0; coord.vector.z < endPoints.vector.y.z; index++, coord.vector.z++) {
          tempCoord         = coord;
          cellCoord         = { .xmm = _mm_cvtps_epi32(coord.xmm) };
          cellList[index++] = CalcCellIndex((VEC3Ds32 &)cellCoord, worldIndex, mapIndex);
@@ -777,8 +786,8 @@ al32 struct CLASS_MAPMAN {
    private : inline void Cull_Nonvisible_and_Unchanged(ptr threadData) {
       CLASS_CAM &camMan = *(CLASS_CAM *)ptrLib[5];
 
-      cMMTDptr  data[2] = { (cMMTDptr)threadData, (cMMTDptr)threadData + 1 };
-      MAP      *map     = data[0]->map;
+      cMMTDcptrc  data[2] = { (cMMTDcptrc)threadData, (cMMTDcptrc)threadData + 1 };
+      cMAPptrc    map     = data[0]->map;
 
       cSSE4Ds32 mapChunksH = { .vector = { map->desc.chunkCount.x >> 1, map->desc.chunkCount.y >> 1, map->desc.chunkCount.z >> 1, 1 } };
       cSSE4Ds32 mapChunksL = { .vector = { mapChunksH.vector.x - map->desc.chunkCount.x, mapChunksH.vector.y - map->desc.chunkCount.y,
@@ -842,7 +851,7 @@ al32 struct CLASS_MAPMAN {
       MAPMAN_THREAD_STATUS.m128i_u64[1] = medCount | (farCount << 30);
    }
 
-   public : inline si32 Cull(ui32aptrc arrayVisible, ui32ptrc arrayUnchanged, csi32 worldIndex, csi32 mapIndex, csi8 threadCount) {
+   public : inline si32 Cull(ui32ptrptrc arrayVisible, ui32ptrc arrayUnchanged, csi32 worldIndex, csi32 mapIndex, csi8 threadCount) {
       static ui8 uiTHREADS = 0;
 
       if(!arrayVisible) { MAPMAN_THREAD_STATUS.m128i_u8[0] &= 0x0F3; return 0; }
@@ -906,9 +915,8 @@ al32 struct CLASS_MAPMAN {
    }
 
    inline cVEC4Du32 WaitForCulling(cDWORD sleepDelay) const {
-      while(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x03)
-         //Sleep(sleepDelay);
-         _mm_pause();
+      if(sleepDelay) while(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x03) Sleep(sleepDelay);
+      else while(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x03) _mm_pause();
 
       cVEC2Du64 mapManThreadData = (cVEC2Du64 &)MAPMAN_THREAD_STATUS;
 
@@ -983,8 +991,8 @@ static void _Cull_Nonvisible_Rasterise(cVEC4Ds32 lines[4]) {
 }*/
 
 static void _MM_Cull_Nonvisible_Simple(ptr threadData) {
-   CLASS_CAM    * const camMan = (CLASS_CAM *)ptrLib[5];
-   CLASS_MAPMAN * const mapMan = (CLASS_MAPMAN *)ptrLib[6];
+   CLASS_CAM    &camMan = *(CLASS_CAM *)ptrLib[5];
+   CLASS_MAPMAN &mapMan = *(CLASS_MAPMAN *)ptrLib[6];
 
    cMMTDptr  data       = (cMMTDptr)threadData;
    cVEC2Ds32 vScrDim    = { si32(ScrRes.dims[ScrRes.state].w) - 1, si32(ScrRes.dims[ScrRes.state].h) - 1 };
@@ -1010,14 +1018,14 @@ static void _MM_Cull_Nonvisible_Simple(ptr threadData) {
       cfl32x4 camOffset = { 0.0f, 0.0f, -4.0f, 0.0f };
       csi32   zOS[2]    = { 0 - mapDim.vector.z, mapDim.vector.z - 1 };
 
-      (VEC2Ds32 &)vChunk[0] = camMan->CursorLayerIntersect(zOS[0], camOffset, VEC2Ds32{0, vScrDim.y}, 0, 0);
-      (VEC2Ds32 &)vChunk[1] = camMan->CursorLayerIntersect(zOS[0], camOffset, vScrDim, 0, 0);
-      (VEC2Ds32 &)vChunk[2] = camMan->CursorLayerIntersect(zOS[0], camOffset, VEC2Ds32{0, 0}, 0, 0);
-      (VEC2Ds32 &)vChunk[3] = camMan->CursorLayerIntersect(zOS[0], camOffset, VEC2Ds32{vScrDim.x, 0}, 0, 0);
-      (VEC2Ds32 &)vChunk[4] = camMan->CursorLayerIntersect(zOS[1], camOffset, VEC2Ds32{0, vScrDim.y}, 0, 0);
-      (VEC2Ds32 &)vChunk[5] = camMan->CursorLayerIntersect(zOS[1], camOffset, vScrDim, 0, 0);
-      (VEC2Ds32 &)vChunk[6] = camMan->CursorLayerIntersect(zOS[1], camOffset, VEC2Ds32{0, 0}, 0, 0);
-      (VEC2Ds32 &)vChunk[7] = camMan->CursorLayerIntersect(zOS[1], camOffset, VEC2Ds32{vScrDim.x, 0}, 0, 0);
+      (VEC2Ds32 &)vChunk[0] = camMan.CursorLayerIntersect(zOS[0], camOffset, VEC2Ds32{0, vScrDim.y}, 0, 0);
+      (VEC2Ds32 &)vChunk[1] = camMan.CursorLayerIntersect(zOS[0], camOffset, vScrDim, 0, 0);
+      (VEC2Ds32 &)vChunk[2] = camMan.CursorLayerIntersect(zOS[0], camOffset, VEC2Ds32{0, 0}, 0, 0);
+      (VEC2Ds32 &)vChunk[3] = camMan.CursorLayerIntersect(zOS[0], camOffset, VEC2Ds32{vScrDim.x, 0}, 0, 0);
+      (VEC2Ds32 &)vChunk[4] = camMan.CursorLayerIntersect(zOS[1], camOffset, VEC2Ds32{0, vScrDim.y}, 0, 0);
+      (VEC2Ds32 &)vChunk[5] = camMan.CursorLayerIntersect(zOS[1], camOffset, vScrDim, 0, 0);
+      (VEC2Ds32 &)vChunk[6] = camMan.CursorLayerIntersect(zOS[1], camOffset, VEC2Ds32{0, 0}, 0, 0);
+      (VEC2Ds32 &)vChunk[7] = camMan.CursorLayerIntersect(zOS[1], camOffset, VEC2Ds32{vScrDim.x, 0}, 0, 0);
 
       // Calculate chunk derivatives
       for(i = 0; i < 8; i++) {
@@ -1063,29 +1071,28 @@ static void _MM_Cull_Nonvisible_Simple(ptr threadData) {
       if(coords[1].vector.y2 > chunkCount.vector.y) coords[1].vector.y2 = chunkCount.vector.y;
       // Calculate run lengths
       csi32     lengths[2] = { coords[0].vector.x2 - coords[0].vector.x1 + 1, coords[1].vector.x2 - coords[1].vector.x1 + 1 };
-      cAVX8Ds32 lines[2]   = { { .vector0 = { coords[0].vector.x1, coords[0].vector.y1, vChunk[0].vector.z, lengths[0] },
-                                 .vector1 = { coords[0].vector.x2, coords[0].vector.y2, vChunk[0].vector.z, lengths[0] } },
-                               { .vector0 = { coords[1].vector.x1, coords[1].vector.y1, vChunk[4].vector.z, lengths[1] },
-                                 .vector1 = { coords[1].vector.x2, coords[1].vector.y2, vChunk[4].vector.z, lengths[1] } } };
+      cAVX8Ds32 lines[2] = { { .vector = { coords[0].vector.x1, coords[0].vector.y1, vChunk[0].vector.z, lengths[0],
+                                           coords[0].vector.x2, coords[0].vector.y2, vChunk[0].vector.z, lengths[0] } },
+                             { .vector = { coords[1].vector.x1, coords[1].vector.y1, vChunk[4].vector.z, lengths[1],
+                                           coords[1].vector.x2, coords[1].vector.y2, vChunk[4].vector.z, lengths[1] } } };
       // Rasterise prism
       AVX8Df32  accum     = (cAVX8Df32 &)_mm256_cvtepi32_ps((si256 &)lines);
       AVX8Ds32  line      = lines[0];
-      cAVX8Ds32 sCols     = { .xmm0 = _mm_broadcastd_epi32(si128{.m128i_i32 = lines[1].vector0.z - lines[0].vector0.z + 1}),
-                              .xmm1 = _mm_broadcastd_epi32(si128{.m128i_i32 = lines[1].vector1.z - lines[0].vector1.z + 1}) };
+      cAVX8Ds32 sCols     = { .xmm = { _mm_broadcastd_epi32(si128{.m128i_i32 = lines[1].vector.x.z - lines[0].vector.x.z + 1}),
+                                       _mm_broadcastd_epi32(si128{.m128i_i32 = lines[1].vector.y.z - lines[0].vector.y.z + 1}) } };
       cAVX8Df32 fCols     = { .ymm = _mm256_cvtepi32_ps(sCols.ymm) };
       cAVX8Ds32 xyDelta   = { .ymm = _mm256_sub_epi32(lines[1].ymm, lines[0].ymm) };
-      cAVX8Ds32 ones      = { .ymm = { .m256i_i32 = { 1, 1, 1, 1, 1, 1, 1, 1 } } };
-      cAVX8Ds32 signTest  = { .ymm = _mm256_sign_epi32(ones.ymm, xyDelta.ymm)};
-      cAVX8Ds32 signMod   = { .ymm = _mm256_or_epi32(signTest.ymm, ones.ymm) };
+      cAVX8Ds32 signTest  = { .ymm = _mm256_sign_epi32(ones32x8, xyDelta.ymm)};
+      cAVX8Ds32 signMod   = { .ymm = _mm256_or_epi32(signTest.ymm, ones32x8) };
       cAVX8Ds32 sPredelta = { .ymm = _mm256_add_epi32(signMod.ymm, xyDelta.ymm) };
       cAVX8Df32 fPredelta = { .ymm = _mm256_cvtepi32_ps(sPredelta.ymm) };
       cAVX8Df32 delta     = { .ymm = _mm256_div_ps(fPredelta.ymm, fCols.ymm) };
 
-      while(line.vector[0].z <= lines[1].vector0.z) {
+      while(line.vector.x.z <= lines[1].vector.x.z) {
          // Rasterise slice
-         for(SSE4Ds32 lineX = { .xmm = line.xmm[0] }; lineX.vector.y <= line.vector[1].y; lineX.vector.x = line.vector[0].x, lineX.vector.y++)
+         for(SSE4Ds32 lineX = { .xmm = line.xmm[0] }; lineX.vector.y <= line.vector.y.y; lineX.vector.x = line.vector.x.x, lineX.vector.y++)
             for(csi32 endPoint = lineX.vector.x + lineX.vector.w; lineX.vector.x < endPoint; lineX.vector.x++) {
-               csi32 chunkIndex = mapMan->CalcChunkIndex_((cVEC3Ds32 &)lineX, 0, 0);
+               csi32 chunkIndex = mapMan.CalcChunkIndex_((cVEC3Ds32 &)lineX, 0, 0);
                cui32 QWordOS    = chunkIndex >> 6;
                cui64 bitOS      = ui64(0x01) << (chunkIndex & 0x03F);
 
@@ -1101,8 +1108,8 @@ static void _MM_Cull_Nonvisible_Simple(ptr threadData) {
 }
 
 static void _MM_Cull_Nonvisible_Accurate(ptr threadData) {
-   CLASS_CAM    * const camMan = (CLASS_CAM *)ptrLib[5];
-   CLASS_MAPMAN * const mapMan = (CLASS_MAPMAN *)ptrLib[6];
+   CLASS_CAM    &camMan = *(CLASS_CAM *)ptrLib[5];
+   CLASS_MAPMAN &mapMan = *(CLASS_MAPMAN *)ptrLib[6];
 
    cMMTDptr  data       = (cMMTDptr)threadData;
    cSSE4Ds32 mapChunksH = { .vector = { data->map->desc.chunkCount.x >> 1, data->map->desc.chunkCount.y >> 1, data->map->desc.chunkCount.z >> 1, 1 } };
@@ -1124,7 +1131,7 @@ static void _MM_Cull_Nonvisible_Accurate(ptr threadData) {
       ///- Stall/skip? if status if 'busy'
       while(!(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x01)) _mm_pause(); //Sleep(1);
 
-      camMan->SetDimsf(data->map->desc.chunkDim, data->map->desc.chunkCount, 0);
+      camMan.SetDimsf(data->map->desc.chunkDim, data->map->desc.chunkCount, 0);
 
       nearCount = medCount = farCount = 0;
 
@@ -1136,16 +1143,16 @@ static void _MM_Cull_Nonvisible_Accurate(ptr threadData) {
 ///--- ??? Swap order of tests ???
                //cSSE4Ds32 cell2 = { .vector = { chunkOS.vector.x + 1, chunkOS.vector.y, chunkOS.vector.z } };
                //cAVX8Ds32 cells = { .xmm = { chunkOS.xmm, cell2.xmm } };
-               cui8 visible = camMan->ChunkFrustumIntersect8(chunkOS, 0);
+               cui8 visible = camMan.ChunkFrustumIntersect8(chunkOS, 0);
 
                for(i = 0; i < 8; i++, chunkOS.vector.x++)
                   if(visible & 0x01 << i) {
                      //cSSE4Ds32 coord      = { .vector = { chunkOS.vector.x, chunkOS.vector.y, chunkOS.vector.z } };
-                     csi32     chunkIndex = mapMan->CalcChunkIndex((cVEC3Ds32 &)chunkOS, 0, 0);
+                     csi32     chunkIndex = mapMan.CalcChunkIndex((cVEC3Ds32 &)chunkOS, 0, 0);
                      cui32     QWordOS    = chunkIndex >> 6;
                      cui64     bitOS      = ui64(0x01) << (chunkIndex & 0x03F);
 
-                     cfl32 distance = camMan->DistanceFromCamera(chunkOS.xmm, 0);
+                     cfl32 distance = camMan.DistanceFromCamera(chunkOS.xmm, 0);
                      // Change hard limits to LOD scalars
                      if(data->map->chunkVis[QWordOS] & bitOS) {
 //                        if(distance < 128.0f)
@@ -1166,8 +1173,8 @@ static void _MM_Cull_Nonvisible_Accurate(ptr threadData) {
 }
 
 static void _MM_Cull_Unchanged(ptr threadData) {
-   cMMTDptr data       = (cMMTDptr)threadData;
-   cui32    chunkCount = data->map->desc.mapChunks;
+   cMMTDcptrc data       = (cMMTDcptrc)threadData;
+   cui32      chunkCount = data->map->desc.mapChunks;
 
    al16 ui64 j;
         ui32 i;
@@ -1197,11 +1204,11 @@ static void _MM_Cull_Nonvisible_and_Unchanged(ptr threadData) {
       static si64 frequencyTics, startTics, endTics;
       QueryPerformanceFrequency((LARGE_INTEGER *)&frequencyTics);
 
-   CLASS_CAM    * const camMan = (CLASS_CAM *)ptrLib[5];
-   CLASS_MAPMAN * const mapMan = (CLASS_MAPMAN *)ptrLib[6];
+   CLASS_CAM    &camMan = *(CLASS_CAM *)ptrLib[5];
+   CLASS_MAPMAN &mapMan = *(CLASS_MAPMAN *)ptrLib[6];
 
-   cMMTDptr  data[2] = { (cMMTDptr)threadData, (cMMTDptr)threadData + 1 };
-   MAP      *map     = data[0]->map;
+   cMMTDcptrc  data[2] = { (cMMTDcptrc)threadData, (cMMTDcptrc)threadData + 1 };
+   MAP        *map     = data[0]->map;
 
    cSSE4Ds32 mapChunksH = { .vector = { map->desc.chunkCount.x >> 1, map->desc.chunkCount.y >> 1, (map->desc.chunkCount.z + 1) >> 1, 1 } };
    cSSE4Ds32 mapChunksL = { .vector = { mapChunksH.vector.x - map->desc.chunkCount.x, mapChunksH.vector.y - map->desc.chunkCount.y,
@@ -1226,7 +1233,7 @@ static void _MM_Cull_Nonvisible_and_Unchanged(ptr threadData) {
 
       QueryPerformanceCounter((LARGE_INTEGER *)&startTics);
 
-      camMan->SetDimsf(map->desc.chunkDim, map->desc.chunkCount, 0);
+      camMan.SetDimsf(map->desc.chunkDim, map->desc.chunkCount, 0);
 
       nearCount = medCount = farCount = 0;
       modCount = 0;
@@ -1246,15 +1253,15 @@ static void _MM_Cull_Nonvisible_and_Unchanged(ptr threadData) {
       for(chunkOS.vector.z = mapChunksL.vector.z; chunkOS.vector.z < mapChunksH.vector.z; chunkOS.vector.z++) {
          for(chunkOS.vector.y = mapChunksL.vector.y; chunkOS.vector.y < mapChunksH.vector.y; chunkOS.vector.y++) {
             for(chunkOS.vector.x = mapChunksL.vector.x; chunkOS.vector.x < mapChunksH.vector.x;) {
-               cui8 visible = camMan->ChunkFrustumIntersect8(chunkOS, 0);
+               cui8 visible = camMan.ChunkFrustumIntersect8(chunkOS, 0);
 
                for(i = 0; i < 8; i++, chunkOS.vector.x++)
                   if(visible & (0x01 << i)) {
-                     csi32 chunkIndex = mapMan->CalcChunkIndex((cVEC3Ds32 &)chunkOS, 0, 0);
+                     csi32 chunkIndex = mapMan.CalcChunkIndex((cVEC3Ds32 &)chunkOS, 0, 0);
                      cui32 QWordOS    = chunkIndex >> 6;
                      cui64 bitOS      = (ui64)0x01 << (chunkIndex & 0x03F);
 
-                     cfl32 distance = camMan->DistanceFromCamera(chunkOS.xmm, 0);
+                     cfl32 distance = camMan.DistanceFromCamera(chunkOS.xmm, 0);
                      // Change hard limits to LOD scalars
                      if(map->chunkVis[QWordOS] & bitOS) {
 //                        if(distance < 128.0f)
