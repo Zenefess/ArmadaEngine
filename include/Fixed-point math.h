@@ -106,10 +106,10 @@ inline cVEC4Du16 Fix16x4(cVEC4Df floats, cfl32 scale) {
  */
 
 // Convert 32-bit float to 8-bit fixed
-inline cui8 Fix8(cfl32 input, cfl32 floor, cfl32 range) { return ui32((input - floor) * (255.0f / range)) & 0x0FF; }
+inline cui8 Fix8(cfl32 input, cfl32 floor, cfl32 range) { return ui32((input - floor) / range * 255.0f) & 0x0FF; }
 
 // Convert 32-bit float to 16-bit fixed
-inline cui16 Fix16(cfl32 input, cfl32 floor, cfl32 range) { return ui32((input - floor) * (65535.0f / range)) & 0x0FFFF; }
+inline cui16 Fix16(cfl32 input, cfl32 floor, cfl32 range) { return ui32((input - floor) / range * 65535.0f) & 0x0FFFF; }
 
 // Convert 2 32-bit floats to 16-bit fixeds
 inline cVEC2Du16 Fix16x2(cVEC2Df floats, cfl32 floor, cfl32 range) {

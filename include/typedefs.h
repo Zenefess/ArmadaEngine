@@ -1,6 +1,6 @@
 /****************************************************************
  * File: typedefs.h                           Created: Jul.2007 *
- *                                    Last modified: 2024/05/11 *
+ *                                    Last modified: 2024/05/13 *
  *                                                              *
  * Desc: Shorthand type defines & composites, and static        *
  *       constant values of common data-type sizes.             *
@@ -9,6 +9,7 @@
  *        2023/06/05: Added ui24 data type                      *
  *        2024/05/02: Added csize_t data type                   *
  *        2024/05/11: Added all (~2) void pointer combinations  *
+ *        2024/05/13: Moved ui24 data type to separate file     *
  *                                                              *
  *                             Copyright (c) David William Bull *
  ****************************************************************/
@@ -61,93 +62,6 @@ typedef          __m128d fl64x2;
 typedef          __m256d fl64x4;
 typedef          wchar_t wchar;
 
-// 24-bit unsigned integer
-struct ui24 {
-   ui8 data[3];
-
-   ui24(void) = default;
-   ui24(const ui16 value) { (ui16 &)data = (const ui16 &)value; data[2] = 0; }
-   ui24(const si16 value) { (ui16 &)data = (const ui16 &)value; data[2] = 0; }
-   ui24(const ui32 value) { (ui16 &)data = (const ui16 &)value; data[2] = ((const ui8 (&)[3])value)[2]; }
-   ui24(const si32 value) { (ui16 &)data = (const ui16 &)value; data[2] = ((const ui8 (&)[3])value)[2]; }
-   ui24(const fl32 value) {
-      const ui32 integer = (const ui32)value;
-
-      (ui16 &)data = (ui16 &)integer;
-      data[2] = ((ui8 *)&integer)[2];
-   }
-   ui24(const fl64 value) {
-      const ui32 integer = (const ui32)value;
-
-      (ui16 &)data = (const ui16 &)integer;
-      data[2] = ((const ui8 (&)[3])integer)[2];
-   }
-
-   operator const ui32(void) const { return (const ui32 &)data & 0x0FFFFFF; }
-   operator const fl32(void) const { return fl32((const ui32 &)data & 0x0FFFFFF); }
-   operator const fl64(void) const { return fl64((const ui32 &)data & 0x0FFFFFF); }
-
-   inline const bool operator==(const ui24 &value) const {
-      return ((const ui32 &)data & 0x0FFFFFF) == ((const ui32 &)value.data & 0x0FFFFFF);
-   }
-
-   inline const bool operator!=(const ui24 &value) const {
-      return ((const ui32 &)data & 0x0FFFFFF) != ((const ui32 &)value.data & 0x0FFFFFF);
-   }
-
-   inline const ui24 operator+(const ui24 &value) const {
-      const ui8 temp[3] = {
-         ui8(data[0] + value.data[0]),
-         ui8(data[1] + value.data[1] + (data[0] < value.data[0])),
-         ui8(data[2] + value.data[2] + (data[1] < value.data[1]))
-      };
-
-      return (ui24 &)temp[0];
-   };
-
-   inline const ui24 operator-(const ui24 &value) const {
-      const ui8 temp[3] = {
-         ui8(data[0] - value.data[0]),
-         ui8(data[1] - value.data[1] + (data[0] > value.data[0])),
-         ui8(data[2] - value.data[2] + (data[1] > value.data[1]))
-      };
-
-      return (ui24 &)temp[0];
-   };
-
-   inline const ui24 operator+=(const ui24 &value) {
-      (ui16 &)data[0] += (ui16 &)value.data[0];
-      data[2] += value.data[2] + (data[1] < value.data[1]);
-
-      return (ui24 &)data[0];
-   };
-
-   inline const ui24 operator-=(const ui24 &value) {
-      (ui16 &)data[0] -= (ui16 &)value.data[0];
-      data[2] -= value.data[2] + (data[1] > value.data[1]);
-
-      return (ui24 &)data[0];
-   };
-
-   inline const ui24 operator*=(const ui24 &value) {
-      const ui32 result = ((const ui32 &)data & 0x0FFFFFF) * ((const ui32 &)value.data & 0x0FFFFFF);
-
-      (ui16 &)data = (const ui16 &)result;
-      data[2] = ((const ui8 (&)[3])result)[2];
-
-      return (ui24 &)data[0];
-   };
-
-   inline const ui24 operator/=(const ui24 &value) {
-      const ui32 result = ((const ui32 &)data & 0x0FFFFFF) / ((const ui32 &)value.data & 0x0FFFFFF);
-
-      (ui16 &)data = (const ui16 &)result;
-      data[2] = ((const ui8 (&)[3])result)[2];
-
-      return (ui24 &)data[0];
-   };
-};
-
 // Constant types
 typedef const          bool    cbool;
 typedef const unsigned char    cBYTE;
@@ -157,7 +71,6 @@ typedef const unsigned __int64 cQWORD;
 typedef const          size_t  csize_t;
 typedef const unsigned __int8  cui8;
 typedef const unsigned __int16 cui16;
-typedef const          ui24    cui24;
 typedef const unsigned __int32 cui32;
 typedef const unsigned __int64 cui64;
 typedef const          __m128i cui128;
@@ -190,7 +103,6 @@ typedef vol unsigned long    vDWORD;
 typedef vol unsigned __int64 vQWORD;
 typedef vol unsigned __int8  vui8;
 typedef vol unsigned __int16 vui16;
-typedef vol             ui24 vui24;
 typedef vol unsigned __int32 vui32;
 typedef vol unsigned __int64 vui64;
 typedef vol          __m128i vui128;
@@ -258,7 +170,6 @@ typedef unsigned long     *dwptr;
 typedef unsigned __int64  *qwptr;
 typedef unsigned __int8   *ui8ptr;
 typedef unsigned __int16  *ui16ptr;
-typedef             ui24  *ui24ptr;
 typedef unsigned __int32  *ui32ptr;
 typedef unsigned __int32 **ui32ptrptr;
 typedef unsigned __int64  *ui64ptr;
@@ -286,7 +197,6 @@ typedef const unsigned long     *cdwptr;
 typedef const unsigned __int64  *cqwptr;
 typedef const unsigned __int8   *cui8ptr;
 typedef const unsigned __int16  *cui16ptr;
-typedef const             ui24  *cui24ptr;
 typedef const unsigned __int32  *cui32ptr;
 typedef const unsigned __int64  *cui64ptr;
 typedef const   signed __int8   *csi8ptr;
@@ -306,7 +216,6 @@ typedef const     long double   *cfl80ptr;
 typedef             char  * const chptrc;
 typedef          wchar_t  * const wchptrc;
 typedef unsigned  __int8  * const ui8ptrc;
-typedef             ui24  * const ui24ptrc;
 typedef unsigned __int32  * const ui32ptrc;
 typedef unsigned __int32 ** const ui32ptrptrc;
 typedef unsigned __int64  * const ui64ptrc;
@@ -351,7 +260,6 @@ typedef vol unsigned long     *vdwptr;
 typedef vol unsigned __int64  *vqwptr;
 typedef vol unsigned __int8   *vui8ptr;
 typedef vol unsigned __int16  *vui16ptr;
-typedef vol             ui24  *vui24ptr;
 typedef vol unsigned __int32  *vui32ptr;
 typedef vol unsigned __int64  *vui64ptr;
 typedef vol   signed __int8   *vsi8ptr;

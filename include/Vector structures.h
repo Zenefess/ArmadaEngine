@@ -10,6 +10,7 @@
 #pragma once
 
 #include "typedefs.h"
+#include "24-bit integers.h"
 
 union VEC2Du8 {
    ui8 _ui8[2];

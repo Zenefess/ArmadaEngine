@@ -31,8 +31,7 @@ inline ptrc malloc(csize_t byteCount, csize_t alignment) {
    return pointer;
 }
 
-#define bitPatternx8 bitPattern, bitPattern, bitPattern, bitPattern,\
-                     bitPattern, bitPattern, bitPattern, bitPattern
+#define bitPatternx8 bitPattern, bitPattern, bitPattern, bitPattern, bitPattern, bitPattern, bitPattern, bitPattern
 
 // Allocates RAM on 16-byte boundary, then sets the entire array to a repeating 128-bit pattern
 inline ptrc salloc16(csize_t byteCount, cui128 bitPattern);
