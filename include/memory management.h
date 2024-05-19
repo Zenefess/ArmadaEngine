@@ -130,8 +130,13 @@ inline ptrc salloc32(csize_t byteCount, cui256 bitPattern) {
    return pointer;
 }
 
-// Returns 'false' if pointer is invalid
-inline cbool mfree(ptrc pointer) {
+// Frees a pointer and returns true if successful.
+#define mfree1(pointer) mdealloc(pointer)
+// Frees a variable number of pointers. Each bit represents ~64 pointers in argument order, and will be true if the relevant pointer is freed.
+#define mfree(pointer, ...) mdealloc_(pointer, __VA_ARGS__, -1)
+
+// Frees a pointer and returns true if successful.
+inline cui64 mdealloc(ptrc pointer) {
    if(pointer) {
 #ifdef DATA_TRACKING
       cui32     allocations = sysData.mem.allocations;
@@ -147,15 +152,47 @@ inline cbool mfree(ptrc pointer) {
 
       sysData.mem.allocations--;
       sysData.mem.allocated -= sysData.mem.byteCount[index];
-      sysData.mem.location[index]  = NULL;
+      sysData.mem.location[index] = NULL;
       sysData.mem.byteCount[index] = 0;
 #endif
       _aligned_free(pointer);
-
       return true;
    }
-
    return false;
+}
+
+// Frees a variable number of pointers. Each bit represents ~64 pointers in argument order, and will be true if the relevant pointer is freed.
+inline cui64 mdealloc_(ptrc pointer, ...) {
+   va_list val;
+   ui64    retVal = 0, ptrBit = 0x01;
+
+   va_start(val, pointer);
+
+   for(ptr arg = va_arg(val, ptrc); (ui64 &)arg != -1; arg = va_arg(val, ptrc), ptrBit <<= 1) {
+      if(pointer) {
+#ifdef DATA_TRACKING
+         cui32     allocations = sysData.mem.allocations;
+         vptrcptrc location    = sysData.mem.location;
+
+         ui32 index = 0;
+
+         // Find entry
+         while(pointer != location[index] && allocations >= index) index++;
+
+         // Is the pointer invalid?
+         if(index >= allocations) continue;
+
+         sysData.mem.allocations--;
+         sysData.mem.allocated -= sysData.mem.byteCount[index];
+         sysData.mem.location[index] = NULL;
+         sysData.mem.byteCount[index] = 0;
+#endif
+         _aligned_free(pointer);
+         retVal |= ptrBit;
+      }
+   }
+   va_end(val);
+   return retVal;
 }
 
 #define setmem(addr, numBytes, dwVal) mset(addr, numBytes, dwVal)

@@ -25,8 +25,10 @@ static cfl32 _fpm_rcp65535f = 1.0f / 65535.0f;
 // Convert 32-bit float (range 0.0~1.0) to 8-bit fixed
 inline cui8 Fix8(cfl32 scalar) { return ui8(scalar * 255.0f); }
 
+#ifdef _24BIT_INTEGERS_
 // Convert 32-bit float (range 0.0~65535.99609375) to 16.8 fixed
 inline cui24 Fix16p8(cfl32 scalar) { return ui24(scalar * 256.0f); }
+#endif
 
 // Convert 32-bit float (range 0.0~65535.99609375) to 16.8 fixed-point
 inline void Fix16p8(ui8 (&dest)[3], cfl32 scalar) {
