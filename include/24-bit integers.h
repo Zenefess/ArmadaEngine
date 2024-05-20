@@ -40,6 +40,8 @@ struct ui24 {
    ui24(cfl32 value) { cui32 temp = (ui32)value; (ui16 &)data = (ui16 &)temp; data[2] = ((ui8_3)temp)[2]; }
    ui24(cfl64 value) { cui32 temp = (ui32)value; (ui16 &)data = (cui16 &)temp; data[2] = ((ui8_3)temp)[2]; }
 
+   operator ptr(void) const { return *this; }
+   operator bool(void) const { return ((ui32 &)data & 0x0FFFFFFu) != 0; }
    operator cui8(void) const { return (ui8 &)data; }
    operator csi8(void) const { return (si8 &)data; }
    operator cui16(void) const { return (ui16 &)data; }
@@ -151,7 +153,7 @@ struct si24 {
    si24(cfl32 value) { csi32 temp = (si32)value; (si16 &)data = (si16 &)temp; data[2] = ((si8_3)temp)[2]; }
    si24(cfl64 value) { csi32 temp = (si32)value; (si16 &)data = (csi16 &)temp; data[2] = ((si8_3)temp)[2]; }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return ((ui32 &)data & 0x0FFFFFFu) != 0; }
    operator cui8(void) const { return (ui8 &)data; }
    operator csi8(void) const { return (si8 &)data; }

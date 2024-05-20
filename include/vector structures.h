@@ -1,9 +1,9 @@
 /************************************************************
  * File: vector structures.h            Created: 2022/12/05 *
- *                                Last modified: 2024/05/19 *
+ *                                Last modified: 2024/05/20 *
  *                                                          *
  * Notes: 2023/04/27: Added constant vector typedefs.       *
- *        2024/04/04: Added ui24 vector types.              *
+ *        2024/04/04: Added support for 24-bit integers.    *
  *        2024/05/18: Added AVX512 support.                 *
  *                                                          *
  *                         Copyright (c) David William Bull *
@@ -11,7 +11,6 @@
 #pragma once
 
 #include "typedefs.h"
-#include "24-bit integers.h"
 
 #define _VECTOR_STRUCTURES_
 
@@ -46,7 +45,7 @@ union VEC2Ds16 {
       union { si16 v, y; };
    };
 };
-
+#ifdef _24BIT_INTEGERS_
 al2 union VEC2Du24 {
    ui24 _ui24[2];
    struct {
@@ -55,6 +54,14 @@ al2 union VEC2Du24 {
    };
 };
 
+al2 union VEC2Ds24 {
+   si24 _si24[2];
+   struct {
+      union { si24 u, x; };
+      union { si24 v, y; };
+   };
+};
+#endif
 union VEC2Du32 {
    ui32 _ui32[2];
    struct {
@@ -146,7 +153,7 @@ union VEC3Ds16 {
       union { si16 b, z; };
    };
 };
-
+#ifdef _24BIT_INTEGERS_
 union VEC3Du24 {
    ui24 _ui24[3];
    struct {
@@ -156,6 +163,15 @@ union VEC3Du24 {
    };
 };
 
+union VEC3Ds24 {
+   si24 _si24[3];
+   struct {
+      union { si24 r, x; };
+      union { si24 g, y; };
+      union { si24 b, z; };
+   };
+};
+#endif
 union VEC3Du32 {
    ui32 _ui32[3];
    struct {
@@ -258,7 +274,7 @@ union VEC4Ds16 {
       union { si16 a, v2, w, y2; };
    };
 };
-
+#ifdef _24BIT_INTEGERS_
 al4 union VEC4Du24 {
    ui24 _ui24[4];
    struct {
@@ -269,6 +285,16 @@ al4 union VEC4Du24 {
    };
 };
 
+al4 union VEC4Ds24 {
+   si24 _si24[4];
+   struct {
+      union { si24 r, u1, x, x1; };
+      union { si24 g, v1, y, y1; };
+      union { si24 b, u2, z, x2; };
+      union { si24 a, v2, w, y2; };
+   };
+};
+#endif
 union VEC4Du32 {
    ui32 _ui32[4];
    struct {
@@ -675,6 +701,20 @@ union AVX16Df16 {
    fl16     _fl16[16];
 };
 
+union AVX32Du8 {
+   __m256i ymm;
+   __m128i xmm[2];
+   VEC4Du8 vector[8];
+   ui8     _ui16[32];
+};
+
+union AVX32Ds8 {
+   __m256i ymm;
+   __m128i xmm[2];
+   VEC4Ds8 vector[8];
+   si8     _si16[32];
+};
+
 union AVX8Du64 {
    __m512i  zmm;
    __m256i  ymm[2];
@@ -768,6 +808,22 @@ union AVX32Df16 {
    fl16     _fl16[32];
 };
 
+union AVX64Du8 {
+   __m512i zmm;
+   __m256i ymm[2];
+   __m128i xmm[4];
+   VEC4Du8 vector[8];
+   ui8     _ui8[64];
+};
+
+union AVX64Ds8 {
+   __m512i zmm;
+   __m256i ymm[2];
+   __m128i xmm[4];
+   VEC4Ds8 vector[8];
+   si8     _si8[64];
+};
+
 al32 union AVXmatrix {
    __m256 ymm[2];
    __m128 xmm[4];
@@ -789,6 +845,7 @@ typedef const VEC2Ds8   cVEC2Ds8;
 typedef const VEC2Du16  cVEC2Du16;
 typedef const VEC2Ds16  cVEC2Ds16;
 typedef const VEC2Du24  cVEC2Du24;
+typedef const VEC2Ds24  cVEC2Ds24;
 typedef const VEC2Du32  cVEC2Du32;
 typedef const VEC2Ds32  cVEC2Ds32;
 typedef const VEC2Du64  cVEC2Du64;
@@ -800,6 +857,7 @@ typedef const VEC3Ds8   cVEC3Ds8;
 typedef const VEC3Du16  cVEC3Du16;
 typedef const VEC3Ds16  cVEC3Ds16;
 typedef const VEC3Du24  cVEC3Du24;
+typedef const VEC3Ds24  cVEC3Ds24;
 typedef const VEC3Du32  cVEC3Du32;
 typedef const VEC3Ds32  cVEC3Ds32;
 typedef const VEC3Du64  cVEC3Du64;
@@ -811,6 +869,7 @@ typedef const VEC4Ds8   cVEC4Ds8;
 typedef const VEC4Du16  cVEC4Du16;
 typedef const VEC4Ds16  cVEC4Ds16;
 typedef const VEC4Du24  cVEC4Du24;
+typedef const VEC4Ds24  cVEC4Ds24;
 typedef const VEC4Du32  cVEC4Du32;
 typedef const VEC4Ds32  cVEC4Ds32;
 typedef const VEC4Du64  cVEC4Du64;
@@ -850,6 +909,94 @@ typedef const AVX16Du32 cAVX16Du32;
 typedef const AVX16Ds32 cAVX16Ds32;
 typedef const AVX16Df16 cAVX16Df16;
 typedef const AVX16Df32 cAVX16Df32;
+typedef const AVX32Du8  cAVX32Du8;
+typedef const AVX32Ds8  cAVX32Ds8;
+typedef const AVX32Du16 cAVX32Du16;
+typedef const AVX32Ds16 cAVX32Ds16;
+typedef const AVX32Df16 cAVX32Df16;
+typedef const AVX64Du8  cAVX64Du8;
+typedef const AVX64Ds8  cAVX64Ds8;
 
 typedef const AVXmatrix    cAVXmatrix;
 typedef const AVX512matrix cAVX512matrix;
+
+// Volatile vector types
+typedef vol VEC2Du8   vVEC2Du8;
+typedef vol VEC2Ds8   vVEC2Ds8;
+typedef vol VEC2Du16  vVEC2Du16;
+typedef vol VEC2Ds16  vVEC2Ds16;
+typedef vol VEC2Du24  vVEC2Du24;
+typedef vol VEC2Ds24  vVEC2Ds24;
+typedef vol VEC2Du32  vVEC2Du32;
+typedef vol VEC2Ds32  vVEC2Ds32;
+typedef vol VEC2Du64  vVEC2Du64;
+typedef vol VEC2Ds64  vVEC2Ds64;
+typedef vol VEC2Df    vVEC2Df;
+typedef vol VEC2Dd    vVEC2Dd;
+typedef vol VEC3Du8   vVEC3Du8;
+typedef vol VEC3Ds8   vVEC3Ds8;
+typedef vol VEC3Du16  vVEC3Du16;
+typedef vol VEC3Ds16  vVEC3Ds16;
+typedef vol VEC3Du24  vVEC3Du24;
+typedef vol VEC3Ds24  vVEC3Ds24;
+typedef vol VEC3Du32  vVEC3Du32;
+typedef vol VEC3Ds32  vVEC3Ds32;
+typedef vol VEC3Du64  vVEC3Du64;
+typedef vol VEC3Ds64  vVEC3Ds64;
+typedef vol VEC3Df    vVEC3Df;
+typedef vol VEC3Dd    vVEC3Dd;
+typedef vol VEC4Du8   vVEC4Du8;
+typedef vol VEC4Ds8   vVEC4Ds8;
+typedef vol VEC4Du16  vVEC4Du16;
+typedef vol VEC4Ds16  vVEC4Ds16;
+typedef vol VEC4Du24  vVEC4Du24;
+typedef vol VEC4Ds24  vVEC4Ds24;
+typedef vol VEC4Du32  vVEC4Du32;
+typedef vol VEC4Ds32  vVEC4Ds32;
+typedef vol VEC4Du64  vVEC4Du64;
+typedef vol VEC4Ds64  vVEC4Ds64;
+typedef vol VEC4Df    vVEC4Df;
+typedef vol VEC4Dd    vVEC4Dd;
+typedef vol VEC6Df    vVEC6Df;
+typedef vol VEC6Dd    vVEC6Dd;
+typedef vol VEC8Du32  vVEC8Du32;
+typedef vol VEC8Ds32  vVEC8Ds32;
+typedef vol VEC8Dh    vVEC8Dh;
+typedef vol VEC8Df    vVEC8Df;
+typedef vol VEC8Dd    vVEC8Dd;
+typedef vol VEC16Dh   vVEC16Dh;
+
+typedef vol SSE2Du32  vSSE2Du32;
+typedef vol SSE2Ds32  vSSE2Ds32;
+typedef vol SSE2Du64  vSSE2Du64;
+typedef vol SSE2Df32  vSSE2Df32;
+typedef vol SSE2Df64  vSSE2Df64;
+typedef vol SSE4Du32  vSSE4Du32;
+typedef vol SSE4Ds32  vSSE4Ds32;
+typedef vol SSE4Df32  vSSE4Df32;
+typedef vol SSE8Df16  vSSE8Df16;
+typedef vol AVX4Du64  vAVX4Du64;
+typedef vol AVX4Ds64  vAVX4Ds64;
+typedef vol AVX4Df64  vAVX4Df64;
+typedef vol AVX8Du32  vAVX8Du32;
+typedef vol AVX8Ds32  vAVX8Ds32;
+typedef vol AVX8Du64  vAVX8Du64;
+typedef vol AVX8Ds64  vAVX8Ds64;
+typedef vol AVX8Df32  vAVX8Df32;
+typedef vol AVX8Df64  vAVX8Df64;
+typedef vol AVX16Du16 vAVX16Du16;
+typedef vol AVX16Ds16 vAVX16Ds16;
+typedef vol AVX16Du32 vAVX16Du32;
+typedef vol AVX16Ds32 vAVX16Ds32;
+typedef vol AVX16Df16 vAVX16Df16;
+typedef vol AVX16Df32 vAVX16Df32;
+typedef vol AVX32Du8  vAVX32Du8;
+typedef vol AVX32Ds8  vAVX32Ds8;
+typedef vol AVX32Du16 vAVX32Du16;
+typedef vol AVX32Ds16 vAVX32Ds16;
+typedef vol AVX32Df16 vAVX32Df16;
+typedef vol AVX64Du8  vAVX64Du8;
+typedef vol AVX64Ds8  vAVX64Ds8;
+
+typedef vol AVXmatrix    vAVXmatrix;
+typedef vol AVX512matrix vAVX512matrix;

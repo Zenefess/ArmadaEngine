@@ -124,7 +124,7 @@ struct fp8n {
    fp8n(cfl32 value) { data = toFixed(value); }
    fp8n(cfl64 value) { data = ui8((value - fl64(_fpdt_data_.origin8)) * (255.0 / fl64(_fpdt_data_.range8))); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator cui8(void) const { return data; }
    operator cui16(void) const { return (ui16 &)data & 0x0FFu; }
@@ -264,7 +264,7 @@ struct fp8nx4 {
       data32 = toFixed4(value);
    }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data32 != 0; }
    operator cui32(void) const { return data32; }
    operator cui64(void) const { return (ui64 &)data32 & 0x0FFFFFFFFu; }
@@ -404,7 +404,7 @@ struct fp16n {
    fp16n(cfl32 value) { data = toFixed(value); }
    fp16n(cfl64 value) { data = ui16((value - fl64(_fpdt_data_.origin16)) * (65535.0 / fl64(_fpdt_data_.range16))); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator cui8(void) const { return ui8((toFloat() - _fpdt_data_.origin8) * _fpdt_data_.maxDivRange8); }
    operator cui16(void) const { return data; }
@@ -556,7 +556,7 @@ struct fp16nx4 {
       data64 = toFixed4(value);
    }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data64 != 0; }
    operator cui64(void) const { return data64; }
    operator cfl32x4(void) const { return toFloat4(); }
@@ -695,7 +695,7 @@ struct fp24n {
    fp24n(csi32 value) { data = (ui24 &)value; }
    fp24n(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator cui8(void) const { return ui8((toFloat() - _fpdt_data_.origin8) * _fpdt_data_.maxDivRange8); }
    operator cui16(void) const { return ui16((toFloat() - _fpdt_data_.origin16) * _fpdt_data_.maxDivRange16); }
@@ -818,7 +818,7 @@ struct fp32n {
    fp32n(csi32 value) { data = (ui32 &)value; }
    fp32n(cfl64 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator cui8(void) const { return ui8((toFloat() - _fpdt_data_.origin8) * _fpdt_data_.maxDivRange8); }
    operator cui16(void) const { return ui16((toFloat() - _fpdt_data_.origin16) * _fpdt_data_.maxDivRange16); }
@@ -925,7 +925,7 @@ struct f0p8 {
    f0p8(csi64 value) { data = (ui8 &)value; }
    f0p8(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui8(void) const { return data; }
    operator ui16(void) const { return (ui16 &)data & 0x0FFu; }
@@ -1032,7 +1032,7 @@ struct f1p7 {
    f1p7(csi64 value) { data = (ui8 &)value; }
    f1p7(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui8(void) const { return data; }
    operator ui16(void) const { return (ui16 &)data & 0x0FFu; }
@@ -1139,7 +1139,7 @@ struct f4p4 {
    f4p4(csi64 value) { data = (ui8 &)value; }
    f4p4(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui8(void) const { return data; }
    operator ui16(void) const { return (ui16 &)data & 0x0FFu; }
@@ -1246,7 +1246,7 @@ struct fp8n0_1 {
    fp8n0_1(csi64 value) { data = (ui8 &)value; }
    fp8n0_1(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui8(void) const { return data; }
    operator ui16(void) const { return (ui16 &)data & 0x0FFu; }
@@ -1356,7 +1356,7 @@ struct fp8n0_1x4 {
    fp8n0_1x4(cSSE4Df32 value) { data32 = (ui32 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value.xmm, _fpdt_255fx4)), _fpdt_shuffle8s); }
 #endif
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator cui32(void) const { return data32; }
    operator cfl32x4(void) const { return _mm_mul_ps(_mm_cvtepu32_ps(_mm_cvtepu8_epi32(_mm_cvtsi32_si128(data32))), _fpdt_rcp255fx4); }
 
@@ -1401,7 +1401,7 @@ struct f0p16 {
    f0p16(csi64 value) { data = (ui16 &)value; }
    f0p16(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui16(void) const { return data; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFu; }
@@ -1507,7 +1507,7 @@ struct fs1p14 {
    fs1p14(csi64 value) { data = (ui16 &)value; }
    fs1p14(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui16(void) const { return data; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFu; }
@@ -1613,7 +1613,7 @@ struct f1p15 {
    f1p15(csi64 value) { data = (ui16 &)value; }
    f1p15(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui16(void) const { return data; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFu; }
@@ -1719,7 +1719,7 @@ struct f6p10 {
    f6p10(csi64 value) { data = (ui16 &)value; }
    f6p10(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui16(void) const { return data; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFu; }
@@ -1825,7 +1825,7 @@ struct fs7p8 {
    fs7p8(csi64 value) { data = (ui16 &)value; }
    fs7p8(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui16(void) const { return data; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFu; }
@@ -1931,7 +1931,7 @@ struct f7p9 {
    f7p9(csi64 value) { data = (ui16 &)value; }
    f7p9(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui16(void) const { return data; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFu; }
@@ -2037,7 +2037,7 @@ struct f8p8 {
    f8p8(csi64 value) { data = (ui16 &)value; }
    f8p8(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui16(void) const { return data; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFu; }
@@ -2143,7 +2143,7 @@ struct fp16n0_1 {
    fp16n0_1(csi64 value) { data = (ui16 &)value; }
    fp16n0_1(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui16(void) const { return data; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFu; }
@@ -2249,7 +2249,7 @@ struct fp16n0_2 {
    fp16n0_2(csi64 value) { data = (ui16 &)value; }
    fp16n0_2(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui16(void) const { return data; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFu; }
@@ -2355,7 +2355,7 @@ struct fp16n0_128 {
    fp16n0_128(csi64 value) { data = (ui16 &)value; }
    fp16n0_128(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui16(void) const { return data; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFu; }
@@ -2461,7 +2461,7 @@ struct fp16n_1_1 {
    fp16n_1_1(csi64 value) { data = (ui16 &)value; }
    fp16n_1_1(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui16(void) const { return data; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFu; }
@@ -2567,7 +2567,7 @@ struct fp16n_128_128 {
    fp16n_128_128(csi64 value) { data = (ui16 &)value; }
    fp16n_128_128(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui16(void) const { return data; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFu; }
@@ -2675,7 +2675,7 @@ struct f1p15x4 {
    f1p15x4(cVEC4Df value) { cSSE4Df32 temp = { .vector = value }; data64 = (ui64 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(temp.xmm, _fpdt_32768fx4)), _fpdt_shuffle16s); }
    f1p15x4(cSSE4Df32 value) { data64 = (ui64 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value.xmm, _fpdt_32768fx4)), _fpdt_shuffle16s); }
 #endif
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator cui64(void) const { return data64; }
    operator cfl32x4(void) const { return _mm_mul_ps(_mm_cvtepu32_ps(_mm_cvtepu8_epi32(_mm_cvtsi64_si128(data64))), _fpdt_rcp255fx4); }
 
@@ -2772,7 +2772,7 @@ struct f0p24 {
    f0p24(csi64 value) { data = (ui24 &)value; }
    f0p24(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui16(void) const { return data; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFFFu; }
@@ -2878,7 +2878,7 @@ struct f8p16 {
    f8p16(csi64 value) { data = (ui24 &)value; }
    f8p16(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui16(void) const { return data; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFFFu; }
@@ -2984,7 +2984,7 @@ struct f12p12 {
    f12p12(csi64 value) { data = (ui24 &)value; }
    f12p12(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFFFu; }
    operator ui64(void) const { return (ui64 &)data & 0x0FFFFFFu; }
@@ -3089,7 +3089,7 @@ struct f16p8 {
    f16p8(csi64 value) { data = (ui24 &)value; }
    f16p8(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFFFu; }
    operator ui64(void) const { return (ui64 &)data & 0x0FFFFFFu; }
@@ -3194,7 +3194,7 @@ struct fp24n0_1 {
    fp24n0_1(csi64 value) { data = (ui24 &)value; }
    fp24n0_1(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFFFu; }
    operator ui64(void) const { return (ui64 &)data & 0x0FFFFFFu; }
@@ -3299,7 +3299,7 @@ struct fp24n_1_1 {
    fp24n_1_1(csi64 value) { data = (ui32 &)value; }
    fp24n_1_1(cfl32 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui32(void) const { return (ui32 &)data & 0x0FFFFFFu; }
    operator ui64(void) const { return (ui64 &)data & 0x0FFFFFFu; }
@@ -3406,7 +3406,7 @@ struct f0p32 {
    f0p32(csi64 value) { data = (ui32 &)value; }
    f0p32(cfl64 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui32(void) const { return data; }
    operator ui64(void) const { return (ui64 &)data & 0x0FFFFFFFFu; }
@@ -3511,7 +3511,7 @@ struct f16p16 {
    f16p16(csi64 value) { data = (ui32 &)value; }
    f16p16(cfl64 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui32(void) const { return data; }
    operator ui64(void) const { return (ui64 &)data & 0x0FFFFFFFFu; }
@@ -3616,7 +3616,7 @@ struct fp32n0_1 {
    fp32n0_1(csi64 value) { data = (ui32 &)value; }
    fp32n0_1(cfl64 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui32(void) const { return data; }
    operator ui64(void) const { return (ui64 &)data & 0x0FFFFFFFFu; }
@@ -3721,7 +3721,7 @@ struct fp32n_1_1 {
    fp32n_1_1(csi64 value) { data = (ui32 &)value; }
    fp32n_1_1(cfl64 value) { data = toFixed(value); }
 
-   operator void *(void) const { return *this; }
+   operator ptr(void) const { return *this; }
    operator bool(void) const { return data != 0; }
    operator ui32(void) const { return data; }
    operator ui64(void) const { return (ui64 &)data & 0x0FFFFFFFFu; }
@@ -3842,6 +3842,13 @@ typedef const fp16nx4 cfp16nx4; // 4x normalised 16-bit : User-defineable decima
 typedef const fp24n   cfp24n;   // Normalised 24-bit : User-defineable decimal range
 typedef const fp32n   cfp32n;   // Normalised 32-bit : User-defineable decimal range
 
+typedef const fp8n    vfp8n;    // Normalised 8-bit : User-defineable decimal range
+typedef const fp8nx4  vfp8nx4;  // 4x normalised 8-bit : User-defineable decimal range
+typedef const fp16n   vfp16n;   // Normalised 16-bit : User-defineable decimal range
+typedef const fp16nx4 vfp16nx4; // 4x normalised 16-bit : User-defineable decimal range
+typedef const fp24n   vfp24n;   // Normalised 24-bit : User-defineable decimal range
+typedef const fp32n   vfp32n;   // Normalised 32-bit : User-defineable decimal range
+
 #endif
 
 typedef const f0p8      cf0p8;      // 8-bit, 0.8 : Decimal range of 0.0~0.99609375
@@ -3853,6 +3860,16 @@ typedef const f4p4x2    cf4p4x2;    // 2x 8-bit, 4.4 : Decimal range of 0.0~15.9
 typedef const fp8n0_1   cfp8n0_1;   // Normalised 8-bit : Decimal range of 0.0~1.0
 typedef const fp8n0_1x2 cfp8n0_1x2; // 2x Normalised 8-bit : Decimal range of 0.0~1.0
 typedef const fp8n0_1x4 cfp8n0_1x4; // 4x normalised 8-bit : Decimal ranges of 0.0~1.0
+
+typedef const f0p8      vf0p8;      // 8-bit, 0.8 : Decimal range of 0.0~0.99609375
+typedef const f0p8x2    vf0p8x2;    // 2x 8-bit, 0.8 : Decimal range of 0.0~0.99609375
+typedef const f1p7      vf1p7;      // 8-bit, 1.7 : Decimal range of 0.0~1.9921875
+typedef const f1p7x2    vf1p7x2;    // 2x 8-bit, 1.7 : Decimal range of 0.0~1.9921875
+typedef const f4p4      vf4p4;      // 8-bit, 4.4 : Decimal range of 0.0~15.9375
+typedef const f4p4x2    vf4p4x2;    // 2x 8-bit, 4.4 : Decimal range of 0.0~15.9375
+typedef const fp8n0_1   vfp8n0_1;   // Normalised 8-bit : Decimal range of 0.0~1.0
+typedef const fp8n0_1x2 vfp8n0_1x2; // 2x Normalised 8-bit : Decimal range of 0.0~1.0
+typedef const fp8n0_1x4 vfp8n0_1x4; // 4x normalised 8-bit : Decimal ranges of 0.0~1.0
 
 typedef const f0p16         cf0p16;         // 16-bit, 0.16 : Decimal range of 0.0~0.9999847412109375
 typedef const f0p16x2       cf0p16x2;       // 2x 16-bit, 0.16 : Decimal range of 0.0~0.9999847412109375
@@ -3877,14 +3894,49 @@ typedef const fp16n0_2      cfp16n0_2;      // Normalised 16-bit : Decimal range
 typedef const fp16n0_128    cfp16n0_128;    // Normalised 16-bit : Decimal range of 0.0~128.0
 typedef const fp16n_128_128 cfp16n_128_128; // Normalised 16-bit : Decimal range of -128.0~128.0
 
-typedef const f0p24    cf0p24;    // 24-bit, 0.24 : Decimal range of 0.0~0.999999940395355224609375
-typedef const f8p16    cf8p16;    // 24-bit, 8.16 : Decimal range of 0.0~255.9999847412109375
-typedef const f12p12   cf12p12;   // 24-bit, 12.12 : Decimal range of 0.0~4095.999755859375
-typedef const f16p8    cf16p8;    // 24-bit, 16.8 : Decimal range of 0.0~65535.99609375
-typedef const fp24n0_1 cfp24n0_1; // Normalised 24-bit : Decimal range of 0.0~1.0
+typedef const f0p16         vf0p16;         // 16-bit, 0.16 : Decimal range of 0.0~0.9999847412109375
+typedef const f0p16x2       vf0p16x2;       // 2x 16-bit, 0.16 : Decimal range of 0.0~0.9999847412109375
+typedef const fs1p14        vfs1p14;        // 16-bit, signed 1.14 : Decimal range of -2.0~1.99993896484375
+typedef const fs1p14x2      vfs1p14x2;      // 2x 16-bit, signed 1.14 : Decimal range of -2.0~1.99993896484375
+typedef const f1p15         vf1p15;         // 16-bit, 1.15 : Decimal range of 0.0~1.999969482421875
+typedef const f1p15x2       vf1p15x2;       // 2x 16-bit, 1.15 : Decimal range of 0.0~1.999969482421875
+typedef const f1p15x4       vf1p15x4;       // 4x 16-bit, 1.15 : Decimal range of 0.0~1.999969482421875
+typedef const f6p10         vf6p10;         // 16-bit, 6.10 : Decimal range of 0.0~63.9990234375
+typedef const f6p10x2       vf6p10x2;       // 2x 16-bit, 6.10 : Decimal range of 0.0~63.9990234375
+typedef const fs7p8         vfs7p8;         // 16-bit, signed 7.8 : Decimal range of -128.0~127.99609375
+typedef const fs7p8x2       vfs7p8x2;       // 2x 16-bit, signed 7.8 : Decimal range of -128.0~127.99609375
+typedef const f7p9          vf7p9;          // 16-bit, 7.9 : Decimal range of 0.0~127.998046875
+typedef const f7p9x2        vf7p9x2;        // 2x 16-bit, 7.9 : Decimal range of 0.0~127.998046875
+typedef const f8p8          vf8p8;          // 16-bit, 8.8 : Decimal range of 0.0~255.99609375
+typedef const f8p8x2        vf8p8x2;        // 2x 16-bit, 8.8 : Decimal range of 0.0~255.99609375
+typedef const fp16n0_1      vfp16n0_1;      // Normalised 16-bit : Decimal range of 0.0~1.0
+typedef const fp16n0_1x2    vfp16n0_1x2;    // 2x Normalised 16-bit : Decimal range of 0.0~1.0
+typedef const fp16n0_1x4    vfp16n0_1x4;    // 4x normalised 16-bit : Decimal ranges of 0.0~1.0
+typedef const fp16n_1_1     vfp16n_1_1;     // Normalised 16-bit : Decimal range of -1.0~1.0
+typedef const fp16n0_2      vfp16n0_2;      // Normalised 16-bit : Decimal range of 0.0~2.0
+typedef const fp16n0_128    vfp16n0_128;    // Normalised 16-bit : Decimal range of 0.0~128.0
+typedef const fp16n_128_128 vfp16n_128_128; // Normalised 16-bit : Decimal range of -128.0~128.0
+
+typedef const f0p24     cf0p24;     // 24-bit, 0.24 : Decimal range of 0.0~0.999999940395355224609375
+typedef const f8p16     cf8p16;     // 24-bit, 8.16 : Decimal range of 0.0~255.9999847412109375
+typedef const f12p12    cf12p12;    // 24-bit, 12.12 : Decimal range of 0.0~4095.999755859375
+typedef const f16p8     cf16p8;     // 24-bit, 16.8 : Decimal range of 0.0~65535.99609375
+typedef const fp24n0_1  cfp24n0_1;  // Normalised 24-bit : Decimal range of 0.0~1.0
 typedef const fp24n_1_1 cfp24n_1_1; // Normalised 24-bit : Decimal range of 0.0~1.0
 
-typedef const f0p32    cf0p32;      // 32-bit, 0.32 : Decimal range of 0.0~0.99999999976716935634613037109375
-typedef const f16p16   cf16p16;     // 32-bit, 16.16 : Decimal range of 0.0~65535.9999847412109375
-typedef const fp32n0_1 cfp32n0_1;   // Normalised 32-bit : Decimal range of 0.0~1.0
+typedef const f0p24     vf0p24;     // 24-bit, 0.24 : Decimal range of 0.0~0.999999940395355224609375
+typedef const f8p16     vf8p16;     // 24-bit, 8.16 : Decimal range of 0.0~255.9999847412109375
+typedef const f12p12    vf12p12;    // 24-bit, 12.12 : Decimal range of 0.0~4095.999755859375
+typedef const f16p8     vf16p8;     // 24-bit, 16.8 : Decimal range of 0.0~65535.99609375
+typedef const fp24n0_1  vfp24n0_1;  // Normalised 24-bit : Decimal range of 0.0~1.0
+typedef const fp24n_1_1 vfp24n_1_1; // Normalised 24-bit : Decimal range of 0.0~1.0
+
+typedef const f0p32     cf0p32;      // 32-bit, 0.32 : Decimal range of 0.0~0.99999999976716935634613037109375
+typedef const f16p16    cf16p16;     // 32-bit, 16.16 : Decimal range of 0.0~65535.9999847412109375
+typedef const fp32n0_1  cfp32n0_1;   // Normalised 32-bit : Decimal range of 0.0~1.0
 typedef const fp32n_1_1 cfp32n_1_1; // Normalised 32-bit : Decimal range of -1.0~1.0
+
+typedef const f0p32     vf0p32;      // 32-bit, 0.32 : Decimal range of 0.0~0.99999999976716935634613037109375
+typedef const f16p16    vf16p16;     // 32-bit, 16.16 : Decimal range of 0.0~65535.9999847412109375
+typedef const fp32n0_1  vfp32n0_1;   // Normalised 32-bit : Decimal range of 0.0~1.0
+typedef const fp32n_1_1 vfp32n_1_1; // Normalised 32-bit : Decimal range of -1.0~1.0
