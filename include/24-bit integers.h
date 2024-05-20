@@ -1,6 +1,6 @@
 /****************************************************************
  * File: 24-bit integers.h                  Created: 2024/05/13 *
- *                                    Last modified: 2024/05/17 *
+ *                                    Last modified: 2024/05/20 *
  *                                                              *
  * Desc: Both signed & unsigned data types.                     *
  *                                                              *
@@ -151,14 +151,16 @@ struct si24 {
    si24(cfl32 value) { csi32 temp = (si32)value; (si16 &)data = (si16 &)temp; data[2] = ((si8_3)temp)[2]; }
    si24(cfl64 value) { csi32 temp = (si32)value; (si16 &)data = (csi16 &)temp; data[2] = ((si8_3)temp)[2]; }
 
+   operator void *(void) const { return *this; }
+   operator bool(void) const { return ((ui32 &)data & 0x0FFFFFFu) != 0; }
    operator cui8(void) const { return (ui8 &)data; }
    operator csi8(void) const { return (si8 &)data; }
    operator cui16(void) const { return (ui16 &)data; }
    operator csi16(void) const { return (si16 &)data; }
    operator csi8_3(void) const { return (si8_3)data; }
-   operator cui32(void) const { return (ui32 &)data & 0x0FFFFFF; }
+   operator cui32(void) const { return (ui32 &)data & 0x0FFFFFFu; }
    operator csi32(void) const { return (si32 &)data & 0x0FFFFFF; }
-   operator cui64(void) const { return (ui64 &)data & 0x0FFFFFF; }
+   operator cui64(void) const { return (ui64 &)data & 0x0FFFFFFu; }
    operator csi64(void) const { return (si64 &)data & 0x0FFFFFF; }
    operator cfl32(void) const { return fl32((si32 &)data & 0x0FFFFFF); }
    operator cfl64(void) const { return fl64((si32 &)data & 0x0FFFFFF); }

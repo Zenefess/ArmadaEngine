@@ -1,6 +1,6 @@
 /************************************************************
  * File: vector structures.h            Created: 2022/12/05 *
- *                                Last modified: 2024/05/18 *
+ *                                Last modified: 2024/05/19 *
  *                                                          *
  * Notes: 2023/04/27: Added constant vector typedefs.       *
  *        2024/04/04: Added ui24 vector types.              *
@@ -12,6 +12,8 @@
 
 #include "typedefs.h"
 #include "24-bit integers.h"
+
+#define _VECTOR_STRUCTURES_
 
 union VEC2Du8 {
    ui8 _ui8[2];
