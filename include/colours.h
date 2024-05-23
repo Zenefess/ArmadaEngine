@@ -13,5 +13,5 @@
 static cVEC3Df c3_white = { 1.0f, 1.0f, 1.0f };
 static cVEC3Df c3_black = { 0.0f, 0.0f, 0.0f };
 
-static cVEC4Df c4_white = { 1.0f, 1.0f, 1.0f, 1.0f };
-static cVEC4Df c4_black = { 0.0f, 0.0f, 0.0f, 1.0f };
+static cSSE4Df32 c4_white = { 1.0f, 1.0f, 1.0f, 1.0f };
+static cSSE4Df32 c4_black = { 0.0f, 0.0f, 0.0f, 1.0f };

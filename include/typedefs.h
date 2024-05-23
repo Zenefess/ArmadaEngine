@@ -12,7 +12,7 @@
  *        2024/05/13: Moved ui24 data type to separate file     *
  *        2024/05/18: Added AVX512 vector types                 *
  *                                                              *
- *                             Copyright (c) David William Bull *
+ * MIT license                 Copyright (c) David William Bull *
  ****************************************************************/
 #pragma once
 

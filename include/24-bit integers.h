@@ -4,7 +4,7 @@
  *                                                              *
  * Desc: Both signed & unsigned data types.                     *
  *                                                              *
- *                             Copyright (c) David William Bull *
+ * MIT license                 Copyright (c) David William Bull *
  ****************************************************************/
 #pragma once
 
@@ -25,7 +25,7 @@ struct ui24 {
    typedef unsigned __int32 ui32; typedef const ui32 cui32;
    typedef unsigned __int64 ui64; typedef const ui64 cui64;
 #endif
-   typedef const ui24 cui24; typedef ui8(&ui8_3)[3]; typedef const ui8_3 cui8_3;
+   typedef const ui24 cui24; typedef ui8 (& ui8_3)[3]; typedef const ui8_3 cui8_3;
 
    ui8 data[3];
 

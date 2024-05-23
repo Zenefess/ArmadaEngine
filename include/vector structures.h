@@ -6,7 +6,7 @@
  *        2024/04/04: Added support for 24-bit integers.    *
  *        2024/05/18: Added AVX512 support.                 *
  *                                                          *
- *                         Copyright (c) David William Bull *
+ * MIT license.            Copyright (c) David William Bull *
  ************************************************************/
 #pragma once
 
@@ -476,9 +476,9 @@ union VEC16Dh {
 
 // SSE2 & AVX2 vector structs
 union SSE2Du32 {
+   ui32     _ui32[2];
    __m64    xmm;
    VEC2Du32 vector;
-   ui32     _ui32[2];
    struct {
       union { ui32 u, x; };
       union { ui32 v, y; };
@@ -486,9 +486,9 @@ union SSE2Du32 {
 };
 
 union SSE2Ds32 {
+   si32     _si32[2];
    __m64    xmm;
    VEC2Ds32 vector;
-   si32     _si32[2];
    struct {
       union { si32 u, x; };
       union { si32 v, y; };
@@ -516,9 +516,9 @@ union SSE2Ds64 {
 };
 
 union SSE2Df32 {
+   fl32   _fl32[2];
    __m64  xmm;
    VEC2Df vector;
-   fl32   _fl32[2];
    struct {
       union { fl32 u, x; };
       union { fl32 v, y; };
@@ -536,9 +536,9 @@ union SSE2Df64 {
 };
 
 union SSE4Du16 {
+   ui16     _ui16[4];
    __m64    xmm;
    VEC4Du16 vector;
-   ui16     _ui16[4];
    struct {
       union { ui16 u, x; };
       union { ui16 v, y; };
@@ -546,9 +546,9 @@ union SSE4Du16 {
 };
 
 union SSE4Ds16 {
+   si16     _si16[4];
    __m64    xmm;
    VEC4Du16 vector;
-   si16     _si16[4];
    struct {
       union { si16 u, x; };
       union { si16 v, y; };
@@ -844,8 +844,10 @@ typedef const VEC2Du8   cVEC2Du8;
 typedef const VEC2Ds8   cVEC2Ds8;
 typedef const VEC2Du16  cVEC2Du16;
 typedef const VEC2Ds16  cVEC2Ds16;
+#ifdef _24BIT_INTEGERS_
 typedef const VEC2Du24  cVEC2Du24;
 typedef const VEC2Ds24  cVEC2Ds24;
+#endif
 typedef const VEC2Du32  cVEC2Du32;
 typedef const VEC2Ds32  cVEC2Ds32;
 typedef const VEC2Du64  cVEC2Du64;
@@ -856,8 +858,10 @@ typedef const VEC3Du8   cVEC3Du8;
 typedef const VEC3Ds8   cVEC3Ds8;
 typedef const VEC3Du16  cVEC3Du16;
 typedef const VEC3Ds16  cVEC3Ds16;
+#ifdef _24BIT_INTEGERS_
 typedef const VEC3Du24  cVEC3Du24;
 typedef const VEC3Ds24  cVEC3Ds24;
+#endif
 typedef const VEC3Du32  cVEC3Du32;
 typedef const VEC3Ds32  cVEC3Ds32;
 typedef const VEC3Du64  cVEC3Du64;
@@ -868,8 +872,10 @@ typedef const VEC4Du8   cVEC4Du8;
 typedef const VEC4Ds8   cVEC4Ds8;
 typedef const VEC4Du16  cVEC4Du16;
 typedef const VEC4Ds16  cVEC4Ds16;
+#ifdef _24BIT_INTEGERS_
 typedef const VEC4Du24  cVEC4Du24;
 typedef const VEC4Ds24  cVEC4Ds24;
+#endif
 typedef const VEC4Du32  cVEC4Du32;
 typedef const VEC4Ds32  cVEC4Ds32;
 typedef const VEC4Du64  cVEC4Du64;
@@ -925,8 +931,10 @@ typedef vol VEC2Du8   vVEC2Du8;
 typedef vol VEC2Ds8   vVEC2Ds8;
 typedef vol VEC2Du16  vVEC2Du16;
 typedef vol VEC2Ds16  vVEC2Ds16;
+#ifdef _24BIT_INTEGERS_
 typedef vol VEC2Du24  vVEC2Du24;
 typedef vol VEC2Ds24  vVEC2Ds24;
+#endif
 typedef vol VEC2Du32  vVEC2Du32;
 typedef vol VEC2Ds32  vVEC2Ds32;
 typedef vol VEC2Du64  vVEC2Du64;
@@ -937,8 +945,10 @@ typedef vol VEC3Du8   vVEC3Du8;
 typedef vol VEC3Ds8   vVEC3Ds8;
 typedef vol VEC3Du16  vVEC3Du16;
 typedef vol VEC3Ds16  vVEC3Ds16;
+#ifdef _24BIT_INTEGERS_
 typedef vol VEC3Du24  vVEC3Du24;
 typedef vol VEC3Ds24  vVEC3Ds24;
+#endif
 typedef vol VEC3Du32  vVEC3Du32;
 typedef vol VEC3Ds32  vVEC3Ds32;
 typedef vol VEC3Du64  vVEC3Du64;
@@ -949,8 +959,10 @@ typedef vol VEC4Du8   vVEC4Du8;
 typedef vol VEC4Ds8   vVEC4Ds8;
 typedef vol VEC4Du16  vVEC4Du16;
 typedef vol VEC4Ds16  vVEC4Ds16;
+#ifdef _24BIT_INTEGERS_
 typedef vol VEC4Du24  vVEC4Du24;
 typedef vol VEC4Ds24  vVEC4Ds24;
+#endif
 typedef vol VEC4Du32  vVEC4Du32;
 typedef vol VEC4Ds32  vVEC4Ds32;
 typedef vol VEC4Du64  vVEC4Du64;

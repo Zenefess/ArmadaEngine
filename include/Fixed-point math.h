@@ -4,7 +4,7 @@
  *                                                          *
  * Desc:                                                    *
  *                                                          *
- *                         Copyright (c) David William Bull *
+ * MIT license.            Copyright (c) David William Bull *
  ************************************************************/
 #pragma once
 
