@@ -1,6 +1,6 @@
 /****************************************************************
  * File: typedefs.h                           Created: Jul.2007 *
- *                                    Last modified: 2024/05/18 *
+ *                                    Last modified: 2024/05/25 *
  *                                                              *
  * Desc: Shorthand type defines & composites, and static        *
  *       constant values of common data-type sizes.             *
@@ -437,6 +437,40 @@ typedef vol          char     *vchptr;
 typedef vol          char    **vstptr;
 typedef vol          wchar_t  *vwchptr;
 typedef vol          wchar_t **vwstptr;
+
+// Constant pointers to volatile types
+typedef vol unsigned char     * const vbptrc;
+typedef vol unsigned short    * const vwptrc;
+typedef vol unsigned long     * const vdwptrc;
+typedef vol unsigned __int64  * const vqwptrc;
+typedef vol unsigned __int8   * const vui8ptrc;
+typedef vol unsigned __int16  * const vui16ptrc;
+typedef vol unsigned __int32  * const vui32ptrc;
+typedef vol unsigned __int64  * const vui64ptrc;
+typedef vol          __m128i  * const vui128ptrc;
+typedef vol          __m256i  * const vui256ptrc;
+typedef vol          __m512i  * const vui512ptrc;
+typedef vol   signed __int8   * const vsi8ptrc;
+typedef vol   signed __int16  * const vsi16ptrc;
+typedef vol   signed __int32  * const vsi32ptrc;
+typedef vol   signed __int64  * const vsi64ptrc;
+typedef vol          __m128i  * const vsi128ptrc;
+typedef vol          __m256i  * const vsi256ptrc;
+typedef vol          __m512i  * const vsi512ptrc;
+typedef vol       __bfloat16  * const vfl16ptrc;
+typedef vol          float    * const vfl32ptrc;
+typedef vol          double   * const vfl64ptrc;
+typedef vol     long double   * const vfl80ptrc;
+typedef vol          __m128   * const vfl32x4ptrc;
+typedef vol          __m256   * const vfl32x8ptrc;
+typedef vol          __m512   * const vfl32x16ptrc;
+typedef vol         __m128d   * const vfl64x2ptrc;
+typedef vol         __m256d   * const vfl64x4ptrc;
+typedef vol         __m512d   * const vfl64x8ptrc;
+typedef vol          char     * const vchptrc;
+typedef vol          char    ** const vstptrc;
+typedef vol          wchar_t  * const vwchptrc;
+typedef vol          wchar_t ** const vwstptrc;
 
 // Function pointer types
 typedef void (*func)(void);

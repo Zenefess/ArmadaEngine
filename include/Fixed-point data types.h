@@ -30,9 +30,18 @@ typedef
 #ifdef _VECTOR_STRUCTURES_
 SSE2Df32
 #else
-union { __m64 xmm; struct { fl32 u, v; } struct { fl32 x, y; } fl32 _fl[2]; }
+union { struct { fl32 u, v; } struct { fl32 x, y; } __m64 xmm; fl32 _fl[2]; }
 #endif
 f32x2;
+
+// For 3-scalar return values
+typedef
+#ifdef _VECTOR_STRUCTURES_
+VEC3Du16
+#else
+union { struct { fs7p8 x, y, z; } struct { fs7p8 r, g, b; }; }
+#endif
+i16x3;
 
 // For 32-byte return values
 typedef
@@ -76,12 +85,13 @@ union { csi512 zmm; csi256 ymm[2]; csi128 xmm[4]; csi64 _s64[16]; cui64 _u64[16]
 #endif
 i32x16;
 
-typedef const f32x2  cf32x2;  // For 32-byte packed floating-point return values
+typedef const f32x2  cf32x2;  // For 2-scalar return values
+typedef const i16x3  ci16x3;  // For 3-scalar return values
+typedef const i64x4  ci64x4;  // For 32-byte packed integer return values
 typedef const f32x8  cf32x8;  // For 32-byte packed floating-point return values
 typedef const i16x16 ci16x16; // For 32-byte packed integer return values
-typedef const i64x4  ci64x4;  // For 32-byte packed integer return values
-typedef const f32x16 cf32x16; // For 64-byte packed floating-point return values
 typedef const i32x16 ci32x16; // For 64-byte packed integer return values
+typedef const f32x16 cf32x16; // For 64-byte packed floating-point return values
 
 #define _FIXED_POINT_DATA_TYPES_
 
@@ -114,8 +124,11 @@ static cui128  _fpdt_shuffle16sAVX1 = { .m128i_u64 = { 0x01D1C191815141110u, 0 }
 static cfl32x4 _fpdt_32768fx4     = _mm_set_ps1(32768.0f);
 static cfl32x4 _fpdt_65535div2fx4 = _mm_set_ps1(32767.5f);
 static cfl32x4 _fpdt_65535fx4     = _mm_set_ps1(65535.0f);
+static cfl32x4 _fpdt_256fx4       = _mm_set_ps1(256.0f);
 static cfl32x4 _fpdt_255fx4       = _mm_set_ps1(255.0f);
+static cfl32x4 _fpdt_128fx4       = _mm_set_ps1(128.0f);
 static cfl32x4 _fpdt_rcp255fx4    = _mm_set_ps1(1.0f / 255.0f);
+static cfl32x4 _fpdt_rcp256fx4    = _mm_set_ps1(1.0f / 256.0f);
 static cfl32x4 _fpdt_rcp32768fx4  = _mm_set_ps1(1.0f / 32768.0f);
 static cfl32x4 _fpdt_rcp65535fx4  = _mm_set_ps1(1.0f / 65535.0f);
 static cfl32x4 _fpdt_2div65535fx4 = _mm_set_ps1(2.0f / 65535.0f);
@@ -2747,6 +2760,61 @@ struct fp16n_128_128 {
    inline cbool operator&&(cfl32 &value) const { return data && toFixed(value); }
 };
 
+// 3x 16-bit, signed 7.8 : Decimal range of -128.0~127.99609375
+struct fs7p8x3 {
+   typedef const fs7p8 cfs7p8; typedef const fs7p8x3 cfs7p8x3;
+
+   union { fs7p8 data[3]; ui16 data16[3]; struct { fs7p8 r, g, b; }; i16x3 data48; };
+
+   inline cui16 toFixed(cfl32 &value) const { return ui16((value + 128.0f) * 256.0f); }
+   inline ci16x3 toFixed3(cfl32x4 &value) const { cui64 data64 = (ui64 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(_mm_add_ps(value, _fpdt_128fx4), _fpdt_256fx4)), _fpdt_shuffle16s); return *(i16x3 *)&data64; }
+   inline cfl32 toFloat(cui8 index) const { return cfl32(data16[index]) * _fpdt_rcp256f - 128.0f; }
+   inline cfl32 toFloat(cfs7p8 &value) const { return fl32(value.data) * _fpdt_rcp256f - 128.0f; }
+   inline cfl32x4 toFloat3(void) const { return _mm_sub_ps(_mm_mul_ps(_mm_cvtepu32_ps(_mm_cvtepu8_epi32(_mm_cvtsi64_si128((si64 &)*this))), _fpdt_rcp256fx4), _fpdt_128fx4); } // 4th element is undefined
+   inline cfl32x4 toFloat3(cfs7p8x3 value) const { return _mm_sub_ps(_mm_mul_ps(_mm_cvtepu32_ps(_mm_cvtepu8_epi32(_mm_cvtsi64_si128((si64 &)value))), _fpdt_rcp256fx4), _fpdt_128fx4); } // 4th element is undefined
+
+   fs7p8x3(void) = default;
+   fs7p8x3(cfs7p8 value, cui16 index) { data[index] = value; }
+   fs7p8x3(cui16 value, cui16 index) { data16[index] = value; }
+   fs7p8x3(cfl32 value, cui16 index) { data16[index] = toFixed(value); }
+   fs7p8x3(cfs7p8 (&value)[3]) { data[0] = value[0]; data[1] = value[1]; data[2] = value[2]; }
+   fs7p8x3(cui16 (&value)[3]) { data16[0] = value[0]; data16[1] = value[1]; data16[2] = value[2]; }
+   fs7p8x3(cfs7p8 value) { data[0] = data[1] = data[2] = value; }
+   fs7p8x3(cui16 value) { data16[0] = data16[1] = data16[2] = value; }
+   fs7p8x3(cui16 value0, cui16 value1, cui16 value2) { data16[0] = value0; data16[1] = value1; data16[2] = value2; }
+   fs7p8x3(cfl32 value) { cui16 temp = toFixed(value); data16[0] = data16[1] = data16[2] = temp; }
+   fs7p8x3(cfl32x4 value) { data48 = toFixed3(value); } // 4th element is ignored
+#ifdef _VECTOR_STRUCTURES_
+   fs7p8x3(cVEC3Df value) { cSSE4Df32 temp = { .vector = (VEC4Df &)value }; data48 = toFixed3(temp.xmm); }
+   fs7p8x3(cSSE4Df32 value) { data48 = toFixed3(value.xmm); } // 4th element is ignored
+#endif
+   operator ptr(void) const { return *this; }
+   operator cfl32x4(void) const { return toFloat3(); } // 4th element is undefined
+
+   inline cfs7p8x3 &operator&(void) const { return *this; }
+   inline cfs7p8x3 &operator&(cui16 (&value)[3]) const { return (cfs7p8x3 &)value; }
+
+   inline cfs7p8x3 operator++(void) { data16[0]++; data16[1]++; data16[2]++; return *this; }
+   inline cfs7p8x3 operator++(int) { cui16 temp[3] = { data16[0]++, data16[1]++, data16[2]++ }; return (cfs7p8x3 &)temp; }
+   inline cfs7p8x3 operator--(void) { data16[0]--; data16[1]--; data16[2]--; return *this; }
+   inline cfs7p8x3 operator--(int) { cui16 temp[4] = { data16[0]--, data16[1]--, data16[2]-- }; return (cfs7p8x3 &)temp; }
+
+   inline cfs7p8x3 operator<<(csi32 &value) const { return cfs7p8x3{ ui16(data16[0] << value), ui16(data16[1] << value), ui16(data16[2] << value) }; }
+   inline cfs7p8x3 operator>>(csi32 &value) const { return cfs7p8x3{ ui16(data16[0] >> value), ui16(data16[1] >> value), ui16(data16[2] >> value) }; }
+   inline cfs7p8x3 operator<<=(csi32 &value) { return cfs7p8x3{ data16[0] <<= value, data16[1] <<= value, data16[2] <<= value }; }
+   inline cfs7p8x3 operator>>=(csi32 &value) { return cfs7p8x3{ data16[0] >>= value, data16[1] >>= value, data16[2] >>= value }; }
+
+   inline cfs7p8x3 operator+(cfs7p8x3 &value) const { return cfs7p8x3{ ui16(data16[0] + value.data16[0]), ui16(data16[1] + value.data16[1]), ui16(data16[2] + value.data16[2]) }; }
+   inline cfs7p8x3 operator-(cfs7p8x3 &value) const { return cfs7p8x3{ ui16(data16[0] - value.data16[0]), ui16(data16[1] - value.data16[1]), ui16(data16[2] - value.data16[2]) }; }
+   inline cfs7p8x3 operator+=(cfs7p8x3 &value) { return cfs7p8x3{ data16[0] += value.data16[0], data16[1] += value.data16[1], data16[2] += value.data16[2]}; }
+   inline cfs7p8x3 operator-=(cfs7p8x3 &value) { return cfs7p8x3{ data16[0] -= value.data16[0], data16[1] -= value.data16[1], data16[2] -= value.data16[2]}; }
+
+   inline cfs7p8x3 operator+(cfl32x4 &value) const { ci16x3 temp = toFixed3(_mm_add_ps(value, toFloat3())); return *(cfs7p8x3 *)&temp; }
+   inline cfs7p8x3 operator-(cfl32x4 &value) const { ci16x3 temp = toFixed3(_mm_sub_ps(value, toFloat3())); return *(cfs7p8x3 *)&temp; }
+   inline cfs7p8x3 operator+=(cfl32x4 &value) { data48 = toFixed3(_mm_add_ps(value, toFloat3())); return *this; }
+   inline cfs7p8x3 operator-=(cfl32x4 &value) { data48 = toFixed3(_mm_sub_ps(value, toFloat3())); return *this; }
+};
+
 // 4x 16-bit, 1.15 : Decimal range of 0.0~1.999969482421875
 struct f1p15x4 {
    typedef const f1p15 cf1p15; typedef const f1p15x4 cf1p15x4;
@@ -2787,11 +2855,11 @@ struct f1p15x4 {
 
    inline cf1p15x4 operator+(cf1p15x4 &value) const { return data64 + value.data64; }
    inline cf1p15x4 operator-(cf1p15x4 &value) const { return data64 - value.data64; }
-   inline cf1p15x4 operator+(cfl32x4 &value) const { return data64 + (ui64 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_32768fx4)), _fpdt_shuffle16s); }
-   inline cf1p15x4 operator-(cfl32x4 &value) const { return data64 - (ui64 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_32768fx4)), _fpdt_shuffle16s); }
-
    inline cf1p15x4 operator+=(cf1p15x4 &value) { return (data64 += value.data64); }
    inline cf1p15x4 operator-=(cf1p15x4 &value) { return (data64 -= value.data64); }
+
+   inline cf1p15x4 operator+(cfl32x4 &value) const { return data64 + (ui64 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_32768fx4)), _fpdt_shuffle16s); }
+   inline cf1p15x4 operator-(cfl32x4 &value) const { return data64 - (ui64 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_32768fx4)), _fpdt_shuffle16s); }
    inline cf1p15x4 operator+=(cfl32x4 &value) { return (data64 += (ui64 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_32768fx4)), _fpdt_shuffle16s)); }
    inline cf1p15x4 operator-=(cfl32x4 &value) { return (data64 -= (ui64 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_32768fx4)), _fpdt_shuffle16s)); }
 };
@@ -4279,6 +4347,7 @@ typedef const f6p10         cf6p10;         // 16-bit, 6.10 : Decimal range of 0
 typedef const f6p10x2       cf6p10x2;       // 2x 16-bit, 6.10 : Decimal range of 0.0~63.9990234375
 typedef const fs7p8         cfs7p8;         // 16-bit, signed 7.8 : Decimal range of -128.0~127.99609375
 typedef const fs7p8x2       cfs7p8x2;       // 2x 16-bit, signed 7.8 : Decimal range of -128.0~127.99609375
+typedef const fs7p8x3       cfs7p8x3;       // 3x 16-bit, signed 7.8 : Decimal range of -128.0~127.99609375
 typedef const f7p9          cf7p9;          // 16-bit, 7.9 : Decimal range of 0.0~127.998046875
 typedef const f7p9x2        cf7p9x2;        // 2x 16-bit, 7.9 : Decimal range of 0.0~127.998046875
 typedef const f8p8          cf8p8;          // 16-bit, 8.8 : Decimal range of 0.0~255.99609375
@@ -4304,6 +4373,7 @@ typedef const f6p10         vf6p10;         // 16-bit, 6.10 : Decimal range of 0
 typedef const f6p10x2       vf6p10x2;       // 2x 16-bit, 6.10 : Decimal range of 0.0~63.9990234375
 typedef const fs7p8         vfs7p8;         // 16-bit, signed 7.8 : Decimal range of -128.0~127.99609375
 typedef const fs7p8x2       vfs7p8x2;       // 2x 16-bit, signed 7.8 : Decimal range of -128.0~127.99609375
+typedef const fs7p8x3       vfs7p8x3;       // 3x 16-bit, signed 7.8 : Decimal range of -128.0~127.99609375
 typedef const f7p9          vf7p9;          // 16-bit, 7.9 : Decimal range of 0.0~127.998046875
 typedef const f7p9x2        vf7p9x2;        // 2x 16-bit, 7.9 : Decimal range of 0.0~127.998046875
 typedef const f8p8          vf8p8;          // 16-bit, 8.8 : Decimal range of 0.0~255.99609375

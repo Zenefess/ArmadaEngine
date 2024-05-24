@@ -8,6 +8,8 @@
  ************************************************************/
 #pragma once
 
+#pragma intrinsic(_InterlockedExchange64)
+
 #include <corecrt_malloc.h>
 #include "typedefs.h"
 
@@ -130,6 +132,8 @@ inline ptrc salloc32(csize_t byteCount, cui256 bitPattern) {
    return pointer;
 }
 
+#undef bitPatternx8
+
 // Frees a pointer and returns true if successful.
 #define mfree1(pointer) mdealloc(pointer)
 // Frees a variable number of pointers. Each bit represents ~64 pointers in argument order, and will be true if the relevant pointer is freed.
@@ -221,4 +225,16 @@ inline void mset(ptrc addr, cui64 numBytes, cui64 qwVal) {
 		(ui8ptr(addr))[os] = ui8(qwVal >> (remBytes << 3));
 }
 
-#undef bitPatternx8
+// Interlocked copy byteCount (rounded-up to nearest 8) bytes
+inline void LockedMove(si64ptrc source, vsi64ptrc dest, csi32 byteCount) {
+   csi32 j = (byteCount + 7) >> 3;
+   for(si32 i = 0; i < j; i++)
+      _InterlockedExchange64(&dest[i], source[i]);
+}
+
+// Interlocked move byteCount (rounded-up to nearest 8) bytes and set source to zero
+inline void LockedMoveAndClear(si64ptrc source, vsi64ptrc dest, csi32 byteCount) {
+   csi32 j = (byteCount + 7) >> 3;
+   for(si32 i = 0; i < j; i++)
+      dest[i] = _InterlockedExchange64(&source[i], 0);
+}
