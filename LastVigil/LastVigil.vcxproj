@@ -448,6 +448,7 @@
     <None Include="packages.config" />
     <None Include="Shaders\common.hlsli" />
     <None Include="Shaders\gs.mesh displacement functions.hlsli" />
+    <None Include="Shaders\gui.hlsli" />
     <None Include="Shaders\ps.full register access.hlsli" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

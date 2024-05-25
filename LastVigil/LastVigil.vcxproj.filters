@@ -270,5 +270,8 @@
     <None Include="Shaders\gs.mesh displacement functions.hlsli">
       <Filter>Shaders\include</Filter>
     </None>
+    <None Include="Shaders\gui.hlsli">
+      <Filter>Shaders\include</Filter>
+    </None>
   </ItemGroup>
 </Project>

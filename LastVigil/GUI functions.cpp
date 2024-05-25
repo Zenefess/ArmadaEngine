@@ -1,6 +1,6 @@
 /************************************************************
  * File: GUI functions.cpp              Created: 2023/06/13 *
- *                                Last modified: 2024/04/20 *
+ *                                Last modified: 2024/05/24 *
  *                                                          *
  * Desc: User interface functions for in-game menus and     *
  *       developer environment.                             *
@@ -115,7 +115,7 @@ void __Activate1_0_Default_Scalar(cptrc indices) {
    else {
       cfl32 curCoord = fl32(gcv.curCoords.x) / ScrRes.dims[ScrRes.state].dim[0];
 
-      vertex[1].viewPos.x = (curCoord - Float16(element.activePos.x, 1.0f)) * element.viewScale.x * ScrRes.dims[ScrRes.state].aspectI;
+      vertex[1].viewPos.x = (curCoord - element.activePos.x) * element.viewScale.x * ScrRes.dims[ScrRes.state].aspectI;
 
       if(vertex[1].viewPos.x < -1.0f)
          vertex[1].viewPos.x = -1.0f;
@@ -141,22 +141,30 @@ void __Activate0_0_Default_Input(cptrc indices) {
 
    if(!(element[0].stateBits & 0x04)) {
       element[0].stateBits |= 0x04;
+      //element[1].stateBits |= 0x040;
 
-      textBufferInfo.source.pCH        =  &(*(const CLASS_GUI *)ptrLib[4]).textBuffer[(vertex[2].textArrayOS & 0x03FFFFFF) << 4];
-      textBufferInfo.source.byteCount  =  element[2].vertexCount[1] << 5;
-      textBufferInfo.source.byteOffset =  element[2].charCount << (element[2].bitField & 0x0800 ? 1 : 0);
+      textBufferInfo.source.pCH        = &(*(const CLASS_GUI *)ptrLib[4]).textBuffer[(vertex[2].textArrayOS & 0x03FFFFFF) << 4];
+      textBufferInfo.source.byteCount  = element[2].vertexCount[1] << 5;
+      textBufferInfo.source.byteOffset = element[2].charCount << (element[2].bitField & 0x0800 ? 1 : 0);
       textBufferInfo.source.bitField   |= 0x01;
    }
 }
 
 void __Passive_Default_Input(cptrc indices) {
+   const CLASS_GUI   &gui = *(const CLASS_GUI *)ptrLib[4];
    const GUI_INDICES &data = (GUI_INDICES &)indices;
    csi32 indexVert = data.vertex + 2;
 
    GUI_ELEMENT (&element)[3] = (GUI_ELEMENT (&)[3])(*(const CLASS_GUI *)ptrLib[4]).element[data.element];
-   GUI_EL_DGS *const vertex  = &(*(const CLASS_GUI *)ptrLib[4]).element_dgs[indexVert];
+   GUI_EL_DGS *const vertex  = &gui.element_dgs[indexVert];
+
+   chptrc  pCH    = textBufferInfo.source.pCH;
+   cui32  &pIMMos = gui.alphabet[vertex[0].alphabetIndex].pIMMos;
 
    if(element[0].stateBits & 0x04) {
+      fl32 accum  = 0.0f;
+      ui32 i      = 0;
+
       // Recalculate vertex count
       cui16 oldVertCount = max(0, element[2].charCount - 1) >> 5;
       cui16 newVertCount = max(0, textBufferInfo.source.byteOffset - 1) >> (element[2].bitField & 0x0800 ? 1 : 0) >> 5;
@@ -178,17 +186,43 @@ void __Passive_Default_Input(cptrc indices) {
          vertex[newVertCount].align &= 0x07F;
       }
 
+      // Make cursor visible and adjust position
+      vertex[-1].align &= 0x07F;
+
+      if(!(vertex[0].align & 0x02)) { // If text is not right-aligned
+         /// !!! Reduce calc.time by using LAST.origin[0] + remainder chars !!! ///
+         while(pCH[i]) accum += gui.alphabet_pIMM[pIMMos + pCH[i++]].width;
+
+         vertex[-1].viewPos.x = accum * vertex[0].size.x;
+
+         if((vertex[0].align & 0x03) == 0) // If text is centre-aligned
+            vertex[-1].viewPos.x *= 0.5f;
+         else { // Text is left-aligned
+            vertex[-1].viewPos.x -= vertex[-2].size.x * 2.0f;
+            if(vertex[-1].viewPos.x < -1.0f)
+               vertex[-1].viewPos.x = -1.0f;
+         }
+
+         if(vertex[-1].viewPos.x > 1.0f)
+            vertex[-1].viewPos.x = 1.0f;
+      } else
+         vertex[-1].viewPos.x = 1.0f;
+
       // Is the 'confirm' flag set?
       if(textBufferInfo.source.bitField & 0x2) {
 
          textBufferInfo.source.bitField = 0;
          element[0].stateBits &= 0x0FB;
+         //element[1].stateBits &= 0x0BF;
+         vertex[-1].align |= 0x080;
       }
       // Is the 'cancel' flag set?
-         if(textBufferInfo.source.bitField & 0x4) {
+      if(textBufferInfo.source.bitField & 0x4) {
 
          textBufferInfo.source.bitField = 0;
          element[0].stateBits &= 0x0FB;
+         //element[1].stateBits &= 0x0BF;
+         vertex[-1].align |= 0x080;
       }
    }
 }

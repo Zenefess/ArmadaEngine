@@ -14,8 +14,6 @@
 #include "DirectInput8 thread.h"
 #include "Armada Intelligence/Input functions.h"
 
-#pragma intrinsic(_InterlockedExchange64)
-
 extern vui64 THREAD_LIFE; // 'Thread active' flags
 
 TEXTBUFFER textBufferInfo(1024, false); // Buffer information for character input
@@ -406,7 +404,7 @@ Reinitialise_:
       ProcessInputs(gcvLocal);
 
       // Forcing volatile copy to avoid glitches 
-      for(i = 0; i < 18; i++) _InterlockedExchange64(&((vsi64 (&)[18])gcv)[i], ((si64 (&)[16])gcvLocal)[i]);
+      LockedCopy(&gcvLocal, &gcv, sizeof(gcvLocal));
 
       Sleep(1);
    } while (threadLife & INPUT_THREAD_ALIVE);

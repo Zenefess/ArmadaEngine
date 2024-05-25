@@ -10,9 +10,9 @@
 #pragma warning(once:4267)
 #pragma warning(once:4838)
 
-#define DATA_TRACKING
-
 #ifndef PCH_H
+   #define DATA_TRACKING
+
    #define PCH_H
 
    #include "targetver.h"
@@ -21,7 +21,12 @@
 
    #include <windows.h>
    #include <process.h>
+   #include <data tracking.h>
+   #include <typedefs.h>
    #include <memory management.h>
+   #include <24-bit integers.h>
+   #include <vector structures.h>
+   #include <Fixed-point data types.h>
    #include <stdlib.h>
    #include <tchar.h>
 #endif

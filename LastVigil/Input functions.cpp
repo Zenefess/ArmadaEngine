@@ -1,6 +1,6 @@
 /************************************************************
 * File: Input functions.cpp            Created: 2024/04/22 *
-*                                Last modified: 2024/05/06 *
+*                                Last modified: 2024/05/23 *
 *                                                          *
 * Desc:                                                    *
 *                                                          *
@@ -38,7 +38,7 @@ void ProcessInputs(INPUT_PROC_DATA &ipd, GLOBALCTRLVARS &ctrlVars) {
 
    // Process global action inputs
    for(; imCount < imLast; imCount++)
-      if(!_mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[imCount]))
+      if(!testAllZero(ctrlVars.imm.button, ipd.inputMask[imCount]))
          for(funcCount = 0; funcCount < ipd.funcCount[imCount].x; funcCount++)
             ipd.function[funcCount](NULL);
 
@@ -47,7 +47,7 @@ void ProcessInputs(INPUT_PROC_DATA &ipd, GLOBALCTRLVARS &ctrlVars) {
 
    // Process world space inputs
    for(imLast = (imCount += ui16(ipd.input.ui)) + ui16(ipd.input.world); imCount < imLast; imCount++)
-      if(!_mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[imCount]))
+      if(!testAllZero(ctrlVars.imm.button, ipd.inputMask[imCount]))
          for(funcCount = 0; funcCount < ipd.funcCount[imCount].x; funcCount++)
             ipd.function[funcCount](NULL);
 }
@@ -78,14 +78,16 @@ void ProcessInputs(GLOBALCTRLVARS &ctrlVars) {
       // Mouse button 0
       if(siActiveLayer.m128i_i32[1] < 0 && ctrlVars.imm.b[16] & 0x01) {
          if(siCell != 0x080000001) {
-            mapMan.world[0].map[0]->cell[siCell].pixel->gev += ui16(fElapsedTime * 2048.0f);
+//            mapMan.world[0].map[0]->cell[siCell].pixel->gev += ui16(fElapsedTime * 2048.0f);
+            mapMan.world[0].map[0]->cell[siCell].pixel->gev += fElapsedTime * 8.0f;
             mapMan.world[0].map[0]->chunkMod[siChunk >> 6] |= ui64(0x01) << (siChunk & 0x03F);
          }
       }
       // Mouse button 1
       if(siActiveLayer.m128i_i32[2] < 0 && ctrlVars.imm.b[16] & 0x02) {
          if(siCell != 0x080000001) {
-            mapMan.world[0].map[0]->cell[siCell].pixel->gev -= ui16(fElapsedTime * 2048.0f);
+//            mapMan.world[0].map[0]->cell[siCell].pixel->gev -= ui16(fElapsedTime * 2048.0f);
+            mapMan.world[0].map[0]->cell[siCell].pixel->gev -= fElapsedTime * 8.0f;
             mapMan.world[0].map[0]->chunkMod[siChunk >> 6] |= ui64(0x01) << (siChunk & 0x03F);
          }
       }
