@@ -1,6 +1,6 @@
 /************************************************************
  * File: vs.map.cells.x8.hlsl           Created: 2023/04/29 *
- *                                Last modified: 2023/05/10 *
+ * Type: Vertex shader            Last modified: 2023/05/10 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *

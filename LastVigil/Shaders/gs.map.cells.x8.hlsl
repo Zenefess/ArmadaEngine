@@ -1,6 +1,6 @@
 /************************************************************
  * File: gs.map.cells.x8.hlsl           Created: 2023/04/29 *
- *                                Last modified: 2023/05/21 *
+ * Type: Geometry shader          Last modified: 2023/05/21 *
  *                                                          *
  * Notes:                                                   *
  *                                                          *

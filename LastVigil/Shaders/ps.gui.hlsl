@@ -2,7 +2,8 @@
  * File: ps.gui.hlsl                    Created: 2023/04/14 *
  * Type: Pixel shader             Last modified: 2023/04/14 *
  *                                                          *
- * Desc: 8 characters per instance.                         *
+ * Desc:                                                    *
+ *                                                          *
  * To do:                                                   *
  *                                                          *
  * Copyright (c) David William Bull.   All rights reserved. *
@@ -24,5 +25,4 @@ float4 main(in const GOut input) : SV_Target {
    clip(sample.a - 0.011f); // Alpha test
 
    return sample;
-//   return sample + float4(0.025f, 0.025f, 0.025f, 0.5f);
 }

@@ -1,6 +1,6 @@
 /************************************************************
  * File: ps.instanced.sprites.hlsl      Created: 2022/11/21 *
- *                                Last modified: 2023/01/13 *
+ * Type: Pixel shader             Last modified: 2023/01/13 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -17,7 +17,7 @@ struct LIGHT { // 32 bytes (2 vectors)
    uint2  RES;
 };
 
-cbuffer cbLight { // 512 bytes (32 vectors)
+cbuffer cbLight { // 8,192 bytes (512 vectors)
    const LIGHT l[256] : register(b0);
 }
 
@@ -53,9 +53,9 @@ float4 main(in const GOut g) : SV_Target {
    const float2x4 fPTC = float2x4(uint2x4(sprite[index].pmc >> uint4(0, 8, 16, 24), sprite[index].gtc >> uint4(0, 8, 16, 24)) & 0x0FF) * rcp255;
    // Unpack normal, roughness, paint, and emission map scalars
    const float3 fNRP    = float3((sprite[index].nrps >> uint3(0, 8, 16)) & 0x0FF);
-   const float4 fScalar = float4(fNRP, float(sprite[index].gev_ems >> 16)) * float4(0.00713082107843137254901960784314f, rcp255, rcp255, 0.00194552529182879377431906614786f);
-   // Unpack global emission value, ???
-   const float fGEV = uint(sprite[index].gev_ems & 0x0FFFF) * 0.00389105058365758754863813229572f - 127.0f;
+   const float4 fScalar = float4(fNRP, float(sprite[index].gev_ems >> 16)) * float4(0.00713082107843137254901960784314f, rcp255, rcp255, 0.0078125);
+   // Unpack global emission value
+   const float fGEV = uint(sprite[index].gev_ems & 0x0FFFF) * 0.00390625f - 128.0f;
    // Sample textures
    const float2 fTexNUV  = fTexSamp[1].xy - 0.5f;
    const float2 fTexNorm = fTexNUV.xy * fScalar.x;
@@ -74,7 +74,7 @@ float4 main(in const GOut g) : SV_Target {
    // Calculate light
    float3 fLight = 0.0f, fHighlight = 0.0f;
    [unroll]
-   for(uint i = 0; i < 56; i++) {
+   for(uint i = 0; i < 48; i++) {
       // Unpack colour variable
       const float3 fColour = float3(uint3(l[i].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF) * rcp256 - 128.0f;
       // Unpack highlight variables

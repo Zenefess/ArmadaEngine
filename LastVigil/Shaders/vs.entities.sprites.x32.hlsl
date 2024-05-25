@@ -1,6 +1,6 @@
 /**************************************************************
  * File: vs.entities.sprites.x32.hlsl     Created: 2023/06/10 *
- *                                      Last mod.: 2023/06/10 *
+ * Type: Vertex shader                  Last mod.: 2023/06/10 *
  *                                                            *
  * Desc:                                                      *
  *                                                            *

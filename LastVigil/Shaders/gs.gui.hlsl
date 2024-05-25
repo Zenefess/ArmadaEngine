@@ -1,61 +1,23 @@
-/************************************************************
- * File: gs.gui.hlsl                    Created: 2023/04/09 *
- * Type: Geometry shader          Last modified: 2024/04/17 *
- *                                                          *
- * Notes: 8 characters per instance.                        *
- *                                                          *
- * 2023/07/02: Moved input data to structured buffer        *
- * 2024/04/01: GUI_EL_DYN SRV+Adj.coords replaced with UAV  *
- * 2024/04/05: Added truncation functionality to text       *
- * 2024/04/09: Added compression functionality to text, and *
- *             rotation functionality to non-text           *
- * 2024/04/16: Added rotation functionality to text         *
- *                                                          *
- * To do: Add elliptical bounding shape                     *
- *        Add wide character support                        *
- *        Add control character support                     *
- *                                                          *
- * Copyright (c) David William Bull.   All rights reserved. *
- ************************************************************/
+/************************************************************************************************
+ * File: gs.gui.hlsl                                                        Created: 2023/04/09 *
+ * Type: Geometry shader                                              Last modified: 2024/05/25 *
+ *                                                                                              *
+ * Notes: 8 characters per instance.                                                            *
+ *                                                                                              *
+ * 2023/07/02: Moved input data to structured buffer                                            *
+ * 2024/04/01: GUI_EL_DYN SRV+Adj.coords replaced with UAV                                      *
+ * 2024/04/05: Added truncation functionality to text                                           *
+ * 2024/04/09: Added compression functionality to text, and rotation functionality to non-text  *
+ * 2024/04/16: Added rotation functionality to text                                             *
+ *                                                                                              *
+ * To do: Add elliptical bounding shape                                                         *
+ *        Add wide character support                                                            *
+ *        Add control character support                                                         *
+ *                                                                                              *
+ * Copyright (c) David William Bull.                                       All rights reserved. *
+ ************************************************************************************************/
 
-#include "common.hlsli"
- 
-cbuffer CB_VIEW : register(b0) { // 160 bytes (10 vectors)
-   const matrix projection;   // Perspective transformation
-   const matrix orthographic; // Orthographic transformation
-   const float2 guiScale;     // Final X & Y scaling factors for GUI
-   const uint2  bitField;     // 0-63==???
-   const uint4  RES;
-};
-
-struct CHAR_IMM { // 16 bytes (1 vector)
-   uint2 tc;   // Texture coordinates : 4x(1p15)
-   uint  size; // Relative X&Y dimensions : p16n0.0~1.0
-   uint  os;   // Relative X&Y offsets : p16n-1.0~1.0
-};
-
-struct GUI_EL_DYN { // 96 bytes (6 vectors)
-   float4 coords[2]; // Text: view coordinates per 8 characters | Element: View position, bounding space for children, x2 texture coordinates
-   uint4  tint[2];   // Text: RGBA values per 8 characters | Element: TL/BL/TR/BR RGBA values : p16n0.0~2.0
-   float2 size;      // Scale of text | Size of element
-   float  rot;       // Amount of rotation
-   float  width;     // Total width of vertex's text in view space
-   uint   pei;       // Parent element's GUI_EL_DYN index: this==No parent
-   uint   taos;      // 0~25==Offset into text array (div.by 16), 26~31==Vertex's char count
-   uint   ind_type;  // 0~15==Offset into alphabet buffer, 16~23==Runtime index of alphabet's atlas texture, 24~31==Element type
-   uint   seo_bits;  // 0~15==First sibling element offset, 16~19==Justification (L,R,T,B), 20==Elliptical bounding space, 21~22==???, 23==Invisible
-};                   // 24==Rotate, 25==Translate, 26&27==Scale: X&Y, 28==Truncate, 29==Compress, 30==Process control characters, 31==Wide chars
-
-struct GOut { // 44 bytes (2 vectors + 3 scalars)
-   float4 pos     : SV_Position;
-   float4 col     : COLOR;
-   float2 tc      : TEXCOORD;
-   uint   ai_type : ATLAS;       // 0~6==Atlas index, 7~10==Type, 11~31==???
-};
-
-StructuredBuffer   <CHAR_IMM>   alphabet : register(t0); // Character geometry
-StructuredBuffer   <uint4>      char16   : register(t1); // Text pool
-RWStructuredBuffer <GUI_EL_DYN> element  : register(u1); // Element data
+#include "gui.hlsli"
 
 [instance(4)] [maxvertexcount(32)]
 void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceID, inout TriangleStream<GOut> output) {
@@ -151,24 +113,29 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
    // Type!=Text
    [branch] if(type) {
       const float4 size   = float4(curElement.size * parScaling.xy, curElement.size * parScaling.xy / parScaling.zw);
-      const float4 col[4] = { float4((uint4(curElement.tint[0].xx, curElement.tint[0].yy) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16,
-                              float4((uint4(curElement.tint[0].zz, curElement.tint[0].ww) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16,
-                              float4((uint4(curElement.tint[1].xx, curElement.tint[1].yy) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16,
-                              float4((uint4(curElement.tint[1].zz, curElement.tint[1].ww) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16 };
+      const float4 col[4] = { float4((uint4(curElement.tint[0].xx, curElement.tint[0].yy) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * rcp21845,
+                              float4((uint4(curElement.tint[0].zz, curElement.tint[0].ww) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * rcp21845,
+                              float4((uint4(curElement.tint[1].xx, curElement.tint[1].yy) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * rcp21845,
+                              float4((uint4(curElement.tint[1].zz, curElement.tint[1].ww) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * rcp21845 };
       GOut vert[3];
 
       coords = curElement.coords[0].xy;
 
       // Justification
-      [flatten] if(curBits & 0x03) {  // Origin relative to left/right of viewport
-         coords.x += size.z - border;
-         [flatten] if(curBits & 0x02) // Origin relative to right of viewport
-            coords.x *= -1.0f;
-      }
-      [flatten] if(curBits & 0x0C) {  // Origin relative to top/bottom of viewport
-         coords.y += size.w - invScale.y;
-         [flatten] if(curBits & 0x04) // Origin relative to top of viewport
-            coords.y *= -1.0f;
+      [flatten] if((type == 0x04000000) || (type == 0x05000000)) { // Type==Scalar or Cursor
+         [flatten] if(curBits & 0x01) coords.x -= size.z; // Align origin to left
+         [flatten] if(curBits & 0x02) coords.x += size.z; // Align origin to right
+         [flatten] if(curBits & 0x04) coords.y += size.w; // Align origin to top
+         [flatten] if(curBits & 0x08) coords.y -= size.w; // Align origin to bottom
+      } else { // Type!=Cursor
+         [flatten] if(curBits & 0x03) { // Origin relative to left/right of viewport
+            coords.x += size.z - border;
+            [flatten] if(curBits & 0x02) coords.x *= -1.0f; // Origin relative to right of viewport
+         }
+         [flatten] if(curBits & 0x0C) { // Origin relative to right of viewport
+            coords.y += size.w - invScale.y;
+            [flatten] if(curBits & 0x04) coords.y *= -1.0f; // Origin relative to right of viewport
+         }
       }
 
       const float4 rotVals = { coords.xy, sin(curElement.rot), cos(curElement.rot)};
@@ -248,12 +215,12 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
    // Type==Text
    } else {
       const uint   i_div2      = i >> 1;
-      const uint   taOS        = (curElement.taos & 0x03FFFFFF) + (i_div2);
+      const uint   taOS        = (curElement.taos_at1 & 0x03FFFFFF) + (i_div2);
       const uint   alphaOS     = curElement.ind_type & 0x0FFFF;
       const uint   arrayStep   = (i & 0x01) << 1;
       const uint2  char16Index = uint2(char16[taOS][arrayStep], char16[taOS][arrayStep + 1]);
       const uint4  chars[2]    = { ((char16Index.xxxx >> shift8888) & 0x0FF) + alphaOS, ((char16Index.yyyy >> shift8888) & 0x0FF) + alphaOS };
-      const float4 colour      = float4((uint4(curElement.tint[i_div2][arrayStep].xx, curElement.tint[i_div2][arrayStep + 1].xx) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * multi16;
+      const float4 colour      = float4((uint4(curElement.tint[i_div2][arrayStep].xx, curElement.tint[i_div2][arrayStep + 1].xx) >> uint4(0, 16, 0, 16)) & 0x0FFFF) * rcp21845;
 
       float4 vertPos[2];
 
@@ -265,12 +232,12 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       const uint lastVertex  = firstVertex + (element[firstVertex].seo_bits & 0x07FFF);
 
       uint2  li = { 0, 0 };
-      float2 totalWidth = { element[firstVertex].width, 0.0f };
-      uint   totalChars = element[firstVertex].taos >> 26;
+      float2 totalWidth = { element[firstVertex].width_at0, 0.0f };
+      uint   totalChars = element[firstVertex].taos_at1 >> 26;
 
       for(uint vi = firstVertex + 1; vi <= lastVertex; vi++) {
-         totalWidth += float2(element[vi].width, element[vi - 1].width);
-         totalChars += element[vi].taos >> 26;
+         totalWidth += float2(element[vi].width_at0, element[vi - 1].width_at0);
+         totalChars += element[vi].taos_at1 >> 26;
       }
       
       totalWidth *= 0.5f;
@@ -284,12 +251,13 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       // Start point --- !!! Move character size & dimension transformations to inner loop? !!!
       const float4 size     = float4(curElement.size * parScaling.xy, parScaling.xy / parScaling.zw);
       const float2 offset   = (1.0f - float2(uint2(alphabet[chars[0][0]].size & 0x0FFFF, alphabet[chars[0][0]].size >> 16)) * rcp65535) * curElement.size * 0.5f;
-      const float  adjWidth = (totalChars > 32 ? totalWidth.x : curElement.width);
+      const float  adjWidth = (totalChars > 32 ? totalWidth.x : curElement.width_at0);
 
       // Justification
-      [flatten] if(curBits & 0x03) {  // Origin relative to left/right of viewport
+      const bool fillView = (curBits & 0x02000) && ((totalWidth.x > 1.0f) || (totalChars > 32));
+      [flatten] if(curBits & 0x03 || fillView) {  // Origin relative to left/right of viewport, and wider than viewport
          coords.x = adjWidth * size.z * 0.5f - border;
-         [flatten] if((curBits & 0x02) && !((curBits & 0x02000) && ((totalWidth.x > 1.0f) || (totalChars > 32)))) // Origin relative to right of viewport && not filling viewport width
+         [flatten] if((curBits & 0x02) && !fillView) // Origin relative to right of viewport, and not wider than viewport
             coords.x *= -1.0f;
       }
       [flatten] if(curBits & 0x0C) {  // Origin relative to top/bottom of viewport

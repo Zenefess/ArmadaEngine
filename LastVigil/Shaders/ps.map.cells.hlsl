@@ -1,6 +1,6 @@
 /************************************************************
  * File: ps.map.cells.hlsl              Created: 2023/01/05 *
- *                                Last modified: 2023/01/13 *
+ * Type: Pixel shader             Last modified: 2023/01/13 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -52,9 +52,9 @@ float4 main(in const GOut g) : SV_Target {
    cfloat2x4 fPTC = float2x4(uint2x4(cell[index].pmc >> uint4(0, 8, 16, 24), cell[index].gtc >> uint4(0, 8, 16, 24)) & 0x0FF) * rcp255;
    // Unpack normal, roughness, paint, and emission map scalars
    cfloat3 fNRP    = float3((cell[index].nrps_ai >> uint3(0, 8, 16)) & 0x0FF);
-   cfloat4 fScalar = float4(fNRP, float(cell[index].gev_ems >> 16)) * float4(0.00713082107843137254901960784314f, rcp255, rcp255, 0.00194552529182879377431906614786f);
+   cfloat4 fScalar = float4(fNRP, float(cell[index].gev_ems >> 16)) * float4(0.00713082107843137254901960784314f, rcp255, rcp255, 0.001953125);
    // Unpack global emission value, ???
-   cfloat fGEV = uint(cell[index].gev_ems & 0x0FFFF) * 0.00389105058365758754863813229572f - 127.0f;
+   cfloat fGEV = uint(cell[index].gev_ems & 0x0FFFF) * 0.00390625f - 128.0f;
    // Sample textures
    cfloat2 fTexNUV  = fTexSamp[1].xy - 0.5f;
    cfloat2 fTexNorm = fTexNUV.xy * fScalar.x;

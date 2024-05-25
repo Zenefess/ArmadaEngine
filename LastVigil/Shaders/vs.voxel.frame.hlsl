@@ -1,6 +1,6 @@
 /************************************************************
  * File: vs.voxel.frame.hlsl            Created: 2023/01/16 *
- *                                Last modified: 2023/01/17 *
+ * Type: Vertex shader            Last modified: 2023/01/17 *
  *                                                          *
  * Notes: 1)Add junction highlighting option                *
  *        2)Add plane highlight option                      *

@@ -1,6 +1,7 @@
 /**********************************************************************
  * File: gs.entities.sprites.x32.hlsl             Created: 2023/06/10 *
- *                                          Last modified: 2023/06/11 *
+ * Type: Geometry shader                    Last modified: 2023/06/11 *
+ *                                                                    *
  *                                                                    *
  * Desc: Generates 3-space sprites from point lists.                  *
  *       Animation support, optional billboard orienting, and choice  *
@@ -21,12 +22,12 @@ cbuffer CB_VIEW : register(b0) { // 160 bytes (10 vectors)
 };
 
 cbuffer CB_MAIN : register(b1) { // 96 bytes (6 vectors)
-   cmatrix camera;     // Camera transformation
-   cuint   frameCount; // Total number of frames presented
-   cfloat  frameTime;  // Duration of last frame
-   cfloat  secsDelta;  // == (Time elapsed - SecsTotal)
-   cuint   st_bf;      // 0-23==secsTotal (Elapsed seconds), 24==Draw transparent sprites, 25-31==???
-   cuint4  RES2;
+   const matrix camera;     // Camera transformation
+   const uint   frameCount; // Total number of frames presented
+   const float  frameTime;  // Duration of last frame
+   const float  secsDelta;  // == (Time elapsed - SecsTotal)
+   const uint   st_bf;      // 0-23==secsTotal (Elapsed seconds), 24==Draw transparent sprites, 25-31==???
+   const uint4  RES2;
 };
 
 struct OBJECT_IGS { // 8 bytes (2 scalar)
