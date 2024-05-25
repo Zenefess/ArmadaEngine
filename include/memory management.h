@@ -1,6 +1,6 @@
 /************************************************************
  * File: memory management.h            Created: 2008/12/08 *
- *                                Last modified: 2024/05/02 *
+ *                                Last modified: 2024/05/25 *
  *                                                          *
  * Notes: 2024/05/02: Added support for data tracking.      *
  *                                                          *
@@ -225,16 +225,57 @@ inline void mset(ptrc addr, cui64 numBytes, cui64 qwVal) {
 		(ui8ptr(addr))[os] = ui8(qwVal >> (remBytes << 3));
 }
 
-// Interlocked copy byteCount (rounded-up to nearest 8) bytes
-inline void LockedMove(si64ptrc source, vsi64ptrc dest, csi32 byteCount) {
-   csi32 j = (byteCount + 7) >> 3;
-   for(si32 i = 0; i < j; i++)
-      _InterlockedExchange64(&dest[i], source[i]);
+// Copy byteCount (rounded-up to the nearest 16) bytes of 16-byte-aligned data via SSE2 instruction.
+inline void Copy16(vptrc source, vptrc dest, csi64 byteCount) {
+   csi64 j = (byteCount + 15) >> 4;
+   for(si64 i = 0; i < j; i++) ((ui128ptr)dest)[i] = _mm_load_si128(&((ui128ptr)source)[i]);
 }
 
-// Interlocked move byteCount (rounded-up to nearest 8) bytes and set source to zero
-inline void LockedMoveAndClear(si64ptrc source, vsi64ptrc dest, csi32 byteCount) {
+// Copy byteCount (rounded-up to the nearest 32) bytes of 32-byte-aligned data via AVX instruction.
+inline void Copy32(vptrc source, vptrc dest, csi64 byteCount) {
+   csi64 j = si64((byteCount + 31) >> 5);
+   for(si32 i = 0; i < j; i++) ((ui256ptr)dest)[i] = _mm256_load_si256(&((ui256ptr)source)[i]);
+}
+
+// Copy byteCount (rounded-up to the nearest 32) bytes of 32-byte-aligned data via AVX512 instruction.
+inline void Copy64(vptrc source, vptrc dest, csi64 byteCount) {
+   csi32 j = si32((byteCount + 63) >> 6);
+   for(si32 i = 0; i < j; i++) ((ui512ptr)dest)[i] = _mm512_load_epi32(&((ui512ptr)source)[i]);
+}
+
+// Interlock copy byteCount (rounded-up to nearest 8) bytes
+inline void LockedCopy(ptrc source, vptrc dest, csi32 byteCount) {
+   csi32 j = (byteCount + 7) >> 3;
+   for(si32 i = 0; i < j; i++) _InterlockedExchange64(&((vsi64ptr)dest)[i], ((si64ptr)source)[i]);
+}
+
+// Interlock copy byteCount (rounded-up to nearest 8) bytes
+inline void LockedCopy(vptrc source, vptrc dest, csi32 byteCount) {
+   csi32 j = (byteCount + 7) >> 3;
+   for(si32 i = 0; i < j; i++) _InterlockedExchange64(&((vsi64ptr)dest)[i], ((si64ptr)source)[i]);
+}
+
+// Interlock swap byteCount (rounded-up to nearest 8) bytes
+inline void LockedSwap(ptrc source1, vptrc source2, csi32 byteCount) {
+   csi32 j = (byteCount + 7) >> 3;
+   for(si32 i = 0; i < j; i++) ((vsi64ptr)source1)[i] = _InterlockedExchange64(&((vsi64ptr)source2)[i], ((si64ptr)source1)[i]);
+}
+
+// Interlock swap byteCount (rounded-up to nearest 8) bytes
+inline void LockedSwap(vptrc source1, vptrc source2, csi32 byteCount) {
+   csi32 j = (byteCount + 7) >> 3;
+   for(si32 i = 0; i < j; i++) ((vsi64ptr)source1)[i] = _InterlockedExchange64(&((vsi64ptr)source2)[i], ((si64ptr)source1)[i]);
+}
+
+// Interlock move byteCount (rounded-up to nearest 8) bytes and set source to zero
+inline void LockedMoveAndClear(vptrc source, ptrc dest, csi32 byteCount) {
+   csi32 j = (byteCount + 7) >> 3;
+   for(si32 i = 0; i < j; i++) ((vsi64ptr)dest)[i] = _InterlockedExchange64(&((vsi64ptr)source)[i], 0);
+}
+
+// Interlock move byteCount (rounded-up to nearest 8) bytes and set source to zero
+inline void LockedMoveAndClear(vptrc source, vptrc dest, csi32 byteCount) {
    csi32 j = (byteCount + 7) >> 3;
    for(si32 i = 0; i < j; i++)
-      dest[i] = _InterlockedExchange64(&source[i], 0);
+      ((vsi64ptr)dest)[i] = _InterlockedExchange64(&((vsi64ptr)source)[i], 0);
 }
