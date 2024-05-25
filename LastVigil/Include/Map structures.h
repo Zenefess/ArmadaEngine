@@ -1,6 +1,6 @@
 /************************************************************
 * File: Map structures.h               Created: 2022/12/11 *
-*                                Last modified: 2024/04/30 *
+*                                Last modified: 2024/05/18 *
 *                                                          *
 * Desc:                                                    *
 *                                                          *
@@ -8,9 +8,7 @@
 ************************************************************/
 #pragma once
 
-#include "pch.h"
-#include "typedefs.h"
-#include "Vector structures.h"
+#include "..\pch.h"
 
 #define MM_VIS_BUSY  0x01
 #define MM_MOD_BUSY  0x02
@@ -18,39 +16,39 @@
 #define MM_MOD_START 0x000000003FFFFFFFD
 
 al16 struct ELEM_IGS { // 16 bytes
-   VEC4Du16 tc; // Texture coordinates
+   f1p15x4 tc; // Texture coordinates : 1p15
    union {
       struct {
-         ui24 aft; // Animation frame time : 16p8
-         ui8  et;  // Base transparency : p8n0.0~1.0
+         f16p8   aft; // Animation frame time : 16p8
+         fp8n0_1 et;  // Base transparency : p8n0.0~1.0
       };
       ui32 aft_et;
    };
    union {
       struct {
-         ui8 afo; // Animation frame offset
-         ui8 afc; // Animation frame count : value - 1
-         ui8 tcs; // Texture coordinate scalar : 4p4-1
-         ui8 ai;  // 0~6==Runtime index of atlas texture, 7==???
+         ui8  afo; // Animation frame offset
+         ui8  afc; // Animation frame count : value - 1
+         f4p4 tcs; // Texture coordinate scalar : 4p4-1
+         ui8  ai;  // 0~6==Runtime index of atlas texture, 7==???
       };
       ui32 afo_afc_tcs;
    };
 };
 
 al16 struct ELEM_TYPE { // 48 bytes //56 bytes
-   wchptr    stName; // Name of element
+   wchptr  stName; // Name of element
 //   ELEM_IGS   *geometry; // Pointer to element's array entry
-   float     tmp;    // Temperature; melting point
-   float     tbp;    // Temperature; boiling point
-   float     tip;    // Temperature; ignition point
-   float     tp;     // Temperature propagation (% per second)
-   float     eft;    // Fusion temperature
-   float     edr;    // Decay rate (radioactivity)
-   VEC2Du16  er;     // Electrical resistance at 0K & .tbp : 1p15
-   VEC2Du16  ad;     // Atomic density below .tmp & above .tbp : 6p10
-   ui16      acid;   // Acidity: 6p10
-   ui8       ede;    // Decay result
-   ui8       efe;    // Fusion result
+   float   tmp;    // Temperature; melting point
+   float   tbp;    // Temperature; boiling point
+   float   tip;    // Temperature; ignition point
+   float   tp;     // Temperature propagation (% per second)
+   float   eft;    // Fusion temperature
+   float   edr;    // Decay rate (radioactivity)
+   f1p15x2 er;     // Electrical resistance at 0K & .tbp : 1p15
+   f6p10x2 ad;     // Atomic density below .tmp & above .tbp : 6p10
+   f6p10   acid;   // Acidity: 6p10
+   ui8     ede;    // Decay result
+   ui8     efe;    // Fusion result
    // ???
 };
 
@@ -64,21 +62,21 @@ al16 struct ELEM_TABLE { // 32 bytes
 
 al16 struct CELL_DGS { // 16 bytes
    VEC4Du8 et;   // Element type for each layer
-   VEC4Du8 er;   // Element ratios
-   VEC4Du8 end;  // Roughness (lerp noise deviation) for each layer
-   ui16    dens; // Density/viscosity (dictates mesh array median height) : p16n0.0~(1.0+1.0/65534.0)
-   VEC2Du8 warp; // Texture warp scalars [XY] : 0p8
+   VEC4Du8 er;   // Element ratios                                      <<< Change both ???
+   VEC4Du8 end;  // Roughness (lerp noise deviation) for each layer     <<< to p8n0_1x4 ???
+   fp16n   dens; // Density/viscosity (dictates mesh array median height) : p16n0.0~(1.0+1.0/65534.0)
+   f0p8x2  warp; // Texture warp scalars [XY] : 0p8
 };
 
 al16 struct CELL_DPS { // 16 bytes
-   VEC4Du8 pmc; // Paint map colour [RGBA] : p8n0.0~1.0
-   VEC4Du8 gtc; // Global tint colour [RGBA] : p8n0.0~1.0
-   ui16    gev; // Global emission value : p16n-127.0~128.0
-   ui16    ems; // Emission map scalar : p16n0.0~127.5
-   ui8     nms; // Normal map scalar : p8n0.0~1.818359375
-   ui8     rms; // Roughness map scalar : p8n0.0~1.0
-   ui8     pms; // Paint map scalar : p8n0.0~1.0
-   ui8     ai;  // Runtime index of atlas texture
+   fp8n0_1x4 pmc; // Paint map colour [RGBA] : p8n0.0~1.0
+   fp8n0_1x4 gtc; // Global tint colour [RGBA] : p8n0.0~1.0
+   fs7p8     gev; // Global emission value : s7p8
+   f7p9      ems; // Emission map scalar : 7p9
+   fp8n0_1   nms; // Normal map scalar : p8n0.0~1.0(1.818359375)
+   fp8n0_1   rms; // Roughness map scalar : p8n0.0~1.0
+   fp8n0_1   pms; // Paint map scalar : p8n0.0~1.0
+   ui8       ai;  // Runtime index of atlas texture
 };
 
 al8 struct CELL { // 40 bytes
@@ -180,7 +178,7 @@ al32 struct MAP_DESC {
    };
 
    si16  entListDim; // Maximum entity associations per cell
-   ui32  RES;
+   ui32  RES = -1;
    ID64 *entityList; // Entity IDs associated with map cells
 
    MAP_CELL_RV   mcrv;

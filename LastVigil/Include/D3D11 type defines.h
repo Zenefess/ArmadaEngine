@@ -43,12 +43,15 @@ al32 struct CB_MAIN {
 };
 
 al16 struct CB_LIGHT { // 32 bytes
-   VEC3Df   pos;
-   float    range;
-   VEC3Du16 col;   // s7p8
-   VEC2Du8  hl;    // Highlight: Size & intensity : 0p8-1, 4p4-1
+   VEC3Df  pos;
+   float   range;
+   fs7p8x3 col;
+   struct {
+      union { f0p8 s, size; };
+      union { f4p4 i, intensity; };
+   } hl; // Highlight: Size & intensity : 0p8-1, 4p4-1
    //--- Add radius% cos, and direction
-   ui8      RES[8];
+   ui8 RES[8];
 };
 
 struct PLANEfl32 { // 16 bytes

@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_mapmanager.h             Created: 2022/11/29 *
- *                                Last modified: 2024/05/01 *
+ *                                Last modified: 2024/05/25 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -111,11 +111,11 @@ al32 struct CLASS_MAPMAN {
       table[tableIndex].element[elementIndex].eft = fusion;
    }
 
-   inline void SetElementMiscVars(csi32 tableIndex, csi32 elementIndex, cfl32 decayRate, cVEC2Df elecResist, cVEC2Df atomDensity, cfl32 acidity) const {
+   inline void SetElementMiscVars(csi32 tableIndex, csi32 elementIndex, cfl32 decayRate, cf32x2 elecResist, cf32x2 atomDensity, cfl32 acidity) const {
       table[tableIndex].element[elementIndex].edr  = decayRate;
-      table[tableIndex].element[elementIndex].er   = Fix16x2(elecResist, 32768.0f);
-      table[tableIndex].element[elementIndex].ad   = Fix16x2(atomDensity, 1024.0f);
-      table[tableIndex].element[elementIndex].acid = Fix16(acidity, 1024.0f);
+      table[tableIndex].element[elementIndex].er   = elecResist;
+      table[tableIndex].element[elementIndex].ad   = atomDensity;
+      table[tableIndex].element[elementIndex].acid = acidity;
    }
 
    inline void SetElementResults(csi32 tableIndex, csi32 elementIndex, cui8 decayResult, cui8 fusionResult) const {
@@ -123,13 +123,13 @@ al32 struct CLASS_MAPMAN {
       table[tableIndex].element[elementIndex].efe = fusionResult;
    }
 
-   inline void SetElementGeometry(csi32 tableIndex, csi32 elementIndex, cVEC4Df texCoords, cfl32 tcScalar, cfl32 transparency, cfl32 animFrameTime, cui8 animFrameOS, cui8 animFrameCount, cui8 atlasIndex) {
-      table[tableIndex].pIGS[elementIndex].tc  = Fix16x4(texCoords, 32768.0f);
-      table[tableIndex].pIGS[elementIndex].aft = Fix16p8(animFrameTime);
-      table[tableIndex].pIGS[elementIndex].et  = Fix8(transparency, 255.0f);
+   inline void SetElementGeometry(csi32 tableIndex, csi32 elementIndex, cfl32x4 texCoords, cfl32 tcScalar, cfl32 transparency, cfl32 animFrameTime, cui8 animFrameOS, cui8 animFrameCount, cui8 atlasIndex) {
+      table[tableIndex].pIGS[elementIndex].tc  = texCoords;
+      table[tableIndex].pIGS[elementIndex].aft = animFrameTime;
+      table[tableIndex].pIGS[elementIndex].et  = transparency;
       table[tableIndex].pIGS[elementIndex].afo = animFrameOS;
       table[tableIndex].pIGS[elementIndex].afc = animFrameCount - 1;
-      table[tableIndex].pIGS[elementIndex].tcs = Fix16(tcScalar, 16.0f) - 1;
+      (table[tableIndex].pIGS[elementIndex].tcs = tcScalar)--;
       table[tableIndex].pIGS[elementIndex].ai  = atlasIndex;
    }
 
@@ -164,9 +164,9 @@ al32 struct CLASS_MAPMAN {
          ReadFile(hElementData, &table[index].element[i].tp, sizeof(float), (LPDWORD)&uiBytes, NULL);
          ReadFile(hElementData, &table[index].element[i].eft, sizeof(float), (LPDWORD)&uiBytes, NULL);
          ReadFile(hElementData, &table[index].element[i].edr, sizeof(float), (LPDWORD)&uiBytes, NULL);
-         ReadFile(hElementData, &table[index].element[i].er, sizeof(VEC2Du16), (LPDWORD)&uiBytes, NULL);
-         ReadFile(hElementData, &table[index].element[i].ad, sizeof(VEC2Du16), (LPDWORD)&uiBytes, NULL);
-         ReadFile(hElementData, &table[index].element[i].acid, sizeof(ui16), (LPDWORD)&uiBytes, NULL);
+         ReadFile(hElementData, &table[index].element[i].er, sizeof(f1p15x2), (LPDWORD)&uiBytes, NULL);
+         ReadFile(hElementData, &table[index].element[i].ad, sizeof(f6p10x2), (LPDWORD)&uiBytes, NULL);
+         ReadFile(hElementData, &table[index].element[i].acid, sizeof(f6p10), (LPDWORD)&uiBytes, NULL);
          ReadFile(hElementData, &table[index].element[i].ede, sizeof(ui8), (LPDWORD)&uiBytes, NULL);
          ReadFile(hElementData, &table[index].element[i].efe, sizeof(ui8), (LPDWORD)&uiBytes, NULL);
       }
@@ -198,9 +198,9 @@ al32 struct CLASS_MAPMAN {
          WriteFile(hElementData, &table[index].element[i].tp, sizeof(float), (LPDWORD)&uiBytes, NULL);
          WriteFile(hElementData, &table[index].element[i].eft, sizeof(float), (LPDWORD)&uiBytes, NULL);
          WriteFile(hElementData, &table[index].element[i].edr, sizeof(float), (LPDWORD)&uiBytes, NULL);
-         WriteFile(hElementData, &table[index].element[i].er, sizeof(VEC2Du16), (LPDWORD)&uiBytes, NULL);
-         WriteFile(hElementData, &table[index].element[i].ad, sizeof(VEC2Du16), (LPDWORD)&uiBytes, NULL);
-         WriteFile(hElementData, &table[index].element[i].acid, sizeof(ui16), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hElementData, &table[index].element[i].er, sizeof(f1p15x2), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hElementData, &table[index].element[i].ad, sizeof(f6p10x2), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hElementData, &table[index].element[i].acid, sizeof(f6p10), (LPDWORD)&uiBytes, NULL);
          WriteFile(hElementData, &table[index].element[i].ede, sizeof(ui8), (LPDWORD)&uiBytes, NULL);
          WriteFile(hElementData, &table[index].element[i].efe, sizeof(ui8), (LPDWORD)&uiBytes, NULL);
       }
@@ -235,11 +235,10 @@ al32 struct CLASS_MAPMAN {
    }
 
    cui32 DestroyWorld(csi32 worldIndex) {
-      for(ui32 i = world[worldIndex].totalMaps - 1; i; i--) 
-         DestroyMap(worldIndex, i);
-      mfree(world[worldIndex].mapMod);
-      mfree(world[worldIndex].mapVis);
-      mfree(world[worldIndex].map);
+      for(ui32 i = world[worldIndex].totalMaps - 1; i; i--) DestroyMap(worldIndex, i);
+
+      mfree(world[worldIndex].mapMod, world[worldIndex].mapVis, world[worldIndex].map);
+
       memset(&world[worldIndex], 0x0, sizeof(WORLD));
 
       return --totalWorlds;
@@ -344,8 +343,7 @@ al32 struct CLASS_MAPMAN {
    }
 
    inline void DestroySelectedCellBuffer(csi32 worldIndex, csi32 mapIndex) const {
-      mfree((*world[worldIndex].map[mapIndex]).desc.wlrv.cellIndex);
-      mfree((*world[worldIndex].map[mapIndex]).desc.wlrv.entityIndex);
+      mfree((*world[worldIndex].map[mapIndex]).desc.wlrv.cellIndex, (*world[worldIndex].map[mapIndex]).desc.wlrv.entityIndex);
    }
 
    // Allocate RAM for a map's .entityList array
@@ -356,7 +354,7 @@ al32 struct CLASS_MAPMAN {
    }
 
    inline void DestroyAssociationBuffer(csi32 worldIndex, csi32 mapIndex) const {
-      mfree((*world[worldIndex].map[mapIndex]).desc.entityList);
+      mdealloc((*world[worldIndex].map[mapIndex]).desc.entityList);
    }
 
    cui32 SaveMap(wchptrc filename, csi32 worldIndex, csi32 mapIndex) {
@@ -475,15 +473,15 @@ al32 struct CLASS_MAPMAN {
             curCell.geometry->er   = { 255, 0, 0, 0 };
             curCell.geometry->end  = { 0, 0, 0, 0 };
             curCell.geometry->dens = 0;
-            curCell.geometry->warp = { 0, 0 };
+            curCell.geometry->warp = 0.0f;
             curCell.pixel          = &curMap.pDPS[cellIndex];
-            curCell.pixel->pmc     = Fix8x4({ 1.0f, 1.0f, 1.0f, 1.0f });
-            curCell.pixel->gtc     = Fix8x4({ 1.0f, 1.0f, 1.0f, 1.0f });
-            curCell.pixel->gev     = Fix16(0.0f, -127.0f, 255.0f);
-            curCell.pixel->ems     = Fix16(1.0f, 514.0f);
-            curCell.pixel->nms     = Fix8(1.0f);
-            curCell.pixel->rms     = Fix8(1.0f);
-            curCell.pixel->pms     = Fix8(1.0f);
+            curCell.pixel->pmc     = 1.0f;
+            curCell.pixel->gtc     = 1.0f;
+            curCell.pixel->gev     = 0.0f;
+            curCell.pixel->ems     = 1.0f;
+            curCell.pixel->nms     = 1.0f;
+            curCell.pixel->rms     = 1.0f;
+            curCell.pixel->pms     = 1.0f;
             curCell.pixel->ai      = atlasIndex;
             curCell.vel            = { 0.0f, 0.0f };
             curCell.temp           = 294.15f;
@@ -505,15 +503,15 @@ al32 struct CLASS_MAPMAN {
             curCell.geometry->er   = { 255, 0, 0, 0 };
             curCell.geometry->end  = { 0, 0, 0, 0 };
             curCell.geometry->dens = 0x0FFFE;
-            curCell.geometry->warp = { 0, 0 };
+            curCell.geometry->warp = 0.0f;
             curCell.pixel          = &curMap.pDPS[cellIndex];
-            curCell.pixel->pmc     = Fix8x4({ 1.0f, 1.0f, 1.0f, 1.0f });
-            curCell.pixel->gtc     = Fix8x4({ 1.0f, 1.0f, 1.0f, 1.0f });
-            curCell.pixel->gev     = Fix16(0.0f, -127.0f, 255.0f);
-            curCell.pixel->ems     = Fix16(1.0f, 514.0f);
-            curCell.pixel->nms     = Fix8(1.0f);
-            curCell.pixel->rms     = Fix8(1.0f);
-            curCell.pixel->pms     = Fix8(1.0f);
+            curCell.pixel->pmc     = 1.0f;
+            curCell.pixel->gtc     = 1.0f;
+            curCell.pixel->gev     = 0.0f;
+            curCell.pixel->ems     = 1.0f;
+            curCell.pixel->nms     = 1.0f;
+            curCell.pixel->rms     = 1.0f;
+            curCell.pixel->pms     = 1.0f;
             curCell.pixel->ai      = atlasIndex;
             curCell.vel            = { 0.0f, 0.0f };
             curCell.temp           = 294.15f;
@@ -535,15 +533,15 @@ al32 struct CLASS_MAPMAN {
             curCell.geometry->er   = { 255, 0, 0, 0 };
             curCell.geometry->end  = { 0, 0, 0, 0 };
             curCell.geometry->dens = 0x0FFFF;
-            curCell.geometry->warp = { 0, 0 };
+            curCell.geometry->warp = 0.0f;
             curCell.pixel          = &curMap.pDPS[cellIndex];
-            curCell.pixel->pmc     = Fix8x4({ 1.0f, 1.0f, 1.0f, 1.0f });
-            curCell.pixel->gtc     = Fix8x4({ 1.0f, 1.0f, 1.0f, 1.0f });
-            curCell.pixel->gev     = Fix16(0.0f, -127.0f, 255.0f);
-            curCell.pixel->ems     = Fix16(1.0f, 514.0f);
-            curCell.pixel->nms     = Fix8(1.0f);
-            curCell.pixel->rms     = Fix8(1.0f);
-            curCell.pixel->pms     = Fix8(1.0f);
+            curCell.pixel->pmc     = 1.0f;
+            curCell.pixel->gtc     = 1.0f;
+            curCell.pixel->gev     = 0.0f;
+            curCell.pixel->ems     = 1.0f;
+            curCell.pixel->nms     = 1.0f;
+            curCell.pixel->rms     = 1.0f;
+            curCell.pixel->pms     = 1.0f;
             curCell.pixel->ai      = atlasIndex;
             curCell.vel            = { 0.0f, 0.0f };
             curCell.temp           = 294.15f;
@@ -561,18 +559,10 @@ al32 struct CLASS_MAPMAN {
       // Map slot is empty
       if(!world[worldIndex].map[mapIndex]) return -1;
 
-      mfree(world[worldIndex].map[mapIndex]->chunkMod);
-      mfree(world[worldIndex].map[mapIndex]->chunkVis);
-      mfree(world[worldIndex].map[mapIndex]->pDPS);
-      mfree(world[worldIndex].map[mapIndex]->pDGS);
-      mfree(world[worldIndex].map[mapIndex]->cell);
-      mfree(world[worldIndex].map[mapIndex]->pCB);
-      mfree(world[worldIndex].map[mapIndex]->desc.entityList);
-      mfree(world[worldIndex].map[mapIndex]->desc.wlrv.cellIndex);
-      mfree(world[worldIndex].map[mapIndex]->desc.wlrv.entityIndex);
-      mfree(world[worldIndex].map[mapIndex]->desc.stInfo);
-      mfree(world[worldIndex].map[mapIndex]->desc.stName);
-      mfree(world[worldIndex].map[mapIndex]);
+      mfree(world[worldIndex].map[mapIndex]->chunkMod, world[worldIndex].map[mapIndex]->chunkVis, world[worldIndex].map[mapIndex]->pDPS, world[worldIndex].map[mapIndex]->pDGS,
+            world[worldIndex].map[mapIndex]->cell, world[worldIndex].map[mapIndex]->pCB, world[worldIndex].map[mapIndex]->desc.entityList, world[worldIndex].map[mapIndex]->desc.wlrv.cellIndex,
+            world[worldIndex].map[mapIndex]->desc.wlrv.entityIndex, world[worldIndex].map[mapIndex]->desc.stInfo, world[worldIndex].map[mapIndex]->desc.stName, world[worldIndex].map[mapIndex]);
+
       world[worldIndex].map[mapIndex] = 0;
 
       return world[worldIndex].totalMaps--;
@@ -706,7 +696,7 @@ al32 struct CLASS_MAPMAN {
    inline void ModQuadCellDensity(cVEC3Ds32 coord, cfl32 densityMod, csi32 worldIndex, csi32 mapIndex) const {
       cMAP &curMap = *world[worldIndex].map[mapIndex];
 
-      si32 cell[4];
+      al16 si32 cell[4];
 
       cVEC3Ds32 coords[4] = { { coord }, { coord.x - 1, coord.y, coord.z }, { coord.x, coord.y - 1, coord.z }, { coord.x - 1, coord.y - 1, coord.z } };
       cVEC3Ds32 above[4]  = { { coord.x, coord.y, coord.z - 1 }, { coord.x - 1, coord.y, coord.z - 1 }, { coord.x, coord.y - 1, coord.z - 1 }, { coord.x - 1, coord.y - 1, coord.z - 1 } };
@@ -715,11 +705,12 @@ al32 struct CLASS_MAPMAN {
       if(CalcQuadCellIndices((VEC4Ds32 &)cell, coords, worldIndex, mapIndex))
          for(ui8 i = 0; i < 4; i++) {
             if(cell[i] == -1) continue;
-            cfl32 fDensity     = float(curMap.cell[cell[i]].geometry->dens) * 0.000015259254737998596148564104129154f + densityMod;
+//            cfl32 fDensity     = float(curMap.cell[cell[i]].geometry->dens) * 0.000015259254737998596148564104129154f + densityMod;
+            cfl32 fDensity     = curMap.cell[cell[i]].geometry->dens + densityMod;
             csi32 siAbove      = CalcCellIndex(above[i], worldIndex, mapIndex);
             csi32 siBelow      = CalcCellIndex(below[i], worldIndex, mapIndex);
             csi32 chunkIndex   = (cell[i] / curMap.desc.chunkCells);
-            cui16 densityBelow = (siBelow != -1 ? curMap.cell[siBelow].geometry->dens : 0);
+            cui16 densityBelow = (siBelow != -1 ? curMap.cell[siBelow].geometry->dens.data : 0);
             if(fDensity < 0.0f) {
                curMap.cell[cell[i]].geometry->dens = 0;
                //map[mapIndex][cell[i]].geometry->et.x = 0;
@@ -742,11 +733,11 @@ al32 struct CLASS_MAPMAN {
 //               } else
                   curMap.cell[cell[i]].geometry->dens = 0x0FFFE;
             } else {
-               if(curMap.cell[cell[i]].geometry->dens == 0 && curMap.cell[cell[i]].geometry->et.x == 0) {
+               if(curMap.cell[cell[i]].geometry->dens.data == 0 && curMap.cell[cell[i]].geometry->et.x == 0) {
                   curMap.cell[cell[i]].geometry->et.x = (siBelow != -1 ? curMap.cell[siBelow].geometry->et.x : 1);
                   curMap.cell[cell[i]].geometry->er.x = 255;
                }
-               curMap.cell[cell[i]].geometry->dens = Fix16(fDensity, 65534.0f);
+               curMap.cell[cell[i]].geometry->dens = fDensity;
                if(densityBelow == 0x0FFFE) {
                   curMap.cell[siBelow].geometry->dens = 0x0FFFF;
                   csi32 chunkIndex = (siBelow / curMap.desc.chunkCells);
@@ -914,7 +905,8 @@ al32 struct CLASS_MAPMAN {
       return 0;
    }
 
-   inline cVEC4Du32 WaitForCulling(cDWORD sleepDelay) const {
+//   inline cVEC4Du32 WaitForCulling(cDWORD sleepDelay) const {
+   inline cSSE4Du32 WaitForCulling(cDWORD sleepDelay) const {
       if(sleepDelay) while(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x03) Sleep(sleepDelay);
       else while(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x03) _mm_pause();
 
@@ -923,8 +915,8 @@ al32 struct CLASS_MAPMAN {
       MAPMAN_THREAD_STATUS.m128i_u64[0] &= 0x0C;
       MAPMAN_THREAD_STATUS.m128i_u64[1] = 0;
 
-      return { ui32(mapManThreadData.x >> 4) & 0x03FFFFFFF, ui32(mapManThreadData.x >> 34) & 0x03FFFFFFF,
-               ui32(mapManThreadData.y) & 0x03FFFFFFF, ui32(mapManThreadData.y >> 30) & 0x03FFFFFFF };
+      return cSSE4Du32{ ._ui32 = { ui32(mapManThreadData.x >> 4) & 0x03FFFFFFF, ui32(mapManThreadData.x >> 34) & 0x03FFFFFFF,
+                                   ui32(mapManThreadData.y) & 0x03FFFFFFF, ui32(mapManThreadData.y >> 30) & 0x03FFFFFFF } };
    }
 };
 

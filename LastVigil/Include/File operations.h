@@ -185,8 +185,7 @@ al16 struct CLASS_FILEOPS {
    }
 
    void _Deinitialise(void) {
-      if(stShader) mfree(stShader);
-      mfree(stTemp);
-      mfree(pathWorking);
+      if(stShader) mdealloc(stShader);
+      mfree(stTemp, pathWorking);
    }
 };

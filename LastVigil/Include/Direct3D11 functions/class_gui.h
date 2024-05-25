@@ -1,6 +1,6 @@
 /*******************************************************************************  
  * File: class_gui.h                                       Created: 2023/01/26 *
- *                                                   Last modified: 2024/04/30 *
+ *                                                   Last modified: 2024/05/24 *
  *                                                                             *
  * Desc:                                                                       *
  *                                                                             *
@@ -88,23 +88,18 @@ al32 struct CLASS_GUI {
    void _Deinitialise(void) {
       ui32 i;
 
-      if(element) mfree(element);
-      if(element_dgs) mfree(element_dgs);
+      if(element) mdealloc(element);
+      if(element_dgs) mdealloc(element_dgs);
 //      if(vertexRunLength) mfree(element_dgs);
-      if(textBuffer) mfree(textBuffer);
+      if(textBuffer) mdealloc(textBuffer);
       for(i = MAX_ATLAS; i; i++)
          if(siAtlasTexIndex[i])
             tex->Unload2D(siAtlasTexIndex[i]);
 //      mfree(vertex_index);
       for(i = siInterfaces; i; i++)
          if(interfaceProfile[i].vertex)
-            mfree(interfaceProfile[i].vertex);
-      mfree(interfaceProfile);
-      mfree(stAtlas);
-      mfree(stLanguage);
-      mfree(alphabet);
-      mfree(alphabet_pIMM);
-      mfree(spriteLib);
+            mdealloc(interfaceProfile[i].vertex);
+      mfree(interfaceProfile, stAtlas, stLanguage, alphabet, alphabet_pIMM, spriteLib);
       uiLanguages = uiAtlas = 0;
    }
 
@@ -212,14 +207,14 @@ al32 struct CLASS_GUI {
          for(si32 iX = 0; iX < xSegments; iX++) {
             // Texture offsets calculated per entry to maintain accuracy
             cui32 i = iX + (iY * xSegments);
-            alphabet_pIMM[pIMMos + i].tc.x1  = ui16((iX << 15) / xSegments);
-            alphabet_pIMM[pIMMos + i].tc.y1  = ui16((iY << 15) / ySegments);
-            alphabet_pIMM[pIMMos + i].tc.x2  = ui16(((iX + 1) << 15) / xSegments);
-            alphabet_pIMM[pIMMos + i].tc.y2  = ui16(((iY + 1) << 15) / ySegments);
-            alphabet_pIMM[pIMMos + i].width  = Fix16(i ? charSize.x : 0.0f, 65535.0f);
-            alphabet_pIMM[pIMMos + i].height = Fix16(i ? charSize.y : 0.0f, 65535.0f);
-            alphabet_pIMM[pIMMos + i].xos    = Fix16(0.0f, -1.0f, 2.0f);
-            alphabet_pIMM[pIMMos + i].yos    = Fix16(0.0f, -1.0f, 2.0f);
+            alphabet_pIMM[pIMMos + i].tc.data16[0] = ui16((iX << 15) / xSegments);
+            alphabet_pIMM[pIMMos + i].tc.data16[1] = ui16((iY << 15) / ySegments);
+            alphabet_pIMM[pIMMos + i].tc.data16[2] = ui16(((iX + 1) << 15) / xSegments);
+            alphabet_pIMM[pIMMos + i].tc.data16[3] = ui16(((iY + 1) << 15) / ySegments);
+            alphabet_pIMM[pIMMos + i].width  = i ? charSize.x : 0.0f, 65535.0f;
+            alphabet_pIMM[pIMMos + i].height = i ? charSize.y : 0.0f, 65535.0f;
+            alphabet_pIMM[pIMMos + i].xos    = 0.0f;
+            alphabet_pIMM[pIMMos + i].yos    = 0.0f;
          }
 
       return alphabetIndex;
@@ -294,12 +289,12 @@ al32 struct CLASS_GUI {
 
       // Accumulate character widths
       for(ui8 i = 0; i < 32 && textBuffer[uiBufIndex + i]; i++)
-         fOffset += Float16(alphabet_pIMM[alphabet[alphabetIndex].pIMMos + textBuffer[uiBufIndex + i]].width, 1.0f);
+         fOffset += alphabet_pIMM[alphabet[alphabetIndex].pIMMos + textBuffer[uiBufIndex + i]].width;
 
       return { fOffset * element_dgs[firstVert].size.x + uiPrevOrigin.x, uiPrevOrigin.y };
    };
 
-   inline cVEC4Df CalcActiveCoords(cVEC2Df viewPos, cVEC2Df spriteSize, cVEC2Df activeSize, cui8 alignment) const {
+   inline cSSE4Df32 CalcActiveCoords(cVEC2Df viewPos, cVEC2Df spriteSize, cVEC2Df activeSize, cui8 alignment) const {
       cVEC2Df indent = { spriteSize.x - activeSize.x, spriteSize.y - activeSize.y };
 
       SSE4Df32 coords = { viewPos.x, viewPos.y, viewPos.x, viewPos.y };
@@ -329,7 +324,7 @@ al32 struct CLASS_GUI {
       coords.vector.x1 *= ScrRes.dims[ScrRes.state].aspect;
       coords.vector.x2 *= ScrRes.dims[ScrRes.state].aspect;
 
-      return (VEC4Df &)_mm_fmadd_ps(coords.xmm, _mm_set_ps1(0.5f), _mm_set_ps1(0.5f));
+      return (SSE4Df32 &)_mm_fmadd_ps(coords.xmm, _mm_set_ps1(0.5f), _mm_set_ps1(0.5f));
    }
 
    // Returns element index and vertex count. Set .charCount to ~0 to automatically determine max string length   ---   !!! Rewrite properly, ya lazy cunt !!!
@@ -348,13 +343,13 @@ al32 struct CLASS_GUI {
          if(!(siTextEnd & 0x0FFFFFFE0)) textBuffer[siTextEnd] = 0;
 
          // Calculate width of string view space   ---   Change to iterate & add unique character widths
-         cVEC2Df activeSize = { Float16(alphabet_pIMM[alphabet[desc.index.alphabet].pIMMos + 1].width, 1.0f) * fl32(siTextSize) * desc.size.text.x,
-                                Float16(alphabet_pIMM[alphabet[desc.index.alphabet].pIMMos + 1].height, 1.0f) * desc.size.text.y };
+         cVEC2Df activeSize = { alphabet_pIMM[alphabet[desc.index.alphabet].pIMMos + 1].width * fl32(siTextSize) * desc.size.text.x,
+                                alphabet_pIMM[alphabet[desc.index.alphabet].pIMMos + 1].height * desc.size.text.y };
 
-         cVEC4Df activeCoords = CalcActiveCoords(desc.viewPos, activeSize, activeSize, desc.text.align);
+         cSSE4Df32 activeCoords = CalcActiveCoords(desc.viewPos, activeSize, activeSize, desc.text.align);
 
          element[siGUIElements].activeCoords      = activeCoords;
-         element[siGUIElements].activePos         = Fix16x2({ (activeCoords.x1 + activeCoords.x2) * 0.5f, (activeCoords.y1 + activeCoords.y2) * 0.5f }, 65535.0f);
+         element[siGUIElements].activePos         = { (activeCoords.x1 + activeCoords.x2) * 0.5f, (activeCoords.y1 + activeCoords.y2) * 0.5f };
          element[siGUIElements].viewScale         = { 2.0f / activeSize.x, 2.0f / activeSize.y };
          element[siGUIElements].vertexIndex       = siGUIVerts;
          element[siGUIElements].elementType       = 0;
@@ -374,7 +369,7 @@ al32 struct CLASS_GUI {
             element_dgs[siGUIVerts].origin[1]     = { 16384.0f, 16384.0f };
             element_dgs[siGUIVerts].origin[2]     = { 16384.0f, 16384.0f };
             element_dgs[siGUIVerts].origin[3]     = { 16384.0f, 16384.0f };
-            element_dgs[siGUIVerts].colour        = Fix16x4x4((SSE4Df32 &)desc.tint.text);
+            element_dgs[siGUIVerts].colour        = desc.tint.text.xmm;
             element_dgs[siGUIVerts].size          = desc.size.text;
             element_dgs[siGUIVerts].rotAngle      = 0.0f;
             element_dgs[siGUIVerts].width         = 0.0f;
@@ -411,13 +406,13 @@ al32 struct CLASS_GUI {
          if(!(siTextEnd & 0x0FFFFFFE0)) textBuffer[siTextEnd] = 0;
 
          // Calculate width of string view space   ---   Change to iterate & add unique character widths
-         cVEC2Df activeSize = { Float16(alphabet_pIMM[alphabet[desc.index.alphabet].pIMMos + 1].width, 1.0f) * fl32(siTextLength) * desc.size.text.x,
-                                Float16(alphabet_pIMM[alphabet[desc.index.alphabet].pIMMos + 1].height, 1.0f) * desc.size.text.y };
+         cVEC2Df activeSize = { alphabet_pIMM[alphabet[desc.index.alphabet].pIMMos + 1].width * fl32(siTextLength) * desc.size.text.x,
+                                alphabet_pIMM[alphabet[desc.index.alphabet].pIMMos + 1].height * desc.size.text.y };
 
-         cVEC4Df activeCoords = CalcActiveCoords(desc.viewPos, activeSize, activeSize, desc.text.align);
+         cSSE4Df32 activeCoords = CalcActiveCoords(desc.viewPos, activeSize, activeSize, desc.text.align);
 
          element[siGUIElements].activeCoords      = activeCoords;
-         element[siGUIElements].activePos         = Fix16x2({ (activeCoords.x1 + activeCoords.x2) * 0.5f, (activeCoords.y1 + activeCoords.y2) * 0.5f }, 65535.0f);
+         element[siGUIElements].activePos         = { (activeCoords.x1 + activeCoords.x2) * 0.5f, (activeCoords.y1 + activeCoords.y2) * 0.5f };
          element[siGUIElements].viewScale         = { 2.0f / activeSize.x, 2.0f / activeSize.y };
          element[siGUIElements].vertexIndex       = siGUIVerts;
          element[siGUIElements].elementType       = 0;
@@ -437,7 +432,7 @@ al32 struct CLASS_GUI {
             element_dgs[siGUIVerts].origin[1]     = { 16384.0f, 16384.0f };
             element_dgs[siGUIVerts].origin[2]     = { 16384.0f, 16384.0f };
             element_dgs[siGUIVerts].origin[3]     = { 16384.0f, 16384.0f };
-            element_dgs[siGUIVerts].colour        = Fix16x4x4((SSE4Df32 &)desc.tint.text);
+            element_dgs[siGUIVerts].colour        = desc.tint.text.xmm;
             element_dgs[siGUIVerts].size          = desc.size.text;
             element_dgs[siGUIVerts].rotAngle      = 0.0f;
             element_dgs[siGUIVerts].width         = 0.0f;
@@ -455,7 +450,7 @@ al32 struct CLASS_GUI {
             element_dgs[siGUIVerts].origin[1]     = { 0.0f, 0.0f };
             element_dgs[siGUIVerts].origin[2]     = { 0.0f, 0.0f };
             element_dgs[siGUIVerts].origin[3]     = { 0.0f, 0.0f };
-            element_dgs[siGUIVerts].colour        = Fix16x4x4((SSE4Df32 &)desc.tint.text);
+            element_dgs[siGUIVerts].colour        = desc.tint.text.xmm;
             element_dgs[siGUIVerts].size          = desc.size.text;
             element_dgs[siGUIVerts].rotAngle      = 0.0f;
             element_dgs[siGUIVerts].width         = 0.0f;
@@ -488,12 +483,12 @@ al32 struct CLASS_GUI {
       cVEC2Df activeSize = { spriteSize.x * curSpr.aa.x, spriteSize.y * curSpr.aa.y };
       cVEC4Df viewCoords = { desc.viewPos.x - spriteSize.x, desc.viewPos.y + spriteSize.y, desc.viewPos.x + spriteSize.x, desc.viewPos.y - spriteSize.y };
 
-      cVEC4Df activeCoords = CalcActiveCoords(desc.viewPos, spriteSize, activeSize, desc.cursor.align);
+      cSSE4Df32 activeCoords = CalcActiveCoords(desc.viewPos, spriteSize, activeSize, desc.cursor.align);
 
       element[siGUIElements].vertexCount[0] = element[siGUIElements].vertexCount[1] = 1;
 
       element[siGUIElements].activeCoords      = activeCoords;
-      element[siGUIElements].activePos         = Fix16x2({ (activeCoords.x1 + activeCoords.x2) * 0.5f, (activeCoords.y1 + activeCoords.y2) * 0.5f }, 65535.0f);
+      element[siGUIElements].activePos         = { (activeCoords.x1 + activeCoords.x2) * 0.5f, (activeCoords.y1 + activeCoords.y2) * 0.5f };
       element[siGUIElements].viewScale         = { 2.0f / activeSize.x, 2.0f / activeSize.y };
       element[siGUIElements].vertexIndex       = siGUIVerts;
       element[siGUIElements].elementType       = 5;
@@ -509,7 +504,7 @@ al32 struct CLASS_GUI {
       element_dgs[siGUIVerts].viewPos      = desc.viewPos;
       element_dgs[siGUIVerts].indent       = activeSize;
       element_dgs[siGUIVerts].texCoords    = curSpr.tc;
-      element_dgs[siGUIVerts].colour       = Fix16x4x4((SSE4Df32 &)desc.tint.cursor);
+      element_dgs[siGUIVerts].colour       = desc.tint.cursor.xmm;
       element_dgs[siGUIVerts].size         = spriteSize;
       element_dgs[siGUIVerts].rotAngle     = 0.0f;
       element_dgs[siGUIVerts].width        = 0.0f;
@@ -533,12 +528,13 @@ al32 struct CLASS_GUI {
       cVEC2Df activeSize = { spriteSize.x * curSpr.aa.x, spriteSize.y * curSpr.aa.y };
       cVEC4Df viewCoords = { desc.viewPos.x - spriteSize.x, desc.viewPos.y + spriteSize.y, desc.viewPos.x + spriteSize.x, desc.viewPos.y - spriteSize.y };
 
-      cVEC4Df activeCoords = CalcActiveCoords(desc.viewPos, spriteSize, activeSize, desc.panel.align);
+      cSSE4Df32 activeCoords = CalcActiveCoords(desc.viewPos, spriteSize, activeSize, desc.panel.align);
 
       element[siGUIElements].vertexCount[0] = element[siGUIElements].vertexCount[1] = 1;
 
       element[siGUIElements].activeCoords      = activeCoords;
-      element[siGUIElements].activePos         = Fix16x2({ (activeCoords.x1 + activeCoords.x2) * 0.5f, (activeCoords.y1 + activeCoords.y2) * 0.5f }, 65535.0f);
+      element[siGUIElements].activePos         = { (activeCoords.x1 + activeCoords.x2) * 0.5f, (activeCoords.y1 + activeCoords.y2) * 0.5f };
+//      element[siGUIElements].activeZone        = { (1.0f - curSpr.aa.x) * spriteSize.x, (1.0f - curSpr.aa.y) * spriteSize.y };
       element[siGUIElements].viewScale         = { 2.0f / activeSize.x, 2.0f / activeSize.y };
       element[siGUIElements].vertexIndex       = siGUIVerts;
       element[siGUIElements].elementType       = 1;
@@ -549,13 +545,11 @@ al32 struct CLASS_GUI {
       element[siGUIElements].func.activate1[0] = desc.func.activate1[0];
       element[siGUIElements].func.activate1[1] = desc.func.activate1[1];
       element[siGUIElements].soundBankIndex    = desc.index.soundBank;
-      element[siGUIElements].ui16Var[6]        = Fix16((1.0f - curSpr.aa.x) * spriteSize.x, 32767.5f); // Inner panel X-axis boundary distance
-      element[siGUIElements].ui16Var[7]        = Fix16((1.0f - curSpr.aa.y) * spriteSize.y, 32767.5f); // Inner panel Y-axis boundary distance
       element[siGUIElements].stateBits         = 0x0C0;
       element_dgs[siGUIVerts].viewPos      = desc.viewPos;
       element_dgs[siGUIVerts].indent       = activeSize;
       element_dgs[siGUIVerts].texCoords    = curSpr.tc;
-      element_dgs[siGUIVerts].colour       = Fix16x4x4((SSE4Df32 &)desc.tint.panel);
+      element_dgs[siGUIVerts].colour       = desc.tint.panel.xmm;
       element_dgs[siGUIVerts].size         = spriteSize;
       element_dgs[siGUIVerts].rotAngle     = 0.0f;
       element_dgs[siGUIVerts].width        = 0.0f;
@@ -565,6 +559,7 @@ al32 struct CLASS_GUI {
       element_dgs[siGUIVerts].sibling      = 0;
       element_dgs[siGUIVerts].align        = desc.panel.align;
       element_dgs[siGUIVerts++].mods       = desc.panel.mods;
+
       return siGUIElements++;
    }
 
@@ -579,12 +574,13 @@ al32 struct CLASS_GUI {
       cVEC2Df activeSize = { spriteSize.x * curSpr.aa.x, spriteSize.y * curSpr.aa.y };
       cVEC4Df viewCoords = { desc.viewPos.x - spriteSize.x, desc.viewPos.y + spriteSize.y, desc.viewPos.x + spriteSize.x, desc.viewPos.y - spriteSize.y };
 
-      cVEC4Df activeCoords = CalcActiveCoords(desc.viewPos, spriteSize, activeSize, desc.panel.align);
+      cSSE4Df32 activeCoords = CalcActiveCoords(desc.viewPos, spriteSize, activeSize, desc.panel.align);
 
       element[siGUIElements].vertexCount[0] = element[siGUIElements].vertexCount[1] = 2;
 
       element[siGUIElements].activeCoords      = activeCoords;
-      element[siGUIElements].activePos         = Fix16x2({ (activeCoords.x1 + activeCoords.x2) * 0.5f, (activeCoords.y1 + activeCoords.y2) * 0.5f }, 65535.0f);
+      element[siGUIElements].activePos         = { (activeCoords.x1 + activeCoords.x2) * 0.5f, (activeCoords.y1 + activeCoords.y2) * 0.5f };
+//      element[siGUIElements].activeZone        = { (1.0f - curSpr.aa.x) * spriteSize.x, (1.0f - curSpr.aa.y) * spriteSize.y };
       element[siGUIElements].viewScale         = { 2.0f / activeSize.x, 2.0f / activeSize.y };
       element[siGUIElements].vertexIndex       = siGUIVerts;
       element[siGUIElements].elementType       = 2;   // bit7==Button "down"
@@ -595,13 +591,11 @@ al32 struct CLASS_GUI {
       element[siGUIElements].func.activate1[0] = desc.func.activate1[0];
       element[siGUIElements].func.activate1[1] = desc.func.activate1[1];
       element[siGUIElements].soundBankIndex    = desc.index.soundBank;
-      element[siGUIElements].ui16Var[6]        = Fix16((1.0f - curSpr.aa.x) * spriteSize.x, 32767.5f); // Inner panel X-axis boundary distance
-      element[siGUIElements].ui16Var[7]        = Fix16((1.0f - curSpr.aa.y) * spriteSize.y, 32767.5f); // Inner panel Y-axis boundary distance
       element[siGUIElements].stateBits         = 0x0C0;
       element_dgs[siGUIVerts].viewPos      = desc.viewPos;
       element_dgs[siGUIVerts].indent       = activeSize;
       element_dgs[siGUIVerts].texCoords    = curSpr.tc;
-      element_dgs[siGUIVerts].colour       = Fix16x4x4((SSE4Df32 &)desc.tint.panel);
+      element_dgs[siGUIVerts].colour       = desc.tint.panel.xmm;
       element_dgs[siGUIVerts].size         = spriteSize;
       element_dgs[siGUIVerts].rotAngle     = 0.0f;
       element_dgs[siGUIVerts].width        = 0.0f;
@@ -614,7 +608,7 @@ al32 struct CLASS_GUI {
       element_dgs[siGUIVerts].viewPos      = desc.viewPos;
       element_dgs[siGUIVerts].indent       = activeSize;
       element_dgs[siGUIVerts].texCoords    = curLib.sprite[desc.index.panelSprite + 1].tc;
-      element_dgs[siGUIVerts].colour       = Fix16x4x4((SSE4Df32 &)desc.tint.panel);
+      element_dgs[siGUIVerts].colour       = desc.tint.panel.xmm;
       element_dgs[siGUIVerts].size         = spriteSize;
       element_dgs[siGUIVerts].rotAngle     = 0.0f;
       element_dgs[siGUIVerts].width        = 0.0f;
@@ -639,12 +633,13 @@ al32 struct CLASS_GUI {
       cVEC2Df activeSize = { spriteSize.x * curSpr.aa.x, spriteSize.y * curSpr.aa.y };
       cVEC4Df viewCoords = { desc.viewPos.x - spriteSize.x, desc.viewPos.y + spriteSize.y, desc.viewPos.x + spriteSize.x, desc.viewPos.y - spriteSize.y };
 
-      cVEC4Df activeCoords = CalcActiveCoords(desc.viewPos, spriteSize, activeSize, desc.panel.align);
+      cSSE4Df32 activeCoords = CalcActiveCoords(desc.viewPos, spriteSize, activeSize, desc.panel.align);
 
       element[siGUIElements].vertexCount[0] = element[siGUIElements].vertexCount[1] = 2;
 
       element[siGUIElements].activeCoords      = activeCoords;
-      element[siGUIElements].activePos         = Fix16x2({ (activeCoords.x1 + activeCoords.x2) * 0.5f, (activeCoords.y1 + activeCoords.y2) * 0.5f }, 65535.0f);
+      element[siGUIElements].activePos         = { (activeCoords.x1 + activeCoords.x2) * 0.5f, (activeCoords.y1 + activeCoords.y2) * 0.5f };
+//      element[siGUIElements].activeZone        = { (1.0f - curSpr.aa.x) * spriteSize.x, (1.0f - curSpr.aa.y) * spriteSize.y };
       element[siGUIElements].viewScale         = { 2.0f / activeSize.x, 2.0f / activeSize.y };
       element[siGUIElements].vertexIndex       = siGUIVerts;
       element[siGUIElements].elementType       = 3;   // bit7==Button "toggled"
@@ -655,13 +650,11 @@ al32 struct CLASS_GUI {
       element[siGUIElements].func.activate1[0] = desc.func.activate1[0];
       element[siGUIElements].func.activate1[1] = desc.func.activate1[1];
       element[siGUIElements].soundBankIndex    = desc.index.soundBank;
-      element[siGUIElements].ui16Var[6]        = Fix16((1.0f - curSpr.aa.x) * spriteSize.x, 32767.5f); // Inner panel X-axis boundary distance
-      element[siGUIElements].ui16Var[7]        = Fix16((1.0f - curSpr.aa.y) * spriteSize.y, 32767.5f); // Inner panel Y-axis boundary distance
       element[siGUIElements].stateBits         = 0x0C0;
       element_dgs[siGUIVerts].viewPos      = desc.viewPos;
       element_dgs[siGUIVerts].indent       = activeSize;
       element_dgs[siGUIVerts].texCoords    = curSpr.tc;
-      element_dgs[siGUIVerts].colour       = Fix16x4x4((SSE4Df32 &)desc.tint.panel);
+      element_dgs[siGUIVerts].colour       = desc.tint.panel.xmm;
       element_dgs[siGUIVerts].size         = spriteSize;
       element_dgs[siGUIVerts].rotAngle     = 0.0f;
       element_dgs[siGUIVerts].width        = 0.0f;
@@ -674,7 +667,7 @@ al32 struct CLASS_GUI {
       element_dgs[siGUIVerts].viewPos      = desc.viewPos;
       element_dgs[siGUIVerts].indent       = activeSize;
       element_dgs[siGUIVerts].texCoords    = curLib.sprite[desc.index.panelSprite + 1].tc;
-      element_dgs[siGUIVerts].colour       = Fix16x4x4((SSE4Df32 &)desc.tint.panel);
+      element_dgs[siGUIVerts].colour       = desc.tint.panel.xmm;
       element_dgs[siGUIVerts].size         = spriteSize;
       element_dgs[siGUIVerts].rotAngle     = 0.0f;
       element_dgs[siGUIVerts].width        = 0.0f;
@@ -703,11 +696,11 @@ al32 struct CLASS_GUI {
       cVEC4Df viewCoords[2] = { { desc.viewPos.x - spriteSize[0].x, desc.viewPos.y + spriteSize[0].y, desc.viewPos.x + spriteSize[0].x, desc.viewPos.y - spriteSize[0].y },
                                 { desc.viewPos.x - spriteSize[1].x, desc.viewPos.y + spriteSize[1].y, desc.viewPos.x + spriteSize[1].x, desc.viewPos.y - spriteSize[1].y } };
 
-      cVEC4Df activeCoords[2] = { { CalcActiveCoords(desc.viewPos, spriteSize[0], activeSize[0], desc.panel.align) },
-                                  { CalcActiveCoords(desc.viewPos, spriteSize[1], activeSize[1], desc.cursor.align) } };
+      cSSE4Df32 activeCoords[2] = { { CalcActiveCoords(desc.viewPos, spriteSize[0], activeSize[0], desc.panel.align) },
+                                    { CalcActiveCoords(desc.viewPos, spriteSize[1], activeSize[1], desc.cursor.align) } };
 
       element[siGUIElements].activeCoords      = activeCoords[0];
-      element[siGUIElements].activePos         = Fix16x2({ (activeCoords[0].x1 + activeCoords[0].x2) * 0.5f, (activeCoords[0].y1 + activeCoords[0].y2) * 0.5f}, 65535.0f);
+      element[siGUIElements].activePos         = { (activeCoords[0].x1 + activeCoords[0].x2) * 0.5f, (activeCoords[0].y1 + activeCoords[0].y2) * 0.5f};
       element[siGUIElements].viewScale         = { 2.0f / activeSize[0].x, 2.0f / activeSize[0].y };
       element[siGUIElements].func.hover[0]     = desc.func.hover[0];
       element[siGUIElements].func.hover[1]     = desc.func.hover[1];
@@ -724,26 +717,26 @@ al32 struct CLASS_GUI {
       element_dgs[siGUIVerts].viewPos      = desc.viewPos;
       element_dgs[siGUIVerts].indent       = activeSize[0];
       element_dgs[siGUIVerts].texCoords    = panSpr.tc;
-      element_dgs[siGUIVerts].colour       = Fix16x4x4((SSE4Df32 &)desc.tint.panel);
+      element_dgs[siGUIVerts].colour       = desc.tint.panel.xmm;
       element_dgs[siGUIVerts].size         = spriteSize[0];
       element_dgs[siGUIVerts].rotAngle     = 0.0f;
       element_dgs[siGUIVerts].width        = 0.0f;
       element_dgs[siGUIVerts].parentIndex  = 0x0FFFFFFFF;
       element_dgs[siGUIVerts].atlasIndex   = (ui8)curLib.atlasIndex;
-      element_dgs[siGUIVerts].elementType  = 4;
+      element_dgs[siGUIVerts].elementType  = 1;
       element_dgs[siGUIVerts].sibling      = 0x08001;
       element_dgs[siGUIVerts].align        = desc.panel.align;
       element_dgs[siGUIVerts++].mods       = desc.panel.mods;
       element_dgs[siGUIVerts].viewPos      = { 0.0f, 0.0f }; // .x range -1.0~1.0
       element_dgs[siGUIVerts].indent       = activeSize[1];
       element_dgs[siGUIVerts].texCoords    = indSpr.tc;
-      element_dgs[siGUIVerts].colour       = Fix16x4x4((SSE4Df32 &)desc.tint.cursor);
+      element_dgs[siGUIVerts].colour       = desc.tint.cursor.xmm;
       element_dgs[siGUIVerts].size         = spriteSize[1];
       element_dgs[siGUIVerts].rotAngle     = 0.0f;
       element_dgs[siGUIVerts].width        = 0.0f;
       element_dgs[siGUIVerts].parentIndex  = siGUIVerts - 1;
       element_dgs[siGUIVerts].atlasIndex   = (ui8)curLib.atlasIndex;
-      element_dgs[siGUIVerts].elementType  = 5;
+      element_dgs[siGUIVerts].elementType  = 4;
       element_dgs[siGUIVerts].sibling      = 1;
       element_dgs[siGUIVerts].align        = desc.cursor.align;
       element_dgs[siGUIVerts++].mods       = desc.cursor.mods;
@@ -762,14 +755,14 @@ al32 struct CLASS_GUI {
 
       for(ui8 i = 0; i < 6; i++)
          desc.function[i] = 0;
-      desc.viewPos = { 0.0f, 0.0f };
 
+      desc.viewPos = { 0.0f, 0.0f };
       cui32 overlay = CreateText(desc);
 
       for(ui8 i = 0; i < 6; i++)
          desc.function[i] = tempPtrs[i];
-      desc.viewPos = tempPos;
 
+      desc.viewPos = tempPos;
       cui32 panelVert = element[panel].vertexIndex;
       cui32 firstVert = element[overlay].vertexIndex;
 
@@ -785,24 +778,23 @@ al32 struct CLASS_GUI {
 
       cui32 panel = CreateButton(desc);
 
+      ui32 i = 0;
+
       funcptr tempPtrs[6] = { desc.function[0], desc.function[1], desc.function[2], desc.function[3], desc.function[4], desc.function[5] };
       cVEC2Df tempPos     = desc.viewPos;
 
-      for(ui8 i = 0; i < 6; i++)
-         desc.function[i] = 0;
-      desc.viewPos = { 0.0f, 0.0f };
+      for(i = 0; i < 6; i++) desc.function[i] = 0;
 
+      desc.viewPos = { 0.0f, 0.0f };
       cui32 overlay = CreateText(desc);
 
-      for(ui8 i = 0; i < 6; i++)
-         desc.function[i] = tempPtrs[i];
-      desc.viewPos = tempPos;
+      for(i = 0; i < 6; i++) desc.function[i] = tempPtrs[i];
 
+      desc.viewPos = tempPos;
       cui32 panelVert = element[panel].vertexIndex;
       cui32 firstVert = element[overlay].vertexIndex;
 
-      for(ui32 i = 0; i < element[overlay].vertexCount[1]; i++)
-         element_dgs[firstVert + i].parentIndex = panelVert;
+      for(i = 0; i < element[overlay].vertexCount[1]; i++) element_dgs[firstVert + i].parentIndex = panelVert;
 
       return { panel, overlay };
    }
@@ -814,33 +806,29 @@ al32 struct CLASS_GUI {
       cui32 panel = CreatePanel(desc);
 
       fl32 accum = 0.0f;
-      for(ui16 i = 0; desc.textPtr[i]; i++)
-         accum += alphabet_pIMM[alphabet[desc.index.alphabet].pIMMos + desc.textPtr[i]].width;
+      ui32 i = 0;
+
+      for(; desc.textPtr[i]; i++) accum += alphabet_pIMM[alphabet[desc.index.alphabet].pIMMos + desc.textPtr[i]].width;
 
       funcptr tempPtrs[6] = { desc.function[0], desc.function[1], desc.function[2], desc.function[3], desc.function[4], desc.function[5] };
       cVEC2Df tempPos = desc.viewPos;
 
-      for(ui8 i = 0; i < 6; i++)
-         desc.function[i] = 0;
-      desc.viewPos = { desc.viewPos.x + Float16(element[panel].si16Var[6], 16383.25f) + (accum * desc.size.text.x),
-                       desc.viewPos.y + Float16(element[panel].si16Var[6], 16383.25f) + (desc.size.text.y * 0.5f) };
-      cui32 cursor = CreateCursor(desc);
+      for(i = 0; i < 6; i++) desc.function[i] = 0;
 
       desc.viewPos = { 0.0f, 0.0f };
-
+      cui32 cursor = CreateCursor(desc);
       cui32 overlay = CreateText(desc);
 
-      for(ui8 i = 0; i < 6; i++)
-         desc.function[i] = tempPtrs[i];
+      for(i = 0; i < 6; i++) desc.function[i] = tempPtrs[i];
       desc.viewPos = tempPos;
 
       cui32 panelVert = element[panel].vertexIndex;
       cui32 firstVert = element[overlay].vertexIndex;
 
       element_dgs[element[cursor].vertexIndex].parentIndex = panelVert;
+      element_dgs[element[cursor].vertexIndex].align |= 0x080;
 
-      for(ui32 i = 0; i < element[overlay].vertexCount[1]; i++)
-         element_dgs[firstVert + i].parentIndex = panelVert;
+      for(i = 0; i < element[overlay].vertexCount[1]; i++) element_dgs[firstVert + i].parentIndex = panelVert;
 
       element[panel].func.activate0[0] = __Activate0_0_Default_Input;
       element[panel].func.hover[0]     = __Passive_Default_Input;
@@ -848,7 +836,7 @@ al32 struct CLASS_GUI {
 
       element[cursor].stateBits = 0;
 
-      return { panel, overlay, cursor };
+      return { panel, cursor, overlay };
    }
 
    inline void DisableElements(csi16 elementIndex, csi16 count) {
@@ -1092,7 +1080,7 @@ al32 struct CLASS_GUI {
    }
 
 ///--- Modify for WRITE_NO_OVERWRITE and add mod test ---///
-   void UploadEntryBuffer(cui8 context) {
+   inline void UploadEntryBuffer(cui8 context) {
       devcon[context]->UpdateSubresource(buf->pBuffer[3][bufDGS], 0, NULL, element_dgs, sizeof(GUI_EL_DGS), sizeof(GUI_EL_DGS));
    }
 
@@ -1161,7 +1149,7 @@ al32 struct CLASS_GUI {
          indices[j].element = index;
          indices[j].vertex = element[index].vertexIndex;
 
-         cVEC4Df coords = element[index].activeCoords;
+         cSSE4Df32 coords = element[index].activeCoords;
 
          const GUI_EL_DGS &curElVert = element_dgs[indices[j].vertex + ((element[index].elementType & 0x080) >> 7)];
 
@@ -1239,7 +1227,7 @@ al32 struct CLASS_GUI {
          if(!(element[index].stateBits & 0x080)) continue;
 
          const GUI_EL_DGS &curElVert = element_dgs[element[index].vertexIndex + ((element[index].elementType & 0x080) >> 7)];
-         const VEC4Df      coords    = element[index].activeCoords;
+         const SSE4Df32    coords    = element[index].activeCoords;
 
          adjPos = { (curPos.x - 0.5f) * ScrRes.dims[ScrRes.state].aspectI * 2.0f, curPos.y * 2.0f - 1.0f };
 
@@ -1272,7 +1260,7 @@ al32 struct CLASS_GUI {
                element[index].func.hover[0](indices[j].data);
 
             // onActivate for inputMask[0]
-            if(ipd.input.ui >= 1 && !_mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[0])) {
+            if(ipd.input.ui >= 1 && !testAllZero(ctrlVars.imm.button, ipd.inputMask[0])) {
                activeElement.ymm.m256i_i32[1] = index;
                if(element[index].function[2]) element[index].func.activate0[0](indices[j].data);
                for(funcCount = 0; funcCount < ipd.funcCount[0].x; funcCount++, nextFuncIndex++)
@@ -1280,7 +1268,7 @@ al32 struct CLASS_GUI {
             }
 
             // onActivate for inputMask[1]
-            if(ipd.input.ui >= 2 && !_mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[1])) {
+            if(ipd.input.ui >= 2 && !testAllZero(ctrlVars.imm.button, ipd.inputMask[1])) {
                activeElement.ymm.m256i_i32[2] = index;
                if(element[index].function[4]) element[index].func.activate1[0](indices[j].data);
                for(funcCount = 0; funcCount < ipd.funcCount[1].x; funcCount++, nextFuncIndex++)
@@ -1289,7 +1277,7 @@ al32 struct CLASS_GUI {
 
             // onActivate for inputMask[2~]
             for(ui8 imCount = 2; imCount < ipd.input.ui; imCount++) {
-               if(!_mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[imCount])) {
+               if(!testAllZero(ctrlVars.imm.button, ipd.inputMask[imCount])) {
                   if(imCount < 7) activeElement.ymm.m256i_i32[imCount + 1] = index;
                   for(funcCount = 0; funcCount < ipd.funcCount[imCount].x; funcCount++, nextFuncIndex++)
                      ipd.function[nextFuncIndex](indices[j].data);
@@ -1301,7 +1289,7 @@ al32 struct CLASS_GUI {
                element[index].func.hover[1](indices[j].data);
 
          // offActivate for inputMask[0]
-         if(ipd.input.ui >= 1 && _mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[0])) {
+         if(ipd.input.ui >= 1 && testAllZero(ctrlVars.imm.button, ipd.inputMask[0])) {
             activeElement.ymm.m256i_i32[0] = -1;
             if(element[index].function[3]) element[index].func.activate0[1](indices[j].data);
             for(funcCount = 0; funcCount < ipd.funcCount[0].y; funcCount++, nextFuncIndex++)
@@ -1309,7 +1297,7 @@ al32 struct CLASS_GUI {
          }
 
          // offActivate for inputMask[1]
-         if(ipd.input.ui >= 2 && _mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[1])) {
+         if(ipd.input.ui >= 2 && testAllZero(ctrlVars.imm.button, ipd.inputMask[1])) {
             activeElement.ymm.m256i_i32[1] = -1;
             if(element[index].function[5]) element[index].func.activate1[1](indices[j].data);
             for(funcCount = 0; funcCount < ipd.funcCount[1].y; funcCount++, nextFuncIndex++)
@@ -1318,7 +1306,7 @@ al32 struct CLASS_GUI {
 
          // onActivate for inputMask[2~]
          for(ui8 imCount = 2; imCount < ipd.input.ui; imCount++) {
-            if(!_mm256_testz_si256(ctrlVars.imm.button, ipd.inputMask[imCount])) {
+            if(!testAllZero(ctrlVars.imm.button, ipd.inputMask[imCount])) {
                if(imCount < 7) activeElement.ymm.m256i_i32[imCount + 1] = -1;
                for(funcCount = 0; funcCount < ipd.funcCount[imCount].x; funcCount++, nextFuncIndex++)
                   ipd.function[nextFuncIndex](indices[j].data);

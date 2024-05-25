@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_entitymanager.h          Created: 2023/05/06 *
- *                                Last modified: 2024/05/03 *
+ *                                Last modified: 2024/05/25 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -100,8 +100,8 @@ al32 struct CLASS_ENTMAN {
    // Remove group of object template slots. Returns number of remaining groups, or err01 if group was empty
    cui32 DestroyObjectGroup(csi16 group) {
       if(objGroup[group].object) {
-         mfree(objGroup[group].part);
-         mfree(objGroup[group].object);
+         mfree(objGroup[group].part, objGroup[group].object);
+
          memset(&objGroup[group], 0, sizeof(OBJECT_GROUP));
 
          return --siObjectGroups;
@@ -113,12 +113,8 @@ al32 struct CLASS_ENTMAN {
    // Remove group of entity slots
    cui32 DestroyEntityGroup(csi16 group) {
       if(entGroup[group].entity) {
-         mfree(entGroup[siEntry].entityMod);
-         mfree(entGroup[siEntry].entityVis);
-         mfree(entGroup[group].spriteT);
-         mfree(entGroup[group].spriteO);
-         mfree(entGroup[group].bone);
-         mfree(entGroup[group].entity);
+         mfree(entGroup[siEntry].entityMod, entGroup[siEntry].entityVis, entGroup[group].spriteT, entGroup[group].spriteO, entGroup[group].bone, entGroup[group].entity);
+
          memset(&objGroup[group], 0, sizeof(OBJECT_GROUP));
 
          return --siEntityGroups;
@@ -142,10 +138,10 @@ al32 struct CLASS_ENTMAN {
 
       PART_IGS &curPart = curGroup.part[partIndex];
 
-      curGroup.part[partIndex] = { position, atlasIndex, orientation, partIndex, size, Fix16x4(texCoords, 32768.0f), { recoilState.pos, NULL, recoilState.ori } };
+      curGroup.part[partIndex] = { position, atlasIndex, orientation, partIndex, size, texCoords, { recoilState.pos, NULL, recoilState.ori } };
 
       for(ui8 i = partIndex + 1; i < lastIndex; i++)
-         curGroup.part[i] = { null3Df, atlasIndex, null3Df, partIndex, {1.0f, 1.0f}, Fix16x4(texCoords, 32768.0f), { .sliderot = { null128f, null128f } } };
+         curGroup.part[i] = { null3Df, atlasIndex, null3Df, partIndex, {1.0f, 1.0f}, texCoords, { .sliderot = { null128f, null128f } } };
 
       return { index, group };
    }
@@ -256,13 +252,13 @@ al32 struct CLASS_ENTMAN {
       curGroup.bone_dgs[boneIndex].oai  = object.index;
       curGroup.bone_dgs[boneIndex].pbi  = boneIndex;
       curGroup.bone_dgs[boneIndex].obi  = boneIndex;
-      curGroup.spriteO[boneIndex].pmc = Fix8x4({ 1.0f, 1.0f, 1.0f, 1.0f });
-      curGroup.spriteO[boneIndex].gtc = Fix8x4({ 1.0f, 1.0f, 1.0f, 1.0f });
-      curGroup.spriteO[boneIndex].gev = Fix16(0.0f,-127.0f, 255.0f);
-      curGroup.spriteO[boneIndex].ems = Fix16(1.0f, 514.0f);
-      curGroup.spriteO[boneIndex].nms = Fix8(1.0f);
-      curGroup.spriteO[boneIndex].rms = Fix8(1.0f);
-      curGroup.spriteO[boneIndex].pms = Fix8(1.0f);
+      curGroup.spriteO[boneIndex].pmc = 1.0f;
+      curGroup.spriteO[boneIndex].gtc = 1.0f;
+      curGroup.spriteO[boneIndex].gev = 0.0f; // fs7p8
+      curGroup.spriteO[boneIndex].ems = 1.0f;
+      curGroup.spriteO[boneIndex].nms = 1.0f;
+      curGroup.spriteO[boneIndex].rms = 1.0f;
+      curGroup.spriteO[boneIndex].pms = 1.0f;
 
       for(si32 i = boneIndex + 1; i < lastIndex; i++) {
 /*         csi32 entityIndex = index + j;
@@ -286,8 +282,7 @@ al32 struct CLASS_ENTMAN {
          curGroup.bone_dgs[i].oai  = object.index;
          curGroup.bone_dgs[i].pbi  = boneIndex;
          curGroup.bone_dgs[i].obi  = boneIndex;
-         curGroup.spriteO[i] = { Fix8x4({ 1.0f, 1.0f, 1.0f, 1.0f }), Fix8x4({ 1.0f, 1.0f, 1.0f, 1.0f }), Fix16(0.0f,-127.0f, 255.0f), Fix16(1.0f, 514.0f),
-                                 Fix8(1.0f), Fix8(1.0f), Fix8(1.0f) };
+         curGroup.spriteO[i] = { 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f };
       }
 
       return { index, group };
@@ -317,18 +312,16 @@ al32 struct CLASS_ENTMAN {
       curGroup.bone_dgs[boneIndex].afo  = 0;
       if(transparent) {
          curGroup.bone_dgs[boneIndex].sai = entGroup[entityGroup].totalSpritesT++;
-         curGroup.spriteT[boneIndex] = { Fix8x4({ 1.0f, 1.0f, 1.0f, 1.0f }), Fix8x4({ 1.0f, 1.0f, 1.0f, 1.0f }),
-                                         Fix16(0.0f, -127.0f, 255.0f), Fix16(1.0f, 514.0f), Fix8(1.0f), Fix8(1.0f), Fix8(1.0f) };
+         curGroup.spriteT[boneIndex] = { 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f };
       } else {
          curGroup.bone_dgs[boneIndex].sai = entGroup[entityGroup].totalSpritesO++;
-         curGroup.spriteO[boneIndex] = { Fix8x4({ 1.0f, 1.0f, 1.0f, 1.0f }), Fix8x4({ 1.0f, 1.0f, 1.0f, 1.0f }),
-                                         Fix16(0.0f, -127.0f, 255.0f), Fix16(1.0f, 514.0f), Fix8(1.0f), Fix8(1.0f), Fix8(1.0f) };
+         curGroup.spriteO[boneIndex] = { 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f };
       }
 
       return boneIndex;
    }
 
-   inline void SetPart(cID32c object, csi8 part, cVEC3Df position, cVEC3Df orientation, cVEC2Df size, cVEC6Df recoilState, cVEC4Df texCoords, cui8 atlasIndex) const {
+   inline void SetPart(cID32c object, csi8 part, cVEC3Df position, cVEC3Df orientation, cVEC2Df size, cVEC6Df recoilState, cSSE4Df32 texCoords, cui8 atlasIndex) const {
 ///--- To do...
    }
 
@@ -337,13 +330,12 @@ al32 struct CLASS_ENTMAN {
       objGroup[objectGroup].part[partIndex].rot     = orientation;
       objGroup[objectGroup].part[partIndex].size    = size;
       objGroup[objectGroup].part[partIndex].trans   = { recoilState.pos, NULL, recoilState.ori };
-      objGroup[objectGroup].part[partIndex].tc      = Fix16x4(texCoords, 32768.0f);
+      objGroup[objectGroup].part[partIndex].tc      = texCoords; // 1p15
       objGroup[objectGroup].part[partIndex].ai_bits = atlasIndex;
    }
 
    inline void SetBrain(csi16 entityGroup, csi32 entityIndex, cui8 thoughtLatency, cui8 thoughtsPerSecond, cui8 maxSimulThoughts, cui8 thoughtDisruption, cui8 decisionDisruption, cui8 decisionConfidence, csi16 bankIndex) const {
-      entGroup[entityGroup].entity[entityIndex].brain = { thoughtLatency, thoughtsPerSecond, maxSimulThoughts, thoughtDisruption,
-                                                          decisionDisruption, decisionConfidence, bankIndex };
+      entGroup[entityGroup].entity[entityIndex].brain = { thoughtLatency, thoughtsPerSecond, maxSimulThoughts, thoughtDisruption, decisionDisruption, decisionConfidence, bankIndex };
    }
 
    inline void SetSound(csi16 entityGroup, csi32 entityIndex, csi16 soundBankIndex) const {
@@ -391,12 +383,25 @@ al32 struct CLASS_ENTMAN {
    }
 
    inline void SetBonePS(csi16 entityGroup, csi32 boneIndex, cVEC4Df tintColour, cVEC4Df paintColour, cfl32 paintMap, cfl32 globalEmission, cfl32 emissionMap, cfl32 normalMap, cfl32 roughnessMap) const {
-      entGroup[entityGroup].spriteO[boneIndex] = { Fix8x4(paintColour), Fix8x4(tintColour), Fix16(globalEmission, -128.0f, 128.0f),
-                                                   Fix16(emissionMap, 0.0f, 128.0f), Fix8(normalMap), Fix8(roughnessMap), Fix8(paintMap) };
+      entGroup[entityGroup].spriteO[boneIndex] = { paintColour, tintColour, globalEmission, emissionMap, normalMap, roughnessMap, paintMap };
    }
 
-   void UpdateEntityAssociation(cID64c index) {
+   inline void SetBonePS(csi16 entityGroup, csi32 boneIndex, SPRITE_DPS &spriteData) const { entGroup[entityGroup].spriteO[boneIndex] = spriteData; }
 
+   // Automatically updates entity's cell association
+   inline void SetPos(cID64c id, cfl32x4 newPos) {
+      ENTITY &curEnt = entGroup[id.group].entity[id.index];
+
+      if(!_mm_testc_si128(_mm_cvttps_epi32(curEnt.geometry->pos_lerp.xmm), _mm_cvttps_epi32(newPos))) {
+         // Add to new cells
+
+         // Remove from old cells
+
+      }
+   }
+
+   // Automatically updates entity's cell association
+   inline void SetSize(cID64c id, cfl32x4 newSize) {
    }
 
    // Fill association list with the ID of every entity the line between endPoints touches. Returns ID of closest entity; 0x080000001 if list is empty
@@ -406,15 +411,16 @@ al32 struct CLASS_ENTMAN {
 
       CLASS_CAM &cam = *(CLASS_CAM *)ptrLib[5];
       ID64ptrc   ei  = md.wlrv.entityIndex;
-
-      fl32x4  sphere;
-      VEC3Df &position = (VEC3Df &)sphere;
-      si32    cell     = 0;
-      si32    index    = 0;
+      union {
+         fl32x4 sphere;
+         VEC3Df position;
+      };
+      si32 cell  = 0;
+      si32 index = 0;
 
       md.wlrv.entityCount = 0;
 
-      for(; cell < md.wlrv.cellCount; cell++) {
+      for(; cell < md.wlrv.cellCount; cell++)
          for(; index < (md.entListDim * cell); index++) {
             ///--- Add test for bounding shape ---///
             position           = entGroup[md.entityList[index].group].entity[md.entityList[index].index].geometry->pos;
@@ -423,7 +429,6 @@ al32 struct CLASS_ENTMAN {
             if(cam.CursorSphereIntersect(sphere, curPos, camProj) >= 0.0f)
                ei[md.wlrv.entityCount++] = md.entityList[index];
          }
-      }
 
       // List is empty
       if(!md.wlrv.entityCount) return { 0x080000001 };
@@ -518,7 +523,8 @@ al32 struct CLASS_ENTMAN {
       return 0;
    }
 
-   inline cVEC4Du32 WaitForCulling(cDWORD sleepDelay) const {
+//   inline cVEC4Du32 WaitForCulling(cDWORD sleepDelay) const {
+   inline cSSE4Du32 WaitForCulling(cDWORD sleepDelay) const {
       if(sleepDelay) while(ENTMAN_THREAD_STATUS.m128i_u8[0] & 0x03) Sleep(sleepDelay);
       else while(ENTMAN_THREAD_STATUS.m128i_u8[0] & 0x03) _mm_pause();
 
@@ -527,8 +533,8 @@ al32 struct CLASS_ENTMAN {
       ENTMAN_THREAD_STATUS.m128i_u64[0] &= 0x0C;
       ENTMAN_THREAD_STATUS.m128i_u64[1] = 0;
 
-      return { ui32(entManThreadData.x >> 4) & 0x03FFFFFFF, ui32(entManThreadData.x >> 34) & 0x03FFFFFFF,
-               ui32(entManThreadData.y) & 0x03FFFFFFF, ui32(entManThreadData.y >> 30) & 0x03FFFFFFF };
+      return cSSE4Du32{ ._ui32 = { ui32(entManThreadData.x >> 4) & 0x03FFFFFFF, ui32(entManThreadData.x >> 34) & 0x03FFFFFFF,
+                                   ui32(entManThreadData.y) & 0x03FFFFFFF, ui32(entManThreadData.y >> 30) & 0x03FFFFFFF } };
    }
 };
 

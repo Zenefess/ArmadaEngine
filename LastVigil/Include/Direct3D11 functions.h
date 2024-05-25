@@ -163,7 +163,7 @@ al32 struct CLASS_GPU {
       td.BindFlags = D3D11_BIND_DEPTH_STENCIL;
       Try(stCreateTex2D, dev->CreateTexture2D(&td, NULL, &pDepthBuffer[0]));
 
-      Try(stResizeTar, swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID *)&pBackBuffer[0]));
+      Try(stResizeTar, swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (ptrptr)&pBackBuffer[0]));
       Try(stCreateRTV, dev->CreateRenderTargetView(pBackBuffer[0], NULL, &rtvBackBuffer[0]));
       pBackBuffer[0]->Release();
 
@@ -204,7 +204,7 @@ al32 struct CLASS_GPU {
       td.BindFlags = D3D11_BIND_DEPTH_STENCIL;
       Try(stCreateTex2D, dev->CreateTexture2D(&td, NULL, &pDepthBuffer[0]));
 
-      Try(stSCGetBuf, swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID *)&pBackBuffer[0]));
+      Try(stSCGetBuf, swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (ptrptr)&pBackBuffer[0]));
       Try(stCreateRTV, dev->CreateRenderTargetView(pBackBuffer[0], NULL, &rtvBackBuffer[0]));
       pBackBuffer[0]->Release();
 
@@ -290,10 +290,10 @@ al32 struct CLASS_GPU {
       }
    }
 
-   inline void ClearFlipRenderViews(cVEC4Df colour) const {
+   inline void ClearFlipRenderViews(cSSE4Df32 colour) const {
       //al16 static ui32 page;
       devcon[0]->OMSetRenderTargets(1, &rtvBackBuffer[0], pDSV);
-      devcon[0]->ClearRenderTargetView(rtvBackBuffer[0], (const float *)&colour);
+      devcon[0]->ClearRenderTargetView(rtvBackBuffer[0], (cfl32ptr)&colour);
       devcon[0]->ClearDepthStencilView(pDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);
       //page = (page + 1) & 0x01;
    }

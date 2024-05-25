@@ -1,6 +1,6 @@
 /**************************************************************  
  * File: D3D11 helper functions.h         Created: 2023/05/31 *
- *                                  Last modified: 2023/06/19 *
+ *                                  Last modified: 2024/05/25 *
  *                                                            *
  * Desc:                                                      *
  *                                                            *
@@ -27,7 +27,7 @@ struct HELPFUNC_MAP {
    si32    (*gpuBuf)[4];
    si32    (*vertBuf)[3];
 
-   VEC4Du32 mapManThreadData {};
+   SSE4Du32 mapManThreadData {};
    ui8      levelsOfDetail = 0;
 
    HELPFUNC_MAP(void) {
@@ -37,12 +37,7 @@ struct HELPFUNC_MAP {
       modBuf  = (ui32ptr *)zalloc32(sizeof(ui32ptr) * MAX_WORLDS);
    }
 
-   ~HELPFUNC_MAP(void) {
-      mfree(modBuf);
-      mfree(visBuf);
-      mfree(vertBuf);
-      mfree(gpuBuf);
-   }
+   ~HELPFUNC_MAP(void) { mfree(modBuf, visBuf, vertBuf, gpuBuf); }
 
    void CreateBuffers(csi16 worldIndex, csi16 mapIndex, csi16 elementTableIndex) {
       cMAP        &map   = *(*man).world[worldIndex].map[mapIndex];
@@ -68,7 +63,7 @@ struct HELPFUNC_MAP {
 
    ///--- !!! Expand to 7 LODs !!!
    // Returns counts for { Chunks uploaded, LOD 0 chunks, LOD 1 chunks, LOD 2 chunks }
-   cVEC4Du32 WaitThenUploadAndRender(csi16 worldIndex, csi16 mapIndex) {
+   cSSE4Du32 WaitThenUploadAndRender(csi16 worldIndex, csi16 mapIndex) {
       cMAP &map = *(*man).world[worldIndex].map[mapIndex];
       ui32  i;
 
@@ -125,7 +120,7 @@ al32 struct HELPFUNC_ENT {
    si32    (*gpuBuf)[4];
    si32    (*vertBuf)[3];
 
-   VEC4Du32 entManThreadData {};
+   SSE4Du32 entManThreadData {};
    ui8      levelsOfDetail = 0;
 
    HELPFUNC_ENT() {
@@ -135,12 +130,7 @@ al32 struct HELPFUNC_ENT {
       modBuf  = (ui32ptrptr)zalloc32(sizeof(ui32ptr) * MAX_ENTITY_GROUPS);
    }
 
-   ~HELPFUNC_ENT() {
-      mfree(modBuf);
-      mfree(visBuf);
-      mfree(vertBuf);
-      mfree(gpuBuf);
-   }
+   ~HELPFUNC_ENT() { mfree(modBuf, visBuf, vertBuf, gpuBuf); }
 
    void CreateBuffers(csi16 groupIndex) {
       OBJECT_GROUP &objGroup = (*man).objGroup[groupIndex];
@@ -166,7 +156,7 @@ al32 struct HELPFUNC_ENT {
 
    ///--- !!! Expand to 7 LODs !!!
    // Returns counts for { Entities uploaded, LOD 0 entities, LOD 1 entities, LOD 2 entities }
-   cVEC4Du32 WaitThenUploadAndRender(csi16 groupIndex) {
+   cSSE4Du32 WaitThenUploadAndRender(csi16 groupIndex) {
       const ENTITY_GROUP &group = (*man).entGroup[groupIndex];
 
       ui32 i;

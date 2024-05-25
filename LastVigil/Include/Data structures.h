@@ -201,14 +201,22 @@ al32 struct GLOBALCTRLVARS {
       si32   iaxis[16];
    };
    union { // Immediate key states
+#ifdef __AVX__
       ui256 button, key;
+#else
+      ui128 button[2], key[2];
+#endif
       struct { ui64 buttons0, buttons1, buttons2, buttons3; };
       struct { ui64 keys0, keys1, keys2, keys3; };
       ui64 buttons[4], keys[4];
       ui8  b[32], k[32];
    } imm;
    union { // Relative key states
+#ifdef __AVX__
       ui256 button, key;
+#else
+      ui128 button[2], key[2];
+#endif
       struct { ui64 buttons0, buttons1, buttons2, buttons3; };
       struct { ui64 keys0, keys1, keys2, keys3; };
       ui64 buttons[4], keys[4];

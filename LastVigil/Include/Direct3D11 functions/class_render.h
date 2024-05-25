@@ -22,10 +22,10 @@ al16 struct CLASS_RENDER {
    CLASS_TEXTURES       *tex;
    CLASS_GUI            *gui;
 
-   al16 struct { VEC3Ds32 pos; VEC4Du8  col; } vCube {};
+   al16 struct { VEC3Ds32 pos; fp8n0_1x4 col; } vCube {};
    si16 bufVertex = 0;
 
-   inline void DrawVoxel(VEC3Ds32 &location, const VEC4Du8 colour) {
+   inline void DrawVoxel(VEC3Ds32 &location, const fp8n0_1x4 colour) {
       devcon[0]->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
       cfg->SetShaderGroup(0, 5);
       vCube = { location, colour };
