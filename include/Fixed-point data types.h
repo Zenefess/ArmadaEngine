@@ -436,8 +436,8 @@ struct fp8nx4 {
       return (data8[0] && temp.data8[0]) | ((data8[1] && temp.data8[1]) << 1) | ((data8[2] && temp.data8[2]) << 2) | ((data8[3] && temp.data8[3]) << 3);
    }
 
-   inline cfp8nx4 operator+(cfl32x4 &value) const { return toFixed4(_mm_add_ps(toFloat4(), value)); }
-   inline cfp8nx4 operator-(cfl32x4 &value) const { return toFixed4(_mm_sub_ps(toFloat4(), value)); }
+   inline cfp8nx4 operator+(cfl32x4 &value) const { return (cfp8nx4 &)_mm_add_epi8(_mm_cvtsi32_si128(data32), _mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle8s)); }
+   inline cfp8nx4 operator-(cfl32x4 &value) const { return (cfp8nx4 &)_mm_sub_epi8(_mm_cvtsi32_si128(data32), _mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle8s)); }
    inline cfp8nx4 operator*(cfl32x4 &value) const { return toFixed4(_mm_mul_ps(toFloat4(), value)); }
    inline cfp8nx4 operator/(cfl32x4 &value) const { return toFixed4(_mm_div_ps(toFloat4(), value)); }
    inline cfp8nx4 operator%(cfl32x4 &value) const {
@@ -447,8 +447,8 @@ struct fp8nx4 {
    inline cfp8nx4 operator&(cfl32x4 &value) const { return (cfp8nx4 &)(data32 & toFixed4(value).data32); }
    inline cfp8nx4 operator|(cfl32x4 &value) const { return (cfp8nx4 &)(data32 | toFixed4(value).data32); }
    inline cfp8nx4 operator^(cfl32x4 &value) const { return (cfp8nx4 &)(data32 ^ toFixed4(value).data32); }
-   inline cfp8nx4 operator+=(cfl32x4 &value) { return *this = toFixed4(_mm_add_ps(toFloat4(), value)); }
-   inline cfp8nx4 operator-=(cfl32x4 &value) { return *this = toFixed4(_mm_sub_ps(toFloat4(), value)); }
+   inline cfp8nx4 operator+=(cfl32x4 &value) { data32 = (ui32 &)_mm_add_epi8(_mm_cvtsi32_si128(data32), _mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle8s)); return *this; }
+   inline cfp8nx4 operator-=(cfl32x4 &value) { data32 = (ui32 &)_mm_sub_epi8(_mm_cvtsi32_si128(data32), _mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle8s)); return *this; }
    inline cfp8nx4 operator*=(cfl32x4 &value) { return *this = toFixed4(_mm_mul_ps(toFloat4(), value)); }
    inline cfp8nx4 operator/=(cfl32x4 &value) { return *this = toFixed4(_mm_div_ps(toFloat4(), value)); }
    inline cfp8nx4 operator%=(cfl32x4 &value) {
@@ -719,8 +719,8 @@ struct fp16nx4 {
       return (data16[0] && temp.data16[0]) | ((data16[1] && temp.data16[1]) << 1) | ((data16[2] && temp.data16[2]) << 2) | ((data16[3] && temp.data16[3]) << 3);
    }
 
-   inline cfp16nx4 operator+(cfl32x4 &value) const { return toFixed4(_mm_add_ps(toFloat4(), value)); }
-   inline cfp16nx4 operator-(cfl32x4 &value) const { return toFixed4(_mm_sub_ps(toFloat4(), value)); }
+   inline cfp16nx4 operator+(cfl32x4 &value) const { return (cfp16nx4 &)_mm_add_epi16(_mm_cvtsi64_si128(data64), _mm_shuffle_epi8(_mm_cvttps_epi64(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle16s)); }
+   inline cfp16nx4 operator-(cfl32x4 &value) const { return (cfp16nx4 &)_mm_sub_epi16(_mm_cvtsi64_si128(data64), _mm_shuffle_epi8(_mm_cvttps_epi64(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle16s)); }
    inline cfp16nx4 operator*(cfl32x4 &value) const { return toFixed4(_mm_mul_ps(toFloat4(), value)); }
    inline cfp16nx4 operator/(cfl32x4 &value) const { return toFixed4(_mm_div_ps(toFloat4(), value)); }
    inline cfp16nx4 operator%(cfl32x4 &value) const {
@@ -730,8 +730,8 @@ struct fp16nx4 {
    inline cfp16nx4 operator&(cfl32x4 &value) const { return (cfp16nx4 &)(data64 & toFixed4(value).data64); }
    inline cfp16nx4 operator|(cfl32x4 &value) const { return (cfp16nx4 &)(data64 | toFixed4(value).data64); }
    inline cfp16nx4 operator^(cfl32x4 &value) const { return (cfp16nx4 &)(data64 ^ toFixed4(value).data64); }
-   inline cfp16nx4 operator+=(cfl32x4 &value) { return *this = toFixed4(_mm_add_ps(toFloat4(), value)); }
-   inline cfp16nx4 operator-=(cfl32x4 &value) { return *this = toFixed4(_mm_sub_ps(toFloat4(), value)); }
+   inline cfp16nx4 operator+=(cfl32x4 &value) { data64 = (ui64 &)_mm_add_epi16(_mm_cvtsi64_si128(data64), _mm_shuffle_epi8(_mm_cvttps_epi64(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle16s)); return *this; }
+   inline cfp16nx4 operator-=(cfl32x4 &value) { data64 = (ui64 &)_mm_sub_epi16(_mm_cvtsi64_si128(data64), _mm_shuffle_epi8(_mm_cvttps_epi64(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle16s)); return *this; }
    inline cfp16nx4 operator*=(cfl32x4 &value) { return *this = toFixed4(_mm_mul_ps(toFloat4(), value)); }
    inline cfp16nx4 operator/=(cfl32x4 &value) { return *this = toFixed4(_mm_div_ps(toFloat4(), value)); }
    inline cfp16nx4 operator%=(cfl32x4 &value) {
@@ -1423,15 +1423,15 @@ struct fp8n0_1x4 {
    inline cfp8n0_1x4 operator--(void) { data8[0]--; data8[1]--; data8[2]--; data8[3]--; return *this; }
    inline cfp8n0_1x4 operator--(int) { al4 cui8 temp[4] = { data8[0]--, data8[1]--, data8[2]--, data8[3]-- }; return (cfp8n0_1x4 &)temp; }
 
-   inline cfp8n0_1x4 operator+(cfp8n0_1x4 &value) const { return data32 + value.data32; }
-   inline cfp8n0_1x4 operator-(cfp8n0_1x4 &value) const { return data32 - value.data32; }
-   inline cfp8n0_1x4 operator+(cfl32x4 &value) const { return data32 + (ui32 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_255fx4)), _fpdt_shuffle8s); }
-   inline cfp8n0_1x4 operator-(cfl32x4 &value) const { return data32 - (ui32 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_255fx4)), _fpdt_shuffle8s); }
+   inline cfp8n0_1x4 operator+(cfp8n0_1x4 &value) const { return (cfp8n0_1x4 &)_mm_add_epi8(_mm_cvtsi32_si128(data32), _mm_cvtsi32_si128(value.data32)); }
+   inline cfp8n0_1x4 operator-(cfp8n0_1x4 &value) const { return (cfp8n0_1x4 &)_mm_sub_epi8(_mm_cvtsi32_si128(data32), _mm_cvtsi32_si128(value.data32)); }
+   inline cfp8n0_1x4 operator+=(cfp8n0_1x4 &value) { data32 = (ui32 &)_mm_add_epi8(_mm_cvtsi32_si128(data32), _mm_cvtsi32_si128(value.data32)); return *this; }
+   inline cfp8n0_1x4 operator-=(cfp8n0_1x4 &value) { data32 = (ui32 &)_mm_sub_epi8(_mm_cvtsi32_si128(data32), _mm_cvtsi32_si128(value.data32)); return *this; }
 
-   inline cfp8n0_1x4 operator+=(cfp8n0_1x4 &value) { return (data32 += value.data32); }
-   inline cfp8n0_1x4 operator-=(cfp8n0_1x4 &value) { return (data32 -= value.data32); }
-   inline cfp8n0_1x4 operator+=(cfl32x4 &value) { return (data32 += (ui32 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_255fx4)), _fpdt_shuffle8s)); }
-   inline cfp8n0_1x4 operator-=(cfl32x4 &value) { return (data32 -= (ui32 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_255fx4)), _fpdt_shuffle8s)); }
+   inline cfp8n0_1x4 operator+(cfl32x4 &value) const { return (cfp8n0_1x4 &)_mm_add_epi8(_mm_cvtsi32_si128(data32), _mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle8s)); }
+   inline cfp8n0_1x4 operator-(cfl32x4 &value) const { return (cfp8n0_1x4 &)_mm_sub_epi8(_mm_cvtsi32_si128(data32), _mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle8s)); }
+   inline cfp8n0_1x4 operator+=(cfl32x4 &value) { data32 = (ui32 &)_mm_add_epi8(_mm_cvtsi32_si128(data32), _mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle8s)); return *this; }
+   inline cfp8n0_1x4 operator-=(cfl32x4 &value) { data32 = (ui32 &)_mm_sub_epi8(_mm_cvtsi32_si128(data32), _mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle8s)); return *this; }
 };
 
 // 16-bit, 0.16 : Decimal range of 0.0~0.9999847412109375
@@ -2854,14 +2854,14 @@ struct f1p15x4 {
    inline cf1p15x4 operator>>=(csi32 &value) { return cf1p15x4{ data16[0] >>= value, data16[1] >>= value, data16[2] >>= value, data16[3] >>= value }; }
 
    inline cf1p15x4 operator+(cf1p15x4 &value) const { return (cf1p15x4 &)_mm_add_epi16(_mm_cvtsi64_si128(data64), _mm_cvtsi64_si128(value.data64)); }
-   inline cf1p15x4 operator-(cf1p15x4 &value) const { return (cf1p15x4 &)_mm_sub_epi16(_mm_cvtsi64_si128(data64), _mm_cvtsi64_si128(value.data64)); }
-   inline cf1p15x4 operator+=(cf1p15x4 &value) { data64 = (ui64 &)_mm_add_epi16(_mm_cvtsi64_si128(data64), _mm_cvtsi64_si128(value.data64)); return *this;  }
-   inline cf1p15x4 operator-=(cf1p15x4 &value) { data64 = (ui64 &)_mm_sub_epi16(_mm_cvtsi64_si128(data64), _mm_cvtsi64_si128(value.data64)); return *this;  }
+   inline cf1p15x4 operator-(cf1p15x4 &value) const { return (cf1p15x4 &)_mm_add_epi16(_mm_cvtsi64_si128(data64), _mm_cvtsi64_si128(value.data64)); }
+   inline cf1p15x4 operator+=(cf1p15x4 &value) { data64 = (ui64 &)_mm_add_epi16(_mm_cvtsi64_si128(data64), _mm_cvtsi64_si128(value.data64)); return *this; }
+   inline cf1p15x4 operator-=(cf1p15x4 &value) { data64 = (ui64 &)_mm_sub_epi16(_mm_cvtsi64_si128(data64), _mm_cvtsi64_si128(value.data64)); return *this; }
 
-   inline cf1p15x4 operator+(cfl32x4 &value) const { return data64 + (ui64 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_32768fx4)), _fpdt_shuffle16s); }
-   inline cf1p15x4 operator-(cfl32x4 &value) const { return data64 - (ui64 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_32768fx4)), _fpdt_shuffle16s); }
-   inline cf1p15x4 operator+=(cfl32x4 &value) { return (data64 += (ui64 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_32768fx4)), _fpdt_shuffle16s)); }
-   inline cf1p15x4 operator-=(cfl32x4 &value) { return (data64 -= (ui64 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_32768fx4)), _fpdt_shuffle16s)); }
+   inline cf1p15x4 operator+(cfl32x4 &value) const { return (cf1p15x4 &)_mm_add_epi16(_mm_cvtsi64_si128(data64), _mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle16s)); }
+   inline cf1p15x4 operator-(cfl32x4 &value) const { return (cf1p15x4 &)_mm_add_epi16(_mm_cvtsi64_si128(data64), _mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle16s)); }
+   inline cf1p15x4 operator+=(cfl32x4 &value) { data64 = (ui64 &)_mm_add_epi16(_mm_cvtsi64_si128(data64), _mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle16s)); return *this; }
+   inline cf1p15x4 operator-=(cfl32x4 &value) { data64 = (ui64 &)_mm_sub_epi16(_mm_cvtsi64_si128(data64), _mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle16s)); return *this; }
 };
 
 // 4x normalised 16-bit : Decimal ranges of 0.0~1.0
@@ -2902,13 +2902,13 @@ struct fp16n0_1x4 {
 
    inline cfp16n0_1x4 operator+(cfp16n0_1x4 &value) const { return (cfp16n0_1x4 &)_mm_add_epi16(_mm_cvtsi64_si128(data64), _mm_cvtsi64_si128(value.data64)); }
    inline cfp16n0_1x4 operator-(cfp16n0_1x4 &value) const { return (cfp16n0_1x4 &)_mm_add_epi16(_mm_cvtsi64_si128(data64), _mm_cvtsi64_si128(value.data64)); }
-   inline cfp16n0_1x4 operator+(cfl32x4 &value) const { return data64 + (ui64 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle16s); }
-   inline cfp16n0_1x4 operator-(cfl32x4 &value) const { return data64 - (ui64 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle16s); }
-
    inline cfp16n0_1x4 operator+=(cfp16n0_1x4 &value) { data64 = (ui64 &)_mm_add_epi16(_mm_cvtsi64_si128(data64), _mm_cvtsi64_si128(value.data64)); return *this; }
    inline cfp16n0_1x4 operator-=(cfp16n0_1x4 &value) { data64 = (ui64 &)_mm_sub_epi16(_mm_cvtsi64_si128(data64), _mm_cvtsi64_si128(value.data64)); return *this; }
-   inline cfp16n0_1x4 operator+=(cfl32x4 &value) { return (data64 += (ui64 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle16s)); }
-   inline cfp16n0_1x4 operator-=(cfl32x4 &value) { return (data64 -= (ui64 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle16s)); }
+
+   inline cfp16n0_1x4 operator+(cfl32x4 &value) const { return (cfp16n0_1x4 &)_mm_add_epi16(_mm_cvtsi64_si128(data64), _mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle16s)); }
+   inline cfp16n0_1x4 operator-(cfl32x4 &value) const { return (cfp16n0_1x4 &)_mm_add_epi16(_mm_cvtsi64_si128(data64), _mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle16s)); }
+   inline cfp16n0_1x4 operator+=(cfl32x4 &value) { data64 = (ui64 &)_mm_add_epi16(_mm_cvtsi64_si128(data64), _mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle16s)); return *this; }
+   inline cfp16n0_1x4 operator-=(cfl32x4 &value) { data64 = (ui64 &)_mm_sub_epi16(_mm_cvtsi64_si128(data64), _mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _fpdt_65535fx4)), _fpdt_shuffle16s)); return *this; }
 };
 
 // 16x normalised 16-bit : Decimal ranges of 0.0~3.0
