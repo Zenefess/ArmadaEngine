@@ -1,6 +1,6 @@
 /**********************************************************************
  * File: Fixed-point data types.h                 Created: 2024/05/11 *
- *                                          Last modified: 2024/05/23 *
+ *                                          Last modified: 2024/05/25 *
  *                                                                    *
  * Desc: Provides sizes of 8, 16, 24, and 32 bits. All sizes have     *
  *       support for fixed, normalised, and custom value ranges.      *
