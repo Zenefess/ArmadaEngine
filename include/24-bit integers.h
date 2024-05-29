@@ -1,6 +1,6 @@
 /****************************************************************
  * File: 24-bit integers.h                  Created: 2024/05/13 *
- *                                    Last modified: 2024/05/20 *
+ *                                    Last modified: 2024/05/27 *
  *                                                              *
  * Desc: Both signed & unsigned data types.                     *
  *                                                              *
@@ -14,6 +14,7 @@
 struct ui24 {
 #ifndef _COMMON_TYPES_
    typedef const bool cbool;
+   typedef void *ptr;
    typedef __int8  si8;  typedef const si8  csi8;
    typedef __int16 si16; typedef const si16 csi16;
    typedef __int32 si32; typedef const si32 csi32;
@@ -41,7 +42,7 @@ struct ui24 {
    ui24(cfl64 value) { cui32 temp = (ui32)value; (ui16 &)data = (cui16 &)temp; data[2] = ((ui8_3)temp)[2]; }
 
    operator ptr(void) const { return *this; }
-   operator bool(void) const { return ((ui32 &)data & 0x0FFFFFFu) != 0; }
+   operator cbool(void) const { return ((ui32 &)data & 0x0FFFFFFu) != 0; }
    operator cui8(void) const { return (ui8 &)data; }
    operator csi8(void) const { return (si8 &)data; }
    operator cui16(void) const { return (ui16 &)data; }
@@ -127,6 +128,7 @@ struct ui24 {
 struct si24 {
 #ifndef _COMMON_TYPES_
    typedef const bool cbool;
+   typedef void *ptr;
    typedef __int8  si8;  typedef const si8 csi8;
    typedef __int16 si16; typedef const si16 csi16;
    typedef __int32 si32; typedef const si32 csi32;
@@ -154,7 +156,7 @@ struct si24 {
    si24(cfl64 value) { csi32 temp = (si32)value; (si16 &)data = (csi16 &)temp; data[2] = ((si8_3)temp)[2]; }
 
    operator ptr(void) const { return *this; }
-   operator bool(void) const { return ((ui32 &)data & 0x0FFFFFFu) != 0; }
+   operator cbool(void) const { return ((ui32 &)data & 0x0FFFFFFu) != 0; }
    operator cui8(void) const { return (ui8 &)data; }
    operator csi8(void) const { return (si8 &)data; }
    operator cui16(void) const { return (ui16 &)data; }

@@ -477,7 +477,7 @@ union VEC16Dh {
 // SSE2 & AVX2 vector structs
 union SSE2Du32 {
    ui32     _ui32[2];
-   __m64    xmm;
+   __m64    mm;
    VEC2Du32 vector;
    struct {
       union { ui32 u, x; };
@@ -487,7 +487,7 @@ union SSE2Du32 {
 
 union SSE2Ds32 {
    si32     _si32[2];
-   __m64    xmm;
+   __m64    mm;
    VEC2Ds32 vector;
    struct {
       union { si32 u, x; };
@@ -517,7 +517,7 @@ union SSE2Ds64 {
 
 union SSE2Df32 {
    fl32   _fl32[2];
-   __m64  xmm;
+   __m64  mm;
    VEC2Df vector;
    struct {
       union { fl32 u, x; };
