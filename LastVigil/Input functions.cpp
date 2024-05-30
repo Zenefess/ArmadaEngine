@@ -19,35 +19,31 @@
 
 void ProcessInputs(INPUT_PROC_DATA &ipd, GLOBALCTRLVARS &ctrlVars) {
    CLASS_GPU    &gpu    = *(CLASS_GPU *)ptrLib[1];
-   CLASS_MAPMAN &mapMan = *(CLASS_MAPMAN *)ptrLib[6];
-   CLASS_ENTMAN &entMan = *(CLASS_ENTMAN *)ptrLib[7];
    MAP_DESC     &md     = *(MAP_DESC *)ptrLib[14];
-   GUI_DESC     &gd     = *(GUI_DESC *)ptrLib[15];
 
-   ui16 imCount = 0;
-   ui16 imLast  = ui16(ipd.input.global);
-   ui8  funcCount;
+   static ui16 imCount = 0;
+   static ui16 imLast  = ipd.input.global;
+   static ui8  funcCount;
 
    // Populate intersection lists  --  Thread? Not required until 'Process world space inputs'
    md.mcrv.activeLocations.xmm0 = gpu.cam.data[0].pos32.xmm;
    md.mcrv.activeLocation1.z    = fl32(md.mapDim.z - md.zso);
    gpu.cam.CursorLayerIntersect(md.mcrv.locationOS[1], ctrlVars.curCoords, gpu.cam.currentCamProj);
-
-   mapMan.PopulateCellList(md.mcrv.activeLocations, md.wlrv.world, md.wlrv.map);
-   entMan.PopulateEntityList(md, ctrlVars.curCoords, gpu.cam.currentCamProj);
+   (*(CLASS_MAPMAN *)ptrLib[6]).PopulateCellList(md.mcrv.activeLocations, md.wlrv.world, md.wlrv.map);
+   (*(CLASS_ENTMAN *)ptrLib[7]).PopulateEntityList(md, ctrlVars.curCoords, gpu.cam.currentCamProj);
 
    // Process global action inputs
    for(; imCount < imLast; imCount++)
-      if(!testAllZero(ctrlVars.imm.button, ipd.inputMask[imCount]))
+      if(!AllFalse(ctrlVars.imm.button, ipd.inputMask[imCount]))
          for(funcCount = 0; funcCount < ipd.funcCount[imCount].x; funcCount++)
             ipd.function[funcCount](NULL);
 
    // Execute relevant GUI functions
-   md.mcrv.activeElements = gpu.gui.ProcessInputs(ipd, ctrlVars, gd.interfaceIndex);
+   md.mcrv.activeElements = gpu.gui.ProcessInputs(ipd, ctrlVars, (*(GUI_DESC *)ptrLib[15]).interfaceIndex);
 
    // Process world space inputs
-   for(imLast = (imCount += ui16(ipd.input.ui)) + ui16(ipd.input.world); imCount < imLast; imCount++)
-      if(!testAllZero(ctrlVars.imm.button, ipd.inputMask[imCount]))
+   for(imLast = (imCount += ipd.input.ui) + ipd.input.world; imCount < imLast; imCount++)
+      if(!AllFalse(ctrlVars.imm.button, ipd.inputMask[imCount]))
          for(funcCount = 0; funcCount < ipd.funcCount[imCount].x; funcCount++)
             ipd.function[funcCount](NULL);
 }
@@ -78,7 +74,6 @@ void ProcessInputs(GLOBALCTRLVARS &ctrlVars) {
       // Mouse button 0
       if(siActiveLayer.m128i_i32[1] < 0 && ctrlVars.imm.b[16] & 0x01) {
          if(siCell != 0x080000001) {
-//            mapMan.world[0].map[0]->cell[siCell].pixel->gev += ui16(fElapsedTime * 2048.0f);
             mapMan.world[0].map[0]->cell[siCell].pixel->gev += fElapsedTime * 8.0f;
             mapMan.world[0].map[0]->chunkMod[siChunk >> 6] |= ui64(0x01) << (siChunk & 0x03F);
          }
@@ -86,7 +81,6 @@ void ProcessInputs(GLOBALCTRLVARS &ctrlVars) {
       // Mouse button 1
       if(siActiveLayer.m128i_i32[2] < 0 && ctrlVars.imm.b[16] & 0x02) {
          if(siCell != 0x080000001) {
-//            mapMan.world[0].map[0]->cell[siCell].pixel->gev -= ui16(fElapsedTime * 2048.0f);
             mapMan.world[0].map[0]->cell[siCell].pixel->gev -= fElapsedTime * 8.0f;
             mapMan.world[0].map[0]->chunkMod[siChunk >> 6] |= ui64(0x01) << (siChunk & 0x03F);
          }

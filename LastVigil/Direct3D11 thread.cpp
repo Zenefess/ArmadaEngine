@@ -1,6 +1,6 @@
 /************************************************************
  * File: Direct3D11 thread.cpp          Created: 2022/10/12 *
- *                               Code last mod.: 2024/04/25 *
+ *                               Code last mod.: 2024/05/30 *
  *                                                          *
  * Desc: Video rendering via Direct3D 11 API.               *
  *                                                          *
@@ -25,7 +25,7 @@ al32 struct GUI_SPRITE_DEFAULTS {
    cwchptrc name;
    cVEC4Df  tc;
    cVEC2Df  aa;
-} defaultUISprite[81] = { // !!! Double reduction amount of bounding values !!!
+} defaultUISprite[81] = {
    { L"Opaque 2048x88r6", { 0.0f, 0.765625f, 1.0f, 0.80859375f }, { 2004.0f / 2048.0f, 44.0f / 88.0f } },                             // 0
    { L"Opaque 1024x392r6", { 0.0f, 0.80859375f, 0.5f, 1.0f }, { 980.0f / 1024.0f, 348.0f / 392.0f } },
    { L"Opaque 512x392r6", { 0.5f, 0.80859375f, 0.75f, 1.0f }, { 468.0f / 512.0f, 348.0f / 392.0f } },
@@ -130,8 +130,8 @@ RESOLUTION ScrRes = { 3600, 1600, 16.0f / 36.0f, 36.0f / 16.0f, 1.0f, DXGI_FORMA
                       3840, 2160, 9.0f / 16.0f, 16.0f / 9.0f, 2.2f, DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_D32_FLOAT, 1, -1, 8, 0,
                       120, 360, 0, 0, 0 };
 
-fpdtInitCustom;
-cfp16n cfp16nInit = { 0.0f, 65535.0f / 65534.0f }; // Set scaling range of datatype:fp16n to 0.0~(65535.0/65534.0)
+#define FPDT_NO_CUSTOM
+//cfp16n cfp16nInit = { 0.0f, 65535.0f / 65534.0f }; // Set scaling range of datatype:fp16n to 0.0~(65535.0/65534.0)
 
 void Direct3D11Thread(ptr argList) {
    CLASS_GPU gpu;
@@ -227,8 +227,8 @@ Reinitialise_:
    md.mapDim     = { { 1024, 1024, 8 } }; // 256x144x1 -> 4,718,592 triangles -> Approx. 1.68 billion triangles per second @ 4K
    md.zso        = 4;
    md.entListDim = 16;
-   csi32 mapID = mapMan.CreateMap(md, 0, -1, 0, 2);
-   mapMan.SetGlobalMapDescriptor(0, mapID);
+   csi32 mapID = mapMan.CreateMap(md, -1, 0, 0, 2);
+   mapMan.SetGlobalMapDescriptor(mapID, 0); 
 
    csi32 numEntities = 1024;
    csi32 numParts    = 32;
@@ -241,7 +241,7 @@ Reinitialise_:
                      { 0.2f, 0.2f }, { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }, { 0.5f, 0.0f, 1.0f, 0.5f }, 20);
    for(float i = 0.0f; i < 4.0f; i++)
       for(float j = 0.0f; j < 256.0f; j++)
-         entMan.CreateEntity(0, { 0, 0 }, { j - 128.0f, i - 64.0f, -1.5f }, { 0.0f, 0.0f, 0.0f }, { 0.4f, 0.4f, 0.4f });
+         entMan.CreateEntity(md, 0, { 0, 0 }, { j - 128.0f, i - 64.0f, -1.5f, 0.0f }, { 0.0f, 0.0f, 0.0f, 0.0f }, { 0.4f, 0.4f, 0.4f, 0.0f });
 
    gpuHelper.map.CreateBuffers(0, 0, 0);
    gpuHelper.ent.CreateBuffers(0);
@@ -502,10 +502,11 @@ Reinitialise_:
                gpu.cam.data[0].fXpos, gpu.cam.data[0].fYpos, gpu.cam.data[0].fZpos, gpu.cam.data[0].fXrot, gpu.cam.data[0].fYrot, gpu.cam.data[0].fZrot,
                sysData.culling.entity.time, gcvLocal.mouse.w, sysData.culling.entity.vis[0]);
       snprintf(textInputs, 128, "0x0%02X 0x0%02X 0x0%02X 0x0%02X", inputsImmediate.x, inputsImmediate.y, inputsImmediate.z, inputsImmediate.w);
-//      if((si32 &)((MAP_DESC &)ptrLib[14]).RES != -1) snprintf(textBoxText, 128, "Density: %d", mapMan.world[0].map[0]->cell[((MAP_DESC &)ptrLib[14]).RES].geometry->dens.data);
+      cfl32 cellDensity = (siCell != 0x080000001 && siCell != 0x0CDCDCDCD ? mapMan.world[0].map[0]->cell[siCell].geometry->dens : 0.0f);
+      snprintf(textBoxText, 128, "Cell %d # %d : %.3f", siCell, ((MAP_DESC &)ptrLib[14]).RES32, cellDensity);
       gpu.gui.UpdateText(textBuffer, textElement);
       gpu.gui.UpdateText(textInputs, textInputEl);
-//      gpu.gui.UpdateText(textBoxText, textBox);
+      gpu.gui.UpdateText(textBoxText, textBox);
       gpu.gui.UploadTextBuffer(0);
       gpu.gui.UploadEntryBuffer(0);
       gpu.gui.SetResources(0, 0);
