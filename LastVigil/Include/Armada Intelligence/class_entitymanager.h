@@ -206,15 +206,15 @@ al32 struct CLASS_ENTMAN {
       return { index, group };
    }
 
-   cID64c CreateEntity(cui32 group, ID32 object, cVEC3Df position, cVEC3Df orientation, cVEC3Df size) {
-      cui32 index = entGroup[group].totalEntities++;
+   cID64c CreateEntity(MAP_DESC &md, cui32 entityGroup, ID32 objectID, cSSE4Df32 position, cSSE4Df32 orientation, cSSE4Df32 size) {
+      cui32 index = entGroup[entityGroup].totalEntities++;
 
       if(index >= MAX_ENTITIES) return { 0x080000001, 0x0 };
 
-      const OBJECT_GROUP &srcGroup = objGroup[object.group];
-            ENTITY_GROUP &curGroup = entGroup[group];
+      const OBJECT_GROUP &srcGroup = objGroup[objectID.group];
+            ENTITY_GROUP &curGroup = entGroup[entityGroup];
 
-      csi8 partCount = srcGroup.object[object.index].qc;
+      csi8 partCount = srcGroup.object[objectID.index].qc;
 
       csi32 boneIndex = curGroup.totalBones;
       csi32 lastIndex = (curGroup.totalBones += partCount + 1);
@@ -230,7 +230,7 @@ al32 struct CLASS_ENTMAN {
       curGroup.entity[index].vbt         = 0;
       curGroup.entity[index].numParts    = partCount;
       curGroup.entity[index].soundIndex  = -1;
-      curGroup.entity[index].objectIndex = object.index;
+      curGroup.entity[index].objectIndex = objectID.index;
       curGroup.entity[index].boneIndex   = boneIndex;
       curGroup.bone[boneIndex].mass    = 1.0f;
       curGroup.bone[boneIndex].tension = 1.0f;
@@ -241,15 +241,16 @@ al32 struct CLASS_ENTMAN {
       curGroup.bone[boneIndex].sac     = 1.0f;
       curGroup.bone[boneIndex].cbd     = { 0.875f, 0.875f, 0.875f };
       curGroup.bone[boneIndex].cbt     = 3;
-      curGroup.bone_dgs[boneIndex].pos  = position;
-      curGroup.bone_dgs[boneIndex].rot  = orientation;
+//      curGroup.bone_dgs[boneIndex].pos  = position;
+      SetPos(md, ID64{ index, entityGroup }, position.xmm);
+      curGroup.bone_dgs[boneIndex].rot  = (VEC3Df &)orientation;
       curGroup.bone_dgs[boneIndex].sai  = curGroup.totalSpritesO++;
-      curGroup.bone_dgs[boneIndex].size = size;
-      curGroup.bone_dgs[boneIndex].opi  = srcGroup.object[object.index].ppi;
+      curGroup.bone_dgs[boneIndex].size = (VEC3Df &)size;
+      curGroup.bone_dgs[boneIndex].opi  = srcGroup.object[objectID.index].ppi;
       curGroup.bone_dgs[boneIndex].aft  = 1.0f;
       curGroup.bone_dgs[boneIndex].afc  = 0;
       curGroup.bone_dgs[boneIndex].afo  = 0;
-      curGroup.bone_dgs[boneIndex].oai  = object.index;
+      curGroup.bone_dgs[boneIndex].oai  = objectID.index;
       curGroup.bone_dgs[boneIndex].pbi  = boneIndex;
       curGroup.bone_dgs[boneIndex].obi  = boneIndex;
       curGroup.spriteO[boneIndex].pmc = 1.0f;
@@ -275,17 +276,17 @@ al32 struct CLASS_ENTMAN {
          curGroup.bone[i] = { null3Df, 1.0f, 1.0f, 100.0f, 293.0f, 273.0f, 373.0f, 1.0f, { 0.875f, 0.875f, 0.875f }, 3 };
          curGroup.bone_dgs[i].size = { 1.0f, 1.0f, 1.0f };
          curGroup.bone_dgs[i].sai  = curGroup.totalSpritesO++;
-         curGroup.bone_dgs[i].opi  = srcGroup.object[object.index].ppi + i - boneIndex;
+         curGroup.bone_dgs[i].opi  = srcGroup.object[objectID.index].ppi + i - boneIndex;
          curGroup.bone_dgs[i].aft  = 1.0f;
          curGroup.bone_dgs[i].afc  = 0;
          curGroup.bone_dgs[i].afo  = 0;
-         curGroup.bone_dgs[i].oai  = object.index;
+         curGroup.bone_dgs[i].oai  = objectID.index;
          curGroup.bone_dgs[i].pbi  = boneIndex;
          curGroup.bone_dgs[i].obi  = boneIndex;
          curGroup.spriteO[i] = { 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f };
       }
 
-      return { index, group };
+      return { index, entityGroup };
    }
 
    cui32 CreateBone(cui32 entityGroup, cVEC3Df position, cVEC3Df orientation, cVEC3Df size, cbool transparent) {
@@ -389,19 +390,38 @@ al32 struct CLASS_ENTMAN {
    inline void SetBonePS(csi16 entityGroup, csi32 boneIndex, SPRITE_DPS &spriteData) const { entGroup[entityGroup].spriteO[boneIndex] = spriteData; }
 
    // Automatically updates entity's cell association
-   inline void SetPos(cID64c id, cfl32x4 newPos) {
-      ENTITY &curEnt = entGroup[id.group].entity[id.index];
+   inline void SetPos(MAP_DESC &md, cID64 id, cfl32x4 newPos) {
+      CLASS_MAPMAN &mapMan = *(CLASS_MAPMAN *)ptrLib[6];
+      ENTITY       &curEnt = entGroup[id.group].entity[id.index];
 
-      if(!_mm_testc_si128(_mm_cvttps_epi32(curEnt.geometry->pos_lerp.xmm), _mm_cvttps_epi32(newPos))) {
+      cui128 oldCellCO = _mm_cvttps_epi32(curEnt.geometry->pos_lerp.xmm);
+      cui128 newCellCO = _mm_cvttps_epi32(newPos);
+
+      curEnt.geometry->pos = (VEC3Df &)newPos;
+
+      if(!AllTrue(oldCellCO, newCellCO)) {
+         si16 index;
+
          // Add to new cells
+         csi32 newCellIndex = mapMan.CalcCellIndex((VEC3Ds32 &)newCellCO, md.wlrv.world, md.wlrv.map);
+
+         for(index = 0; (index < md.entListDim) && (md.entityList[md.entListDim].id != 0x0FFFFFFFFFFFFFFFF); index++);
+
+         if(index == md.entListDim) return; // Abort if list is full
+
+         md.entityList[index] = id;
 
          // Remove from old cells
+         csi32 oldCellIndex = mapMan.CalcCellIndex((VEC3Ds32 &)oldCellCO, md.wlrv.world, md.wlrv.map);
 
+         for(index = 0; (index < md.entListDim) && (md.entityList[md.entListDim].id != id.id); index++);
+
+         if(index < md.entListDim) md.entityList[index].id = 0x0FFFFFFFFFFFFFFFF;
       }
    }
 
    // Automatically updates entity's cell association
-   inline void SetSize(cID64c id, cfl32x4 newSize) {
+   inline void SetSize(cID64 id, cfl32x4 newSize) {
    }
 
    // Fill association list with the ID of every entity the line between endPoints touches. Returns ID of closest entity; 0x080000001 if list is empty
@@ -434,7 +454,7 @@ al32 struct CLASS_ENTMAN {
       if(!md.wlrv.entityCount) return { 0x080000001 };
 
       // Calculate distances from camera
-      dist[0] = cam.DistanceFromCamera((fl32x4 &)entGroup[ei[0].group].entity[ei[0].index].geometry->pos, 0);
+      dist[0] = cam.DistanceFromCamera(entGroup[ei[0].group].entity[ei[0].index].geometry->pos_lerp.xmm, 0);
       for(index = 1; index < md.wlrv.entityCount; index++) {
          // Remov if duplicate
          if(ei[index - 1].id == ei[index].id) {
