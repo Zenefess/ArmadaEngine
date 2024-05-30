@@ -28,7 +28,7 @@ struct SPRITE_DYN { // 16 bytes (1 vector)
    uint nrps;    // 0-7==Normal map scalar : p8n0.0~1.818359375, 8-15==Roughness map scalar, 16-23==Paint map scalar : p8n0.0~1.0, 24-31==???
 };
 
-StructuredBuffer<SPRITE_DYN> sprite : register(t0);
+const StructuredBuffer<SPRITE_DYN> sprite : register(t0);
 
 // Texture data
 // ------------

@@ -53,11 +53,11 @@ struct BONE_DGS { // 64 bytes (4 vectors)
    float3 pos;      // Current position (relative to owner or world)
    float  lerp;     // pos->mt.s & rot->mt.r (current recoil state)
    float3 rot;      // Current rotation (relative to owner or world)
-   uint   sai;      // SPRITE array index
-   float3 size;     // Scale (.x==0 ? Not drawn)
-   uint   opi;      // Object part index
    float  aft;      // Animation frame time
+   float3 size;     // Scale (.x==0 ? Not drawn)
    uint   afco_oai; // 0~7==Animation frame count - 1, 8~15==Animation frame offset, 16~31==Object array index
+   uint   opi;      // Object part index
+   uint   sai;      // SPRITE array index
    uint   pbi;      // Parent's bone index (this==No owner)
    uint   obi;      // Owner's bone index (this==No owner)
 };
@@ -73,26 +73,26 @@ struct GOut { // 56 bytes (3 vectors + 2 scalars)
 
 const StructuredBuffer <OBJECT_IGS> object;
 const StructuredBuffer <PART_IGS>   part;
-      StructuredBuffer <BONE_DGS>   bone;
+const StructuredBuffer <BONE_DGS>   bone;
 
 // index[0]: uint4x8==32 bone indices
 [instance(32)] [maxvertexcount(4)]
-void main(point cuint4x8 index[1] : INDEX, cuint iID : SV_GSInstanceID, inout TriangleStream<GOut> triStream) {
-   cuint    uiBAI = index[0][iID >> 2][iID & 0x03];
-   GOut     output;
-   float2x3 fRot;
+void main(point const uint4x8 index[1] : INDEX, const uint iID : SV_GSInstanceID, inout TriangleStream<GOut> triStream) {
+   const uint uiBAI = index[0][iID >> 2][iID & 0x03];
+   GOut       output;
+   float2x3   fRot;
    // Abandon sprite if infinitely small
    if(bone[uiBAI].size.x == 0.0f) return;
    // Unpack object array index from input data
-   cuint uiOAI = bone[uiBAI].afco_oai >> 16;
+   const uint uiOAI = bone[uiBAI].afco_oai >> 16;
    // cache array indices
-   cuint uiBPI = bone[uiBAI].pbi;
-   cuint uiOBI = bone[uiBAI].obi;
-   cuint uiPPI = object[uiOAI].ppi;
-   cuint uiPAI = bone[uiBAI].opi;
+   const uint uiBPI = bone[uiBAI].pbi;
+   const uint uiOBI = bone[uiBAI].obi;
+   const uint uiPPI = object[uiOAI].ppi;
+   const uint uiPAI = bone[uiBAI].opi;
    // Unpack part bits
-   cbool bShape     = (part[uiPAI].ai_bits >> 8) & 0x01;
-   cbool bBillboard = (part[uiPAI].ai_bits >> 9) & 0x01;
+   const bool bShape     = (part[uiPAI].ai_bits >> 8) & 0x01;
+   const bool bBillboard = (part[uiPAI].ai_bits >> 9) & 0x01;
    // Calculate first half of size
    float3 fVert1 = bone[uiBAI].size * float3(part[uiPAI].size, 0.0f);
    // Calculate adjusted rotation
@@ -114,8 +114,8 @@ void main(point cuint4x8 index[1] : INDEX, cuint iID : SV_GSInstanceID, inout Tr
    fPosition += lerp(part[uiPPI].pos + bone[uiBPI].pos, part[uiPPI].t_pos + bone[uiBPI].pos, bone[uiBPI].lerp);
    // Transrotate if owned
    if(uiBPI != uiOBI) {
-      cuint ownerPAI = bone[uiOBI].opi;
-      cuint ownerPBI = bone[uiOBI].pbi;
+      const uint ownerPAI = bone[uiOBI].opi;
+      const uint ownerPBI = bone[uiOBI].pbi;
 
       fVert1 *= bone[ownerPBI].size;
       // Calculate adjusted position
@@ -131,7 +131,7 @@ void main(point cuint4x8 index[1] : INDEX, cuint iID : SV_GSInstanceID, inout Tr
    // Calculate second half of size
    float3 fVert2 = float3(-fVert1.x, fVert1.yz);
    // Unpack texture coordinates
-   cfloat4 fTC = float4((part[uiPAI].tc[0] >> uint2(0, 16)) & 0x0FFFF, (part[uiPAI].tc[1] >> uint2(0, 16)) & 0x0FFFF) * 0.000030517578125f;
+   const float4 fTC = float4((part[uiPAI].tc[0] >> uint2(0, 16)) & 0x0FFFF, (part[uiPAI].tc[1] >> uint2(0, 16)) & 0x0FFFF) * 0.000030517578125f;
    // Rotate
    sincos(fRotation, fRot[0], fRot[1]);
    fVert1.xy = RotateVector(fVert1.xy, fRot._23_13.xy);
@@ -144,12 +144,12 @@ void main(point cuint4x8 index[1] : INDEX, cuint iID : SV_GSInstanceID, inout Tr
       fVert2.yz = RotateVector(fVert2.yz, fRot._21_11.xy);
    }
    // Unpack frame time values
-   cfloat fAFC = float((bone[uiBAI].afco_oai & 0x0FF) + 1);
-   cfloat fAFO = float((bone[uiBAI].afco_oai >> 8) & 0x0FF);
+   const float fAFC = float((bone[uiBAI].afco_oai & 0x0FF) + 1);
+   const float fAFO = float((bone[uiBAI].afco_oai >> 8) & 0x0FF);
    // Calculate animation frame offset
-   cuint  secsTotal = st_bf & 0x0FFFFFF;
-   cfloat fFTDelta  = float(Seconds(secsTotal, secsDelta) * double(rcp(bone[uiBAI].aft)));
-   cfloat fFrameOS  = (fTC.z - fTC.x) * trunc((fFTDelta + fAFO) % fAFC);
+   const uint  secsTotal = st_bf & 0x0FFFFFF;
+   const float fFTDelta  = float(Seconds(secsTotal, secsDelta) * double(rcp(bone[uiBAI].aft)));
+   const float fFrameOS  = (fTC.z - fTC.x) * trunc((fFTDelta + fAFO) % fAFC);
    
    sincos(fRotation, fRot[0], fRot[1]);
    output.si = bone[uiBAI].sai;
