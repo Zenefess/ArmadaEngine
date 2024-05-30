@@ -1260,7 +1260,7 @@ al32 struct CLASS_GUI {
                element[index].func.hover[0](indices[j].data);
 
             // onActivate for inputMask[0]
-            if(ipd.input.ui >= 1 && !testAllZero(ctrlVars.imm.button, ipd.inputMask[0])) {
+            if(ipd.input.ui >= 1 && !AllFalse(ctrlVars.imm.button, ipd.inputMask[0])) {
                activeElement.ymm.m256i_i32[1] = index;
                if(element[index].function[2]) element[index].func.activate0[0](indices[j].data);
                for(funcCount = 0; funcCount < ipd.funcCount[0].x; funcCount++, nextFuncIndex++)
@@ -1268,7 +1268,7 @@ al32 struct CLASS_GUI {
             }
 
             // onActivate for inputMask[1]
-            if(ipd.input.ui >= 2 && !testAllZero(ctrlVars.imm.button, ipd.inputMask[1])) {
+            if(ipd.input.ui >= 2 && !AllFalse(ctrlVars.imm.button, ipd.inputMask[1])) {
                activeElement.ymm.m256i_i32[2] = index;
                if(element[index].function[4]) element[index].func.activate1[0](indices[j].data);
                for(funcCount = 0; funcCount < ipd.funcCount[1].x; funcCount++, nextFuncIndex++)
@@ -1277,7 +1277,7 @@ al32 struct CLASS_GUI {
 
             // onActivate for inputMask[2~]
             for(ui8 imCount = 2; imCount < ipd.input.ui; imCount++) {
-               if(!testAllZero(ctrlVars.imm.button, ipd.inputMask[imCount])) {
+               if(!AllFalse(ctrlVars.imm.button, ipd.inputMask[imCount])) {
                   if(imCount < 7) activeElement.ymm.m256i_i32[imCount + 1] = index;
                   for(funcCount = 0; funcCount < ipd.funcCount[imCount].x; funcCount++, nextFuncIndex++)
                      ipd.function[nextFuncIndex](indices[j].data);
@@ -1289,7 +1289,7 @@ al32 struct CLASS_GUI {
                element[index].func.hover[1](indices[j].data);
 
          // offActivate for inputMask[0]
-         if(ipd.input.ui >= 1 && testAllZero(ctrlVars.imm.button, ipd.inputMask[0])) {
+         if(ipd.input.ui >= 1 && AllFalse(ctrlVars.imm.button, ipd.inputMask[0])) {
             activeElement.ymm.m256i_i32[0] = -1;
             if(element[index].function[3]) element[index].func.activate0[1](indices[j].data);
             for(funcCount = 0; funcCount < ipd.funcCount[0].y; funcCount++, nextFuncIndex++)
@@ -1297,7 +1297,7 @@ al32 struct CLASS_GUI {
          }
 
          // offActivate for inputMask[1]
-         if(ipd.input.ui >= 2 && testAllZero(ctrlVars.imm.button, ipd.inputMask[1])) {
+         if(ipd.input.ui >= 2 && AllFalse(ctrlVars.imm.button, ipd.inputMask[1])) {
             activeElement.ymm.m256i_i32[1] = -1;
             if(element[index].function[5]) element[index].func.activate1[1](indices[j].data);
             for(funcCount = 0; funcCount < ipd.funcCount[1].y; funcCount++, nextFuncIndex++)
@@ -1306,7 +1306,7 @@ al32 struct CLASS_GUI {
 
          // onActivate for inputMask[2~]
          for(ui8 imCount = 2; imCount < ipd.input.ui; imCount++) {
-            if(!testAllZero(ctrlVars.imm.button, ipd.inputMask[imCount])) {
+            if(!AllFalse(ctrlVars.imm.button, ipd.inputMask[imCount])) {
                if(imCount < 7) activeElement.ymm.m256i_i32[imCount + 1] = -1;
                for(funcCount = 0; funcCount < ipd.funcCount[imCount].x; funcCount++, nextFuncIndex++)
                   ipd.function[nextFuncIndex](indices[j].data);
