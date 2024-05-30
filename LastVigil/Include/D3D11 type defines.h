@@ -8,12 +8,12 @@
  **********************************************************/
 #pragma once
 
-#define DX DirectX
+#define DX     DirectX
 #define dxmtrx DirectX::XMMATRIX &
 #define aemtrx cmatrix &
 
 #include "typedefs.h"
-#include "Vector structures.h"
+#include "vector structures.h"
 
 typedef al16       __m128    vector;
 typedef al16 const vector    cvector;

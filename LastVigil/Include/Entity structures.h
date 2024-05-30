@@ -43,7 +43,7 @@ al16 struct PART_IGS {
          fl32   RES;
          VEC3Df rot;   // Maximum rotation vector transformation
          fl32   RES2;
-      } trans;
+      } trans = { .RES = 1.0f, .RES2 = 1.0f };
       SSE4Df32 sliderot[2];
    };
 };
@@ -59,27 +59,27 @@ al16 struct BONE_DGS {
    };
    union {
       struct {
-         VEC3Df rot;  // Current rotation (relative to owner or world)
-         ui32   sai;  // SPRITE array index
+         VEC3Df rot; // Current rotation (relative to owner or world)
+         fl32   aft; // Animation frame time
       };
-      SSE4Df32 rot_sai;
+      SSE4Df32 rot_aft;
    };
    union {
       struct {
          VEC3Df size; // Scale (.x==0 ? Not drawn)
-         ui32   opi;  // Object part index
+         union {
+            struct {
+               ui8  afc; // Animation frame count : value - 1
+               ui8  afo; // Animation frame offset
+               ui16 oai; // Object array index
+            };
+            ui32 afc_afo_oai;
+         };
       };
-      SSE4Df32 size_opi;
+      SSE4Df32 size_afco_oai;
    };
-   fl32 aft;  // Animation frame time
-   union {
-      struct {
-         ui8  afc; // Animation frame count : value - 1
-         ui8  afo; // Animation frame offset
-         ui16 oai; // Object array index
-      };
-      ui32 afc_afo_oai;
-   };
+   ui32 opi; // Object part index
+   ui32 sai; // SPRITE array index
    ui32 pbi; // Parent's bone index (this==No parent)
    ui32 obi; // Owner's bone index (this==No owner)
 };

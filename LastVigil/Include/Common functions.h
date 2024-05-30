@@ -1,6 +1,6 @@
 /************************************************************
  * File: Common functions.h             Created: 2023/02/02 *
- *                                    Last mod.: 2024/05/24 *
+ *                                    Last mod.: 2024/05/30 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -12,7 +12,6 @@
 #include "Vector structures.h"
 #include "Memory management.h"
 #include "Fixed-point data types.h"
-#include "Fixed-point math.h" // Obsoletion
 #include "Data structures.h"
 
 #define _COMMON_FUNCTIONS_
@@ -162,18 +161,70 @@ inline cui32 rand_ui31(cui32 index) {
    return (i * (i * i * 15731u + 789221u) + 1376312589u) & 0x07FFFFFFF;
 }
 
-#ifdef __AVX__
-inline csi32 testAllZero(cui256 source, cui256 compare) { return _mm256_testz_si256(source, compare); }
-#else
-inline csi32 testAllZero(cui128 source[2], cui128 compare[2]) {
-   return (_mm_testz_si128(source[0], compare[0]) | _mm_testz_si128(source[1], compare[1]));
+inline cbool AllFalse(cui128 source, cui128 compare) { return _mm_testz_si128(source, compare); }
+
+inline cbool AllTrue(cui128 source, cui128 compare) { return _mm_testc_si128(source, compare); }
+
+inline cbool AllFalse(cui128 source[3], cui128 compare[3]) {
+   return (_mm_testz_si128(source[0], compare[0]) | _mm_testz_si128(source[1], compare[1]) | _mm_testz_si128(source[2], compare[2]));
 }
-#endif
+
+inline cbool AllTrue(cui128 source[3], cui128 compare[3]) {
+   return (_mm_testc_si128(source[0], compare[0]) | _mm_testc_si128(source[1], compare[1]) | _mm_testc_si128(source[2], compare[2]));
+}
 
 #ifdef __AVX__
-inline csi32 testAllOnes(cui256 source, cui256 compare) { return _mm256_testc_si256(source, compare); }
+
+inline cbool AllFalse(cui256 source, cui256 compare) { return _mm256_testz_si256(source, compare); }
+
+inline cbool AllTrue(cui256 source, cui256 compare) { return _mm256_testc_si256(source, compare); }
+
+inline cbool AllFalse(cui256 source[2], cui256 compare[2]) {
+   return (_mm256_testz_si256(source[0], compare[0]) | _mm256_testz_si256(source[1], compare[1]));
+}
+
+inline cbool AllTrue(cui256 source[2], cui256 compare[2]) {
+   return (_mm256_testc_si256(source[0], compare[0]) | _mm256_testc_si256(source[1], compare[1]));
+}
+
+inline cbool AllFalse(cui512 &source, cui512 &compare) {
+   return (_mm256_testz_si256(((ui256ptr)&source)[0], ((ui256ptr)&compare)[0]) |
+           _mm256_testz_si256(((ui256ptr)&source)[1], ((ui256ptr)&compare)[1]));
+}
+
+inline cbool AllTrue(cui512 &source, cui512 &compare) {
+   return (_mm256_testc_si256(((ui256ptr)&source)[0], ((ui256ptr)&compare)[0]) |
+           _mm256_testc_si256(((ui256ptr)&source)[1], ((ui256ptr)&compare)[1]));
+}
+
 #else
-inline csi32 testAllOnes(cui128 source[2], cui128 compare[2]) {
+
+inline cbool AllFalse(cui128 source[2], cui128 compare[2]) {
+   return (_mm_testz_si128(source[0], compare[0]) | _mm_testz_si128(source[1], compare[1]));
+}
+
+inline cbool AllTrue(cui128 source[2], cui128 compare[2]) {
    return (_mm_testc_si128(source[0], compare[0]) | _mm_testc_si128(source[1], compare[1]));
 }
+
+inline cbool AllFalse(cui128 source[4], cui128 compare[4]) {
+   return (_mm_testz_si128(source[0], compare[0]) | _mm_testz_si128(source[1], compare[1]) |
+           _mm_testz_si128(source[2], compare[2]) | _mm_testz_si128(source[3], compare[3]));
+}
+
+inline cbool AllTrue(cui128 source[4], cui128 compare[4]) {
+   return (_mm_testc_si128(source[0], compare[0]) | _mm_testc_si128(source[1], compare[1]) |
+           _mm_testc_si128(source[2], compare[2]) | _mm_testc_si128(source[3], compare[3]));
+}
+
+inline cbool AllFalse(cui512 &source, cui512 &compare) {
+   return (_mm_testz_si128(((ui128ptr)&source)[0], ((ui128ptr)&compare)[0]) | _mm_testz_si128(((ui128ptr)&source)[1], ((ui128ptr)&compare)[1]) |
+           _mm_testz_si128(((ui128ptr)&source)[2], ((ui128ptr)&compare)[2]) | _mm_testz_si128(((ui128ptr)&source)[3], ((ui128ptr)&compare)[3]));
+}
+
+inline cbool AllTrue(cui512 &source, cui512 &compare) {
+   return (_mm_testc_si128(((ui128ptr)&source)[0], ((ui128ptr)&compare)[0]) | _mm_testc_si128(((ui128ptr)&source)[1], ((ui128ptr)&compare)[1]) |
+           _mm_testc_si128(((ui128ptr)&source)[2], ((ui128ptr)&compare)[2]) | _mm_testc_si128(((ui128ptr)&source)[3], ((ui128ptr)&compare)[3]));
+}
+
 #endif
