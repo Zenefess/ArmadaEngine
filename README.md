@@ -3,6 +3,12 @@
 
 
 
+2024/06/01 update:
+
+   I have spendt most of the time since the last update rewriting fixed-point data type handling, which has included revising a lot of code that utilises those data types. Much easier to use them, now, as their conversions are handled by class functions. Work on this project is still well in progress.
+
+   
+
 2024/05/06 update:
 
    Currently preparing GUI backend to make creating/editing GUI profiles fully customisable. Support for custom input processing & triggered functions is almost complete.
