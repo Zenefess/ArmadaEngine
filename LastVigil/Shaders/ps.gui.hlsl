@@ -22,7 +22,7 @@ struct GOut { // 44 bytes (2 vectors + 3 scalars)
 float4 main(in const GOut input) : SV_Target {
    const float4 sample = Sample1of2GUI(uint2(input.ai_type & 0x07F, 2), input.tc) * input.col;
 
-   clip(sample.a - 0.011f); // Alpha test
+   //clip(sample.a - 0.011f); // Alpha test
 
    return sample;
 }

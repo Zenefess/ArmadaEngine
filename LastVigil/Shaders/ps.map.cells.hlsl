@@ -28,8 +28,6 @@ struct CELL_DYN { // 16 bytes (1 vector)
    uint nrps_ai; // 0-7==Normal map scalar : p8n0.0~1.818359375, 8-15==Roughness map scalar, 16-23==Paint map scalar : p8n0.0~1.0, 24-30==Runtime index of atlas texture, 31==???
 };
 
-const StructuredBuffer<CELL_DYN> cell : register(t0);
-
 // Texture data
 // ------------
 // [0] == Diffuse map | [1] == Normal map | [2] == Occlusion, roughness, paint, and emission maps
@@ -41,6 +39,8 @@ struct GOut { // 48 bytes (3 vectors) <-- Add data for texture blending with adj
    float2 tex      : TEXCOORD;
    uint2  rot      : ROTATIONS;   // sin & cos of XY rotations
 };
+
+const StructuredBuffer<CELL_DYN> cell : register(t0);
 
 float4 main(in const GOut g) : SV_Target {
    const uint     index    = g.ci;
@@ -91,12 +91,12 @@ float4 main(in const GOut g) : SV_Target {
    for(uint i = 0; i < 48; i += 4) { // (i < 48): No stutter    (i < 64): Minor stuter    (i < 128): stutter    ??? Shader code exceeeding cache ??? Partially unroll
       // Unpack colour variable
       const float4x3 fColour = float4x3(uint4x3(uint3(l[i].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF, uint3(l[i + 1].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF,
-                                           uint3(l[i + 2].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF, uint3(l[i + 3].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF)) * rcp256 - 128.0f;
+                                                uint3(l[i + 2].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF, uint3(l[i + 3].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF)) * rcp256 - 128.0f;
       // Unpack highlight variables
       const float2x4 fHL     = float2x4(uint2x4((l[i].col_hl.y >> uint2(16, 24)) & 0x0FF,     (l[i + 1].col_hl.y >> uint2(16, 24)) & 0x0FF,
-                                           (l[i + 2].col_hl.y >> uint2(16, 24)) & 0x0FF, (l[i + 3].col_hl.y >> uint2(16, 24)) & 0x0FF)
-                                 + uint2x4(257, 1, 257, 1, 257, 1, 257, 1))
-                        * float2x4(rcp512, rcp16, rcp512, rcp16, rcp512, rcp16, rcp512, rcp16);
+                                                (l[i + 2].col_hl.y >> uint2(16, 24)) & 0x0FF, (l[i + 3].col_hl.y >> uint2(16, 24)) & 0x0FF)
+                                      + uint2x4(257, 1, 257, 1, 257, 1, 257, 1))
+                             * float2x4(rcp512, rcp16, rcp512, rcp16, rcp512, rcp16, rcp512, rcp16);
       // Process each light
       const float4   range   = float4(l[i].range, l[i + 1].range, l[i + 2].range, l[i + 3].range);
       const float4x3 vToL    = float4x3(l[i].position, l[i + 1].position, l[i + 2].position, l[i + 3].position) - float4x3(g.position, g.position, g.position, g.position);
@@ -106,10 +106,10 @@ float4 main(in const GOut g) : SV_Target {
       const float4 att    = min(1.0f, float4(distToL / range + (distToL / (range2))) * 0.5f);
 
       const float4x3 ang = saturate(float4x3(dot(vToL[0] / distToL[0], fNormal.xyz).xxx, dot(vToL[1] / distToL[1], fNormal.xyz).xxx,
-                                        dot(vToL[2] / distToL[2], fNormal.xyz).xxx, dot(vToL[3] / distToL[3], fNormal.xyz).xxx));
+                                             dot(vToL[2] / distToL[2], fNormal.xyz).xxx, dot(vToL[3] / distToL[3], fNormal.xyz).xxx));
 
       const float4x3 lum  = (1.0f - float4x3(att[0].xxx, att[1].xxx, att[2].xxx, att[3].xxx)) * ang;
-      const float4x3 occ  = (1.0f - ang) * fTexMask.x * lum;
+      const float4x3 occ  = (1.0f - ang) * float4x3(fTexMask.xxx, fTexMask.xxx, fTexMask.xxx, fTexMask.xxx) * lum;
       const float4x3 l4x3 = max(0.0f, (lum - occ) * fColour);
       
       fLight     += l4x3[0] + l4x3[1] + l4x3[2] + l4x3[3];

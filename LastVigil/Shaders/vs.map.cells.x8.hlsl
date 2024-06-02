@@ -10,13 +10,13 @@
 #include "common.hlsli"
 
 cbuffer MAPDIMS_ICB : register(b2) {
-   // Map dimensions: X, Y, Z cell counts - 1     --- 30 bits -- [30][..][..][..]
-   // Chunk dimensions: X, Y, Z cell counts - 1   --- 18 bits -- [32][16][..][..]
-   // Map Cells: Total cells per map - 1          --- 30 bits -- [..][32][14][..]
-   // Chunk Cells: Total cells per chunk - 1      --- 18 bits -- [..][..][32][..]
-   // Map chunks: X, Y, Z chunk counts - 1        --- 21 bits -- [..][..][..][21]
-   // flag                                        ---  1 bits -- [..][..][..][22]
-   // zso: Z spawning offset - 1                  --- 10 bits -- [..][..][..][32]
+   // Map dimensions: X, Y, Z cell counts - 1     --- 30 bits -- [..][..][..][30]
+   // Chunk dimensions: X, Y, Z cell counts - 1   --- 18 bits -- [..][..][16][32]
+   // Map Cells: Total cells per map - 1          --- 30 bits -- [..][14][32][..]
+   // Chunk Cells: Total cells per chunk - 1      --- 18 bits -- [..][32][..][..]
+   // Map chunks: X, Y, Z chunk counts - 1        --- 21 bits -- [21][..][..][..]
+   // flag                                        ---  1 bits -- [22][..][..][..]
+   // zso: Z spawning offset - 1                  --- 10 bits -- [32][..][..][..]
    const uint4 dimData;
 }
 
