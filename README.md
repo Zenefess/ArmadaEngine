@@ -45,7 +45,5 @@ As for the current incarnation of all this, ArmadaEngine expands upon TankEngine
 
 
 Testing on-the-fly geometry generation, entity culling, and GUI rendering & function:
-![LastVigil debug_2024_03_12_22_03_18_342](https://github.com/Zenefess/ArmadaEngine/assets/116688139/a9dff456-fcae-46b8-b5ec-2493538af4d3)
-
-
-"For Michelle. I'm still tangled up in you."
+![screenshot0](https://github.com/Zenefess/ArmadaEngine/assets/116688139/72a9ef8c-765e-40f9-8bc9-068725c3d8c2)
+![screenshot1](https://github.com/Zenefess/ArmadaEngine/assets/116688139/2cbfe5d4-4431-4f79-aea7-2a3b65a29807)
