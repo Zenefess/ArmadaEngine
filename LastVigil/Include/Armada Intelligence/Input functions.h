@@ -11,7 +11,11 @@
 #include "typedefs.h"
 
 al32 struct INPUT_PROC_DATA { // 32 bytes
-   ui256   *inputMask; // Array of input bitmasks for testing
+#ifdef __AVX__
+   ui256ptr inputMask; // Array of input bitmasks for testing
+#else
+   ui128ptr inputMask[2]; // Array of input bitmasks for testing
+#endif
    VEC2Du8 *funcCount; // Array of function counts per on & off input tests
    funcptr *function;  // Array of functions for execution
    union {
@@ -25,5 +29,5 @@ al32 struct INPUT_PROC_DATA { // 32 bytes
    ui16 RES;
 };
 
-extern void ProcessInputs(GLOBALCTRLVARS &);
-extern void ProcessInputs(INPUT_PROC_DATA &, GLOBALCTRLVARS &);
+void ProcessInputs(GLOBALCTRLVARS &ctrlVars);
+void ProcessInputs(INPUT_PROC_DATA &ipd, GLOBALCTRLVARS &ctrlVars);

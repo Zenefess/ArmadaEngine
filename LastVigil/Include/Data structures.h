@@ -187,18 +187,24 @@ al32 struct GLOBALCTRLVARS {
             VEC2Df rs; // Right analog stick
             fl32   lt; // Left trigger
             fl32   rt; // Right trigger
-         } joy[2];
+         } joy[8];
          struct {
             fl32 x;
             fl32 y;
             si32 z; // Wheel
             si32 w; // Wheel; horizontal
          } mouse;
+         struct {
+            fl32 x;
+            fl32 y;
+         } pointer[2];
       };
-      fl32x8 faxis32[2];
-      fl32x4 faxis16[4];
-      float  faxis[16];
-      si32   iaxis[16];
+#ifdef __AVX__
+      fl32x8 faxis32[7];
+#endif
+      fl32x4 faxis16[14];
+      float  faxis[56];
+      si32   iaxis[56];
    };
    union { // Immediate key states
 #ifdef __AVX__
@@ -230,7 +236,6 @@ al32 struct GLOBALCTRLVARS {
       ui64 bits;
       ui8  misc[8];
    };
-   ui128 RES;
 };
 
 // Global coordinates

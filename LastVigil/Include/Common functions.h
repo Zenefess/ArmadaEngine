@@ -32,13 +32,15 @@ static cfl64 rcp65536d = 1.0 / 65536.0;
 
 static cVEC3Df null3Df = { 0.0f, 0.0f, 0.0f };
 
-static cfl32x4 null128f = { .m128_u64 = { 0, 0 } };
-static cui128  null128  = { .m128i_u64 = { 0x0, 0x0 } };
+static cfl32x4 null128f = _mm_setzero_ps();
+static cui128  null128  = _mm_setzero_si128();
 static cui128  max128   = { .m128i_i64 = { -1, -1 } };
 
-static cui256 null256  = { .m256i_u64 = { 0x0, 0x0, 0x0, 0x0 } };
+#ifdef __AVX__
+static cui256 null256  = _mm256_setzero_si256();
 static cui256 ones32x8 = { .m256i_i32 = { 1, 1, 1, 1, 1, 1, 1, 1 } };
 static cui256 max256   = { .m256i_i64 = { -1, -1, -1, -1 } };
+#endif
 
 inline void swap(ui8 &a, ui8 &b) { a ^= b; b ^= a; a ^= b; }
 

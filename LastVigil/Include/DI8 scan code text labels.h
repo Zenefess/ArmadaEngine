@@ -1,6 +1,6 @@
 /****************************************************************
  * File: DI8 scan code text labels.h        Created: 2023/07/17 *
- *                                    Last modified: 2023/07/20 *
+ *                                    Last modified: 2024/06/01 *
  *                                                              *
  * Desc:                                                        *
  *                                                              *
@@ -10,8 +10,10 @@
 
 #include "typedefs.h"
 
-// Mouse inputs    @ 0x080~0x08B, 0x0A8~0x0AB (16 inputs)
-// Joystick inputs @ 0x0B9~0x0C4, 0x0DE~0x0FF (46 inputs)
+// Digital representations of joystick data inserted into indices unused by DirectInput 8
+// Mouse inputs       @ 0x080~0x08B, 0x0A8~0x0AB (16 inputs)
+// Joystick #1 inputs @ 0x0B9~0x0C4, 0x0D4-0x0D9, 0x0DE~0x0E5 (26 inputs)
+// Joystick #2 inputs @ 0x0E6~0x0FF (26 inputs)
 al32 cchar inputCodeText[256][16] = {
    "<Not bound>",    // 0x000
    "Escape",
@@ -198,18 +200,18 @@ al32 cchar inputCodeText[256][16] = {
    "0x0B6",
    "Print Screen",
    "Right Alt",
-   "Pad L \24",
-   "Pad L \25",
-   "Pad L \26",
-   "Pad L \27",
-   "Pad R \24",
-   "Pad R \25",
-   "Pad R \26",
-   "Pad R \27",      // 0x0C0
-   "Pad POV \24",
-   "Pad POV \25",
-   "Pad POV \26",
-   "Pad POV \27",
+   "Pad 1 L \24",
+   "Pad 1 L \25",
+   "Pad 1 L \26",
+   "Pad 1 L \27",
+   "Pad 1 R \24",
+   "Pad 1 R \25",
+   "Pad 1 R \26",
+   "Pad 1 R \27",      // 0x0C0
+   "Pad 1 POV \24",
+   "Pad 1 POV \25",
+   "Pad 1 POV \26",
+   "Pad 1 POV \27",
    "Pause",
    "0x0C6",
    "Home",
@@ -225,48 +227,48 @@ al32 cchar inputCodeText[256][16] = {
    "Page Down",
    "Insert",
    "Delete",
-   "0x0D4",
-   "0x0D5",
-   "0x0D6",
-   "0x0D7",
-   "0x0D8",
-   "0x0D9",
+   "Pad 1 L trigger",
+   "Pad 1 R trigger",
+   "Pad 1 button 1",
+   "Pad 1 button 2",
+   "Pad 1 button 3",
+   "Pad 1 button 4",
    "0x0DA",
    "Left Windows",
    "Right Windows",
    "App Menu",
-   "Pad L trigger",
-   "Pad R trigger",
-   "Pad button 1",   // 0x0E0
-   "Pad button 2",
-   "Pad button 3",
-   "Pad button 4",
-   "Pad button 5",
-   "Pad button 6",
-   "Pad button 7",
-   "Pad button 8",
-   "Pad button 9",
-   "Pad button 10",
-   "Pad button 11",
-   "Pad button 12",
-   "Pad button 13",
-   "Pad button 14",
-   "Pad button 15",
-   "Pad button 16",
-   "Pad button 17",  // 0x0F0
-   "Pad button 18",
-   "Pad button 19",
-   "Pad button 20",
-   "Pad button 21",
-   "Pad button 22",
-   "Pad button 23",
-   "Pad button 24",
-   "Pad button 25",
-   "Pad button 26",
-   "Pad button 27",
-   "Pad button 28",
-   "Pad button 29",
-   "Pad button 30",
-   "Pad button 31",
-   "Pad button 32"
+   "Pad 1 button 5",
+   "Pad 1 button 6",
+   "Pad 1 button 7", // 0x0E0
+   "Pad 1 button 8",
+   "Pad 1 button 9",
+   "Pad 1 button 10",
+   "Pad 1 button 11",
+   "Pad 1 button 12",
+   "Pad 2 L \24",
+   "Pad 2 L \25",
+   "Pad 2 L \26",
+   "Pad 2 L \27",
+   "Pad 2 R \24",
+   "Pad 2 R \25",
+   "Pad 2 R \26",
+   "Pad 2 R \27",
+   "Pad 2 POV \24",
+   "Pad 2 POV \25",
+   "Pad 2 POV \26",  // 0x0F0
+   "Pad 2 POV \27",
+   "Pad 2 L trigger",
+   "Pad 2 R trigger",
+   "Pad 2 button 1",
+   "Pad 2 button 2",
+   "Pad 2 button 3",
+   "Pad 2 button 4",
+   "Pad 2 button 5",
+   "Pad 2 button 6",
+   "Pad 2 button 7",
+   "Pad 2 button 8",
+   "Pad 2 button 9",
+   "Pad 2 button 10",
+   "Pad 2 button 11",
+   "Pad 2 button 12"
 };

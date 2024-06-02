@@ -86,8 +86,10 @@ vol GLOBALCTRLVARS  gcv;
     GLOBALCTRLVARS *gcvLocalPtr;
 
 al16 IDirectInput8       *di8;
-     IDirectInputDevice8 *di8Key, *di8Mse, *di8Pad;
-     char                 keyState[2][256];
-     DIMOUSESTATE48       mseState[2];
+     IDirectInputDevice8 *di8Key, *di8Mse, *di8Pad[8];
+al32 char                 keyState[2][256];
+al8  DIMOUSESTATE48       mseState[2];
+al16 DIJOYSTATE           padState[2][8];
 al4  si32                &mouseWheelTilt = mseState[0].w;
      VEC4Du8              inputsImmediate;
+     ui32                 gamepadCount = 0;

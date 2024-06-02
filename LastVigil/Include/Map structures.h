@@ -91,14 +91,14 @@ al8 struct CELL { // 40 bytes
 };
 
 al16 struct MAPDIMS_ICB { // 16 bytes   ---   Map Cells and Chunk Cells not needed?
-   // Map dimensions: X, Y, Z cell counts - 1     --- 30 bits -- [30][..][..][..]
-   // Chunk dimensions: X, Y, Z cell counts - 1   --- 18 bits -- [32][16][..][..]
-   // Map Cells: Total cells per map - 1          --- 30 bits -- [..][32][14][..]
-   // Chunk Cells: Total cells per chunk - 1      --- 18 bits -- [..][..][32][..]
-   // Map chunks: X, Y, Z chunk counts - 1        --- 21 bits -- [..][..][..][21]
-   // flag                                        ---  1 bits -- [..][..][..][22]
-   // zso: Z spawning offset - 1                  --- 10 bits -- [..][..][..][32]
    ui64 dimData[2];
+   // Map dimensions: X, Y, Z cell counts - 1     --- 30 bits -- [..][..][..][30]
+   // Chunk dimensions: X, Y, Z cell counts - 1   --- 18 bits -- [..][..][16][32]
+   // Map Cells: Total cells per map - 1          --- 30 bits -- [..][14][32][..]
+   // Chunk Cells: Total cells per chunk - 1      --- 18 bits -- [..][32][..][..]
+   // Map chunks: X, Y, Z chunk counts - 1        --- 21 bits -- [21][..][..][..]
+   // flag                                        ---  1 bits -- [22][..][..][..]
+   // zso: Z spawning offset - 1                  --- 10 bits -- [32][..][..][..]
    void setMapDims(csi32 value0, csi32 value1, csi32 value2) { dimData[0] = ui64(value0 & 0x03FF) | (ui64(value1 & 0x03FF) << 10u) | (ui64(value2 & 0x03FF) << 20u) | (dimData[0] & 0x0FFFFFFFFC0000000u); }
    void setChunkDims(csi32 value0, csi32 value1, csi32 value2) { dimData[0] = (ui64(value0 & 0x03F) << 30u) | (ui64(value1 & 0x03F) << 36u) | (ui64(value2 & 0x03F) << 42u) | (dimData[0] & 0x03FFFFFFFu); }
    void setMapCells(csi64 value) { dimData[0] = (ui64(value & 0x0FFFF) << 48u) | (dimData[0] & 0x0FFFFFFFFFFFFu); dimData[1] = ui64((value >> 16) & 0x03FFF) | (dimData[1] & 0x0FFFFFFFFFFFFC000u); }
