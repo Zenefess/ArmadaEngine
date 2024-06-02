@@ -366,8 +366,20 @@ inline void Copy(ptrc source, ptrc dest, cui64 byteCount) {
    i <<= 2;
 #endif
 #endif
-   for(; i < k; i++) ((ui32ptr)source)[i] = ((ui32ptr)dest)[i];
-   for(i = k << 2; i < byteCount; i++) ((ui8ptr)source)[i] = ((ui8ptr)dest)[i];
+   for(; i < k; i++) ((ui32ptr)dest)[i] = ((ui32ptr)source)[i];
+   for(i = k << 2; i < byteCount; i++) ((ui8ptr)dest)[i] = ((ui8ptr)source)[i];
+}
+
+// Copy byteCount (rounded-down to the nearest 8) bytes of data
+inline void Copy8(ptrc source, ptrc dest, cui64 byteCount) {
+   cui64 j = byteCount >> 3;
+   for(ui64 i = 0; i < j; i++) ((ui64ptr)dest)[i] = ((ui64ptr)source)[i];
+}
+
+// Copy byteCount (rounded-down to the nearest 8) bytes of data
+inline void Copy8(vptrc source, vptrc dest, cui64 byteCount) {
+   cui64 j = byteCount >> 3;
+   for(ui64 i = 0; i < j; i++) ((vui64ptr)dest)[i] = ((vui64ptr)source)[i];
 }
 
 // Copy byteCount (rounded-down to the nearest 16) bytes of 128-bit-aligned data via SIMD instruction
