@@ -11,9 +11,9 @@
 #pragma warning(once:4838)
 
 #ifndef PCH_H
-   #define DATA_TRACKING
-
    #define PCH_H
+
+   #define DATA_TRACKING
 
    #include "targetver.h"
 

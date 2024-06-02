@@ -139,7 +139,7 @@ void Direct3D11Thread(ptr argList) {
    CLASS_TIMER  frameTimer;
    CLASS_TIMERS animTimer;
 
-   union { GLOBALCTRLVARS gcvLocal; ui256 gcvLocal32[5] {}; };
+   union { GLOBALCTRLVARS gcvLocal; ui256 gcvLocal32[10] {}; };
    union { GLOBALCOORDS   gcoLocal; ui256 gcoLocal32[2] {}; };
 
    vsi64ptr const gcoPtr      = (vsi64ptr)&gco;
@@ -448,7 +448,7 @@ Reinitialise_:
       if(gpu.cam.data[0].fYrot > 1.0f) gpu.cam.data[0].fYrot = 1.0f;
 
       // Update local copy of global control variables
-      Copy32(&gcv, gcvLocal32, 160);
+      Copy32(&gcv, gcvLocal32, 320u);
 
       // Update camera
       gpu.cam.MoveCameraForwardXZ(gcvLocal.joy[0].ls.y * fElapsedTime * 32.0f, 0);

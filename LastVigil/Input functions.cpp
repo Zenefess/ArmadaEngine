@@ -17,13 +17,15 @@
 #include "Armada Intelligence/class_entitymanager.h"
 #include "Armada Intelligence/Input functions.h"
 
+// Scalar inputs to be processed via NULL input pattern in each stage
 void ProcessInputs(INPUT_PROC_DATA &ipd, GLOBALCTRLVARS &ctrlVars) {
-   CLASS_GPU    &gpu    = *(CLASS_GPU *)ptrLib[1];
-   MAP_DESC     &md     = *(MAP_DESC *)ptrLib[14];
-
-   static ui16 imCount = 0;
-   static ui16 imLast  = ipd.input.global;
+   static ui16 imCount, imLast;
    static ui8  funcCount;
+
+   CLASS_GPU &gpu = *(CLASS_GPU *)ptrLib[1];
+   MAP_DESC  &md  = *(MAP_DESC *)ptrLib[14];
+
+   imLast = ipd.input.global;
 
    // Populate intersection lists  --  Thread? Not required until 'Process world space inputs'
    md.mcrv.activeLocations.xmm0 = gpu.cam.data[0].pos32.xmm;
@@ -33,7 +35,7 @@ void ProcessInputs(INPUT_PROC_DATA &ipd, GLOBALCTRLVARS &ctrlVars) {
    (*(CLASS_ENTMAN *)ptrLib[7]).PopulateEntityList(md, ctrlVars.curCoords, gpu.cam.currentCamProj);
 
    // Process global action inputs
-   for(; imCount < imLast; imCount++)
+   for(imCount = 0; imCount < imLast; imCount++)
       if(!AllFalse(ctrlVars.imm.button, ipd.inputMask[imCount]))
          for(funcCount = 0; funcCount < ipd.funcCount[imCount].x; funcCount++)
             ipd.function[funcCount](NULL);
@@ -115,8 +117,8 @@ void ProcessInputs(GLOBALCTRLVARS &ctrlVars) {
       }
       if(ctrlVars.imm.b[4] & 0x01)
          if(siCell != 0x080000001) {
-            mapMan.world[0].map[0]->cell[siCell].geometry->et.x = (ctrlVars.misc[1] & 0x03) + 1;
-            mapMan.world[0].map[0]->chunkMod[siChunk >> 6] |= ui64(0x01) << (siChunk & 0x03F);
+            mapMan.world[0].map[0]->cell[siCell].geometry->et.x = (ctrlVars.misc[1] & 0x03u) + 1u;
+            mapMan.world[0].map[0]->chunkMod[siChunk >> 6] |= ui64(0x01u) << (siChunk & 0x03Fu);
          }
    }
    // Mouse button 2

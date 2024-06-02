@@ -1,6 +1,6 @@
 /************************************************************
  * File: DirectInput8 thread.cpp        Created: 2022/11/01 *
- *                                Last modified: 2024/04/23 *
+ *                                Last modified: 2024/06/01 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -12,13 +12,14 @@
 #include <intrin.h>
 #include "thread flags.h"
 #include "DirectInput8 thread.h"
+#include "Xinput.h"
 #include "Armada Intelligence/Input functions.h"
 
 extern vui64 THREAD_LIFE; // 'Thread active' flags
 
 TEXTBUFFER textBufferInfo(1024, false); // Buffer information for character input
 
-inline static HRESULT PollKeyboard() {
+inline static HRESULT PollKeyboard(void) {
    hr = di8Key->GetDeviceState(sizeof(keyState[0]), (ptr)keyState[0]);
    if(FAILED(hr))
       if((hr == DIERR_INPUTLOST) || (hr == DIERR_NOTACQUIRED))
@@ -27,13 +28,41 @@ inline static HRESULT PollKeyboard() {
    return hr;
 }
 
-inline static HRESULT PollMouse() {
+inline static HRESULT PollMouse(void) {
    hr = di8Mse->Poll();
    if(FAILED(hr))
       do hr = di8Mse->Acquire();
       while(hr == DIERR_INPUTLOST);
    Try(stPollMouse, di8Mse->GetDeviceState(sizeof(DIMOUSESTATE38), &mseState[0]));
    return hr;
+}
+
+inline static HRESULT PollGamepads(void) {
+   for(ui32 index = 0; index < gamepadCount; index++) {
+      hr = di8Pad[index]->Poll();
+      if(FAILED(hr))
+         do hr = di8Pad[index]->Acquire();
+      while(hr == DIERR_INPUTLOST);
+      Try(stPollGamepad, di8Pad[index]->GetDeviceState(sizeof(DIJOYSTATE), &padState[0][index]));
+   }
+   return hr;
+}
+
+inline static HRESULT PollGamepad(cui32 gamepadIndex) {
+   hr = di8Pad[gamepadIndex]->Poll();
+   if(FAILED(hr))
+      do hr = di8Pad[gamepadIndex]->Acquire();
+   while(hr == DIERR_INPUTLOST);
+   Try(stPollGamepad, di8Pad[gamepadIndex]->GetDeviceState(sizeof(DIJOYSTATE), &padState[0][gamepadIndex]));
+   return hr;
+}
+
+BOOL CALLBACK GamepadEnumeration(const DIDEVICEINSTANCE *inst, ptrc con) {
+   csi32 result = di8->CreateDevice(inst->guidInstance, &di8Pad[gamepadCount], NULL);
+   if FAILED(result) return DIENUM_CONTINUE;
+   else gamepadCount++;
+   if(gamepadCount >= 8) return DIENUM_STOP;
+   return DIENUM_CONTINUE;
 }
 
 inline static cui8 DikToInteger(csi8 dikValue) {
@@ -230,9 +259,14 @@ Reinitialise_:
    Sleep(1000);
 
    Try(stDI8Create, DirectInput8Create(hInst, DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&di8, NULL));
+   // Obtain keyboard
    Try(stCreateDev, di8->CreateDevice(GUID_SysKeyboard, &di8Key, NULL));
-   Try(stCreateDev, di8->CreateDevice(GUID_SysMouse, &di8Mse, NULL));
    Try(stSetKeyFormat, di8Key->SetDataFormat(&c_dfDIKeyboard));
+   //   Try(stSetKeyCoop, di8Key->SetCooperativeLevel(hWnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE));
+   Try(stSetKeyCoop, di8Key->SetCooperativeLevel(hWnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE));
+   Try(stKeyAcquire, di8Key->Acquire());
+   // Obtain mouse
+   Try(stCreateDev, di8->CreateDevice(GUID_SysMouse, &di8Mse, NULL));
    Try(stSetMseFormat, di8Mse->SetDataFormat(&dfMouse38));
    dpw.diph.dwHeaderSize = sizeof(dpw.diph);
    dpw.diph.dwHow = DIPH_DEVICE;
@@ -240,12 +274,15 @@ Reinitialise_:
    dpw.diph.dwSize = sizeof(dpw);
    dpw.dwData = DIPROPAXISMODE_REL;
    Try(stSetMseProperty, di8Mse->SetProperty(DIPROP_AXISMODE,&dpw.diph));
-//   Try(stSetKeyCoop, di8Key->SetCooperativeLevel(hWnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE));
-   Try(stSetKeyCoop, di8Key->SetCooperativeLevel(hWnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE));
 //   Try(stSetMseCoop, di8Mse->SetCooperativeLevel(hWnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE));
    Try(stSetMseCoop, di8Mse->SetCooperativeLevel(hWnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE));
-   Try(stKeyAcquire, di8Key->Acquire());
    PollMouse();
+   // Obtain gamepads
+   Try(stEnumGamepads, di8->EnumDevices(DI8DEVCLASS_GAMECTRL, GamepadEnumeration, NULL, DIEDFL_ATTACHEDONLY));
+   for(i = 0; i < gamepadCount; i++) {
+      Try(stSetPadFormat, di8Pad[i]->SetDataFormat(&c_dfDIJoystick));
+      Try(stSetPadCoop, di8Pad[i]->SetCooperativeLevel(NULL, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE));
+   }
    do {
       threadLife = THREAD_LIFE;
       if (threadLife & INPUT_THREAD_RESET) goto Reinitialise_;
@@ -253,25 +290,35 @@ Reinitialise_:
       // Stall if no state change requested
       if(!(gcv.misc[7] & 0x080)) {
          Sleep(1);
-         _mm_pause();
+         _mm_pause(); // To flush branch prediction. Sleep(0 || user defineable)???
          continue;
       }
       gcv.misc[7] &= 0x07F;
 
       // Backup state changes
-      memcpy(&mseState[1], &mseState[0], sizeof(mseState[0]));
-      memcpy(keyState[1], keyState[0], sizeof(keyState[0]));
+      Copy32(keyState[0], keyState[1], 256u);
+      Copy8(&mseState[0], &mseState[1], 24u);
+      Copy16(padState[0], padState[1], 640u);
 
+#ifdef __AVX__
       // Clear button states
       gcvLocal.imm.button = _mm256_setzero_si256();
       gcvLocal.rel.button = _mm256_setzero_si256();
-
       // Clear joypad states
-      gcvLocal.faxis32[0] = _mm256_setzero_ps();
-      gcvLocal.faxis16[2] = _mm_setzero_ps();
+      for(i = 0; i < 6; i++) gcvLocal.faxis32[i] = _mm256_setzero_ps();
+#else
+      // Clear button states
+      gcvLocal.imm[0].button = _mm_setzero_si128();
+      gcvLocal.imm[1].button = _mm_setzero_si128();
+      gcvLocal.rel[0].button = _mm_setzero_si128();
+      gcvLocal.rel[1].button = _mm_setzero_si128();
+      // Clear joypad states
+      for(i = 0; i < 12; i++) gcvLocal.faxis16[i] = _mm_setzero_ps();
+#endif
 
       PollKeyboard();
       PollMouse();
+      PollGamepads();
 
       // Set mouse axes
       GetCursorPos((LPPOINT)gcvLocal.curCoord);
