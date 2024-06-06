@@ -8,7 +8,7 @@
 * Keyboard: Up to 192 unique keys
 * Game controllers: Up to 8 devices, each of which allows for up to 8 axes, 4 POVs, and 32 buttons
 
-   Only 1 mouse and 1 keyboard are supported, currently. This may change in the future.
+Only 1 mouse and 1 keyboard are supported, currently. This may change in the future.
 
 
 
