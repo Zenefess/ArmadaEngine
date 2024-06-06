@@ -1,6 +1,6 @@
 /************************************************************
  * File: memory management.h            Created: 2008/12/08 *
- *                                Last modified: 2024/05/26 *
+ *                                Last modified: 2024/06/06 *
  *                                                          *
  * Notes: 2024/05/02: Added support for data tracking.      *
  *                                                          *
@@ -348,7 +348,7 @@ inline void mset(ptrc addr, cui64 numBytes, cui64 bitPattern) {
 }
 
 // Copy byteCount bytes of unaligned data
-inline void Copy(ptrc source, ptrc dest, cui64 byteCount) {
+inline void Copy(cptrc source, ptrc dest, cui64 byteCount) {
    cui64 k = byteCount >> 2;
    ui64  i = 0;
 #ifdef __AVX512__

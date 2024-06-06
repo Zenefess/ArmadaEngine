@@ -1,6 +1,6 @@
 /************************************************************
  * File: vector structures.h            Created: 2022/12/05 *
- *                                Last modified: 2024/05/20 *
+ *                                Last modified: 2024/06/06 *
  *                                                          *
  * Notes: 2023/04/27: Added constant vector typedefs.       *
  *        2024/04/04: Added support for 24-bit integers.    *
@@ -387,6 +387,28 @@ union VEC6Dd {
    };
 };
 
+union VEC8Du8 {
+   ui8 _ui8[8];
+   struct {
+      union { VEC4Du8 x, p, f, s; };
+      union { VEC4Du8 y, o, u, v, r; };
+   };
+   struct {
+      VEC2Du8 x2, y2, z2, w2;
+   };
+};
+
+union VEC8Ds8 {
+   si8 _si8[8];
+   struct {
+      union { VEC4Ds8 x, p, f, s; };
+      union { VEC4Ds8 y, o, u, v, r; };
+   };
+   struct {
+      VEC2Ds8 x2, y2, z2, w2;
+   };
+};
+
 union VEC8Du32 {
    ui32 _ui32[8];
    struct {
@@ -597,6 +619,18 @@ union SSE8Df16 {
    fl16    _fl16[8];
 };
 
+union SSE16Du8 {
+   __m128i xmm;
+   VEC4Du8 vector[4];
+   ui8     _ui8[16];
+};
+
+union SSE16Ds8 {
+   __m128i xmm;
+   VEC4Ds8 vector[4];
+   si8     _si8[16];
+};
+
 union AVX4Du64 {
    __m256i  ymm;
    __m128i  xmm[2];
@@ -764,7 +798,8 @@ union AVX16Du32 {
    __m512i  zmm;
    __m256i  ymm[2];
    __m128i  xmm[4];
-   VEC8Du32 vector[2];
+   VEC2Du32 vec2D[8];
+   VEC8Du32 vec8D[2];
    ui32     _ui32[16];
 };
 
@@ -772,7 +807,8 @@ union AVX16Ds32 {
    __m512i  zmm;
    __m256i  ymm[2];
    __m128i  xmm[4];
-   VEC8Ds32 vector[2];
+   VEC2Ds32 vec2D[8];
+   VEC8Ds32 vec8D[2];
    si32     _si32[16];
 };
 
@@ -780,7 +816,8 @@ union AVX16Df32 {
    __m512 zmm;
    __m256 ymm[2];
    __m128 xmm[4];
-   VEC8Df vector[2];
+   VEC2Df vec2D[8];
+   VEC8Df vec8D[2];
    fl32   _fl[16];
 };
 
@@ -884,6 +921,8 @@ typedef const VEC4Df    cVEC4Df;
 typedef const VEC4Dd    cVEC4Dd;
 typedef const VEC6Df    cVEC6Df;
 typedef const VEC6Dd    cVEC6Dd;
+typedef const VEC8Du8   cVEC8Du8;
+typedef const VEC8Ds8   cVEC8Ds8;
 typedef const VEC8Du32  cVEC8Du32;
 typedef const VEC8Ds32  cVEC8Ds32;
 typedef const VEC8Dh    cVEC8Dh;
