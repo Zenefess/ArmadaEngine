@@ -1,6 +1,6 @@
 /************************************************************
  * File: Data structures.h              Created: 2022/10/20 *
- *                                Last modified: 2024/04/23 *
+ *                                Last modified: 2024/06/06 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -183,10 +183,8 @@ al32 struct GLOBALCTRLVARS {
    union {
       struct {
          struct {
-            VEC2Df ls; // Left analog stick
-            VEC2Df rs; // Right analog stick
-            fl32   lt; // Left trigger
-            fl32   rt; // Right trigger
+            VEC4Df s; // Analog sticks
+            VEC4Df t; // Triggers
          } joy[8];
          struct {
             fl32 x;
@@ -200,33 +198,33 @@ al32 struct GLOBALCTRLVARS {
          } pointer[2];
       };
 #ifdef __AVX__
-      fl32x8 faxis32[7];
+      fl32x8 faxis32[9];
+      ui256  iaxis32[9];
 #endif
-      fl32x4 faxis16[14];
-      float  faxis[56];
-      si32   iaxis[56];
+      fl32x4 faxis16[18];
+      ui128  iaxis16[18];
+      float  faxis[72];
+      si32   iaxis[72];
    };
    union { // Immediate key states
 #ifdef __AVX__
-      ui256 button, key;
+      struct { ui256 key, button; };
 #else
-      ui128 button[2], key[2];
+      struct { ui128 key[2], button[2]; };
 #endif
-      struct { ui64 buttons0, buttons1, buttons2, buttons3; };
-      struct { ui64 keys0, keys1, keys2, keys3; };
-      ui64 buttons[4], keys[4];
-      ui8  b[32], k[32];
+      struct { ui64 k64[4], b64[4]; };
+      struct { ui32 k32[8], b32[8]; };
+      struct { ui8  k[32], b[32]; };
    } imm;
    union { // Relative key states
 #ifdef __AVX__
-      ui256 button, key;
+      struct { ui256 key, button; };
 #else
-      ui128 button[2], key[2];
+      struct { ui128 key[2], button[2]; };
 #endif
-      struct { ui64 buttons0, buttons1, buttons2, buttons3; };
-      struct { ui64 keys0, keys1, keys2, keys3; };
-      ui64 buttons[4], keys[4];
-      ui8  b[32], k[32];
+      struct { ui64 k64[4], b64[4]; };
+      struct { ui32 k32[8], b32[8]; };
+      struct { ui8  k[32], b[32]; };
    } rel;
    union { // Position of cursor relative to client window
       si32     curCoord[2];
@@ -236,6 +234,7 @@ al32 struct GLOBALCTRLVARS {
       ui64 bits;
       ui8  misc[8];
    };
+   ui64 RES[2];
 };
 
 // Global coordinates

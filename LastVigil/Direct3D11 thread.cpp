@@ -448,16 +448,16 @@ Reinitialise_:
       if(gpu.cam.data[0].fYrot > 1.0f) gpu.cam.data[0].fYrot = 1.0f;
 
       // Update local copy of global control variables
-      Copy32(&gcv, gcvLocal32, 320u);
+      Copy32(&gcv, gcvLocal32, 384u);
 
       // Update camera
-      gpu.cam.MoveCameraForwardXZ(gcvLocal.joy[0].ls.y * fElapsedTime * 32.0f, 0);
-      gpu.cam.MoveCameraRightXZ(gcvLocal.joy[0].ls.x * fElapsedTime * 16.0f, 0);
-      gpu.cam.MoveCameraUpY(gcvLocal.joy[0].lt * fElapsedTime * 16.0f, 0);
+      gpu.cam.MoveCameraRightXZ(gcvLocal.joy[2].s.x2 * fElapsedTime * 32.0f, 0);
+      gpu.cam.MoveCameraForwardXZ(gcvLocal.joy[2].s.y2 * fElapsedTime * -32.0f, 0);
+      gpu.cam.MoveCameraUpY(gcvLocal.joy[2].t.x * fElapsedTime * -32.0f, 0);
       gpu.cam.TransformProjections(0);
       gpu.cam.TransformCamera(0, 0);
 
-      // Cull out-of-view entities and map chunks
+      // Begin culling out-of-view entities and map chunks
       gpuHelper.ent.StartViewCulling(0);
       gpuHelper.map.StartViewCulling(0, 0);
 
@@ -501,9 +501,9 @@ Reinitialise_:
       snprintf(textBuffer, 128, "Pos: <%.3f, %.3f, %.3f>   Rot: <%.3f, %.3f, %.3f>   Cull time: %.3fms   Mouse tilt: %d   Entities: %d",
                gpu.cam.data[0].fXpos, gpu.cam.data[0].fYpos, gpu.cam.data[0].fZpos, gpu.cam.data[0].fXrot, gpu.cam.data[0].fYrot, gpu.cam.data[0].fZrot,
                sysData.culling.entity.time, gcvLocal.mouse.w, sysData.culling.entity.vis[0]);
-      snprintf(textInputs, 128, "0x0%02X 0x0%02X 0x0%02X 0x0%02X", inputsImmediate.x, inputsImmediate.y, inputsImmediate.z, inputsImmediate.w);
+      snprintf(textInputs, 128, "0x%03X 0x%03X 0x%03X 0x%03X", inputsImmediate.x, inputsImmediate.y, inputsImmediate.z, inputsImmediate.w);
       cfl32 cellDensity = (siCell != 0x080000001 && siCell != 0x0CDCDCDCD ? mapMan.world[0].map[0]->cell[siCell].geometry->dens : 0.0f);
-      snprintf(textBoxText, 128, "Cell %d # %d : %.3f", siCell, ((MAP_DESC &)ptrLib[14]).RES32, cellDensity);
+      snprintf(textBoxText, 128, "%0.8x %0.8x", gcvLocal.imm.k32[7], gcvLocal.rel.k32[7]);
       gpu.gui.UpdateText(textBuffer, textElement);
       gpu.gui.UpdateText(textInputs, textInputEl);
       gpu.gui.UpdateText(textBoxText, textBox);

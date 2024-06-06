@@ -1,6 +1,6 @@
 /****************************************************************
  * File: DI8 scan code text labels.h        Created: 2023/07/17 *
- *                                    Last modified: 2024/06/01 *
+ *                                    Last modified: 2024/06/05 *
  *                                                              *
  * Desc:                                                        *
  *                                                              *
@@ -10,10 +10,10 @@
 
 #include "typedefs.h"
 
-// Digital representations of joystick data inserted into indices unused by DirectInput 8
-// Mouse inputs       @ 0x080~0x08B, 0x0A8~0x0AB (16 inputs)
-// Joystick #1 inputs @ 0x0B9~0x0C4, 0x0D4-0x0D9, 0x0DE~0x0E5 (26 inputs)
-// Joystick #2 inputs @ 0x0E6~0x0FF (26 inputs)
+// Inserts mouse & gamepad POV data into indices unused by DirectInput 8
+// Mouse inputs @ 0x080~0x08B (12 inputs)
+// Gamepads' 1st POV inputs & 0x0E0~0x0FF (32 inputs)
+// Gamepads' 2nd POV inputs & 0x0A6~0x0AD, 0x0B9~0x0C4, 0x0CA, 0x0CC, 0x0CE, 0x0D4~0x0DA, 0x0EE~0x0EF (32 inputs)
 al32 cchar inputCodeText[256][16] = {
    "<Not bound>",    // 0x000
    "Escape",
@@ -175,23 +175,23 @@ al32 cchar inputCodeText[256][16] = {
    "Right Ctrl",
    "0x09E",
    "0x09F",
-   "Mute",           // 0x0A0
+   "Mute",            // 0x0A0
    "Calculator",
    "Play/Pause",
    "0x0A3",
    "Stop",
    "0x0A5",
-   "0x0A6",
-   "0x0A7",
-   "Mouse \24",
-   "Mouse \25",
-   "Mouse \27",
-   "Mouse \26",
-   "0x0AC",
-   "0x0AD",
+   "Pad 0 POV 1 \24",
+   "Pad 0 POV 1 \25",
+   "Pad 0 POV 1 \26",
+   "Pad 0 POV 1 \27",
+   "Pad 1 POV 1 \24",
+   "Pad 1 POV 1 \25",
+   "Pad 1 POV 1 \26",
+   "Pad 1 POV 1 \27",
    "Volume Down",
    "0x0AF",
-   "Volume Up",      // 0x0B0
+   "Volume Up",       // 0x0B0
    "0x0B1",
    "Web Home",
    "Numpad ,",
@@ -200,75 +200,75 @@ al32 cchar inputCodeText[256][16] = {
    "0x0B6",
    "Print Screen",
    "Right Alt",
-   "Pad 1 L \24",
-   "Pad 1 L \25",
-   "Pad 1 L \26",
-   "Pad 1 L \27",
-   "Pad 1 R \24",
-   "Pad 1 R \25",
-   "Pad 1 R \26",
-   "Pad 1 R \27",      // 0x0C0
-   "Pad 1 POV \24",
-   "Pad 1 POV \25",
-   "Pad 1 POV \26",
-   "Pad 1 POV \27",
+   "Pad 2 POV 1 \24",
+   "Pad 2 POV 1 \25",
+   "Pad 2 POV 1 \26",
+   "Pad 2 POV 1 \27",
+   "Pad 3 POV 1 \24",
+   "Pad 3 POV 1 \25",
+   "Pad 3 POV 1 \26",
+   "Pad 3 POV 1 \27", // 0x0C0
+   "Pad 4 POV 1 \24",
+   "Pad 4 POV 1 \25",
+   "Pad 4 POV 1 \26",
+   "Pad 4 POV 1 \26",
    "Pause",
    "0x0C6",
    "Home",
    "\24",
    "Page Up",
-   "0x0CA",
+   "Pad 5 POV 1 \24",
    "\27",
-   "0x0CC",
+   "Pad 5 POV 1 \25",
    "\26",
-   "0x0CE",
+   "Pad 5 POV 1 \26",
    "End",
-   "\25",            // 0x0D0
+   "\25",             // 0x0D0
    "Page Down",
    "Insert",
    "Delete",
-   "Pad 1 L trigger",
-   "Pad 1 R trigger",
-   "Pad 1 button 1",
-   "Pad 1 button 2",
-   "Pad 1 button 3",
-   "Pad 1 button 4",
-   "0x0DA",
+   "Pad 5 POV 1 \27",
+   "Pad 6 POV 1 \24",
+   "Pad 6 POV 1 \25",
+   "Pad 6 POV 1 \26",
+   "Pad 6 POV 1 \27",
+   "Pad 7 POV 1 \24",
+   "Pad 7 POV 1 \25",
    "Left Windows",
    "Right Windows",
    "App Menu",
-   "Pad 1 button 5",
-   "Pad 1 button 6",
-   "Pad 1 button 7", // 0x0E0
-   "Pad 1 button 8",
-   "Pad 1 button 9",
-   "Pad 1 button 10",
-   "Pad 1 button 11",
-   "Pad 1 button 12",
-   "Pad 2 L \24",
-   "Pad 2 L \25",
-   "Pad 2 L \26",
-   "Pad 2 L \27",
-   "Pad 2 R \24",
-   "Pad 2 R \25",
-   "Pad 2 R \26",
-   "Pad 2 R \27",
-   "Pad 2 POV \24",
-   "Pad 2 POV \25",
-   "Pad 2 POV \26",  // 0x0F0
-   "Pad 2 POV \27",
-   "Pad 2 L trigger",
-   "Pad 2 R trigger",
-   "Pad 2 button 1",
-   "Pad 2 button 2",
-   "Pad 2 button 3",
-   "Pad 2 button 4",
-   "Pad 2 button 5",
-   "Pad 2 button 6",
-   "Pad 2 button 7",
-   "Pad 2 button 8",
-   "Pad 2 button 9",
-   "Pad 2 button 10",
-   "Pad 2 button 11",
-   "Pad 2 button 12"
+   "Pad 7 POV 1 \26",
+   "Pad 7 POV 1 \27",
+   "Pad 0 POV 0 \24", // 0x0E0
+   "Pad 0 POV 0 \25",
+   "Pad 0 POV 0 \26",
+   "Pad 0 POV 0 \27",
+   "Pad 1 POV 0 \24",
+   "Pad 1 POV 0 \25",
+   "Pad 1 POV 0 \26",
+   "Pad 1 POV 0 \27",
+   "Pad 2 POV 0 \24",
+   "Pad 2 POV 0 \25",
+   "Pad 2 POV 0 \26",
+   "Pad 2 POV 0 \27",
+   "Pad 3 POV 0 \24",
+   "Pad 3 POV 0 \25",
+   "Pad 3 POV 0 \26",
+   "Pad 3 POV 0 \27", // 0x0F0
+   "Pad 4 POV 0 \24",
+   "Pad 4 POV 0 \25",
+   "Pad 4 POV 0 \26",
+   "Pad 4 POV 0 \26",
+   "Pad 5 POV 0 \24",
+   "Pad 5 POV 0 \25",
+   "Pad 5 POV 0 \26",
+   "Pad 5 POV 0 \27",
+   "Pad 6 POV 0 \24",
+   "Pad 6 POV 0 \25",
+   "Pad 6 POV 0 \26",
+   "Pad 6 POV 0 \27",
+   "Pad 7 POV 0 \24",
+   "Pad 7 POV 0 \25",
+   "Pad 7 POV 0 \26",
+   "Pad 7 POV 0 \27"
 };

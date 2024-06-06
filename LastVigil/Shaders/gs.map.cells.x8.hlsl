@@ -70,12 +70,12 @@ const StructuredBuffer<CELL_DYN>    cell    : register(t1);
 [instance(32)] [maxvertexcount(36)]
 void main(in point const int4x11 indices[1] : CELLS, const uint instanceID : SV_GSInstanceID, inout TriangleStream<GOut> triStream) {
    const int3  iMapDim    = ((dimData.x >> uint3(0, 10u, 20u)) & 0x03FFu) + 1;
-   const uint  zso        = (dimData.w >> 22u) + 1u;
-   const int3  iChunkDim  = { ((dimData.x >> 30u) | ((dimData.y << 2u) & 0x03Cu)) + 1, ((dimData.y >> 4u) & 0x03Fu) + 1, ((dimData.y >> 10u) & 0x03Fu) + 1 };
-   const bool  bitFlag    = (dimData.w >> 21u) & 0x01u;
-   const uint2 totalCells = { (dimData.z >> 14u) + 1u, ((dimData.y >> 16u) | ((dimData.z & 0x03FFu) << 16u)) + 1u };
-
+//   const uint  zso        = (dimData.w >> 22u) + 1u;
    const uint    uiCell      = instanceID >> 2;
+   const int3  iChunkDim  = { ((dimData.x >> 30u) | ((dimData.y << 2u) & 0x03Cu)) + 1, ((dimData.y >> 4u) & 0x03Fu) + 1, ((dimData.y >> 10u) & 0x03Fu) + 1 };
+//   const bool  bitFlag    = (dimData.w >> 21u) & 0x01u;
+//   const uint2 totalCells = { (dimData.z >> 14u) + 1u, ((dimData.y >> 16u) | ((dimData.z & 0x03FFu) << 16u)) + 1u };
+
    const uint    uiStrip     = (instanceID & 0x03) << 1;
    const uint4x4 index       = uint4x4(indices[0][uiCell], indices[0][uiCell + 1], indices[0][uiCell + 2], indices[0][uiCell + 3]);
    const matrix  cellDensity = matrix(cell[index[0][0]].dens, cell[index[0][1]].dens, cell[index[0][2]].dens, cell[index[0][3]].dens,
@@ -146,13 +146,15 @@ void main(in point const int4x11 indices[1] : CELLS, const uint instanceID : SV_
    GOut output;
    const float4x4 mTransform = mul(camera, projection);
    // Calculate cell position in world space
-   const uint   uiCurChunk = index[2][2] / totalCells.x;
+//   const uint   uiCurChunk = index[2][2] / totalCells.x;
+   const uint   uiCurChunk = index[2][2] / ((dimData.z >> 14u) + 1u);
    const uint3  uiChunks   = ((dimData.w >> uint3(0, 7u, 14u)) & 0x07Fu) + 1u;
    const uint3  uiChunkOS  = uint3(uiCurChunk % uiChunks.x, (uiCurChunk / uiChunks.x) % uiChunks.y, (uiCurChunk / (uiChunks.x * uiChunks.y)) % uiChunks.z);
    const uint3  uiCellOS   = uint3(index[2][2] % asuint(iChunkDim.x), (index[2][2] / asuint(iChunkDim.x)) % asuint(iChunkDim.y), (index[2][2] / uint(iChunkDim.x * iChunkDim.y)) % asuint(iChunkDim.z));
    const float3 fStep      = float3(uiStrip, uiStrip + 1, uiStrip + 2) * 0.125f;
    const float4 fTStep     = float4(0.0f, fStep.x, 0.125f, -0.125f) * fTCS;
-   const int3   iPos       = int3(uiChunkOS) * iChunkDim + int3(uiCellOS) - int3(iMapDim.xy >> 1, zso);
+//   const int3   iPos       = int3(uiChunkOS) * iChunkDim + int3(uiCellOS) - int3(iMapDim.xy >> 1, zso);
+   const int3   iPos       = int3(uiChunkOS) * iChunkDim + int3(uiCellOS) - int3(iMapDim.xy >> 1, (dimData.w >> 22u) + 1u);
    const float3 fPos       = float3(iPos);
    // Calculate Texture deltas
    const float4 fTDx    = float2(fTC.zw - fTC.xy).xyxy;

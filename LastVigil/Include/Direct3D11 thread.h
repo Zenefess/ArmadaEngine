@@ -42,4 +42,4 @@ extern vol GLOBALCTRLVARS gcv;
 #define AE_PTR_LIB
 extern cptr ptrLib[16];
 
-extern VEC4Du8 inputsImmediate;
+extern VEC4Du16 inputsImmediate;

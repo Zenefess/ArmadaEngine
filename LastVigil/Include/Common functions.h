@@ -1,6 +1,6 @@
 /************************************************************
  * File: Common functions.h             Created: 2023/02/02 *
- *                                    Last mod.: 2024/05/30 *
+ *                                    Last mod.: 2024/06/06 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -19,6 +19,7 @@
 static cfl32 rcp1p5f   = 2.0f / 3.0f;
 static cfl32 rcp3f     = 1.0f / 3.0f;
 static cfl32 rcp6f     = 1.0f / 6.0f;
+static cfl32 rcp32767f = 1.0f / 32767.0f;
 static cfl32 rcp32768f = 1.0f / 32768.0f;
 static cfl32 rcp65535f = 1.0f / 65535.0f;
 static cfl32 rcp65536f = 1.0f / 65536.0f;
@@ -26,20 +27,25 @@ static cfl32 rcp65536f = 1.0f / 65536.0f;
 static cfl64 rcp1p5d   = 2.0 / 3.0;
 static cfl64 rcp3d     = 1.0 / 3.0;
 static cfl64 rcp6d     = 1.0 / 6.0;
+static cfl64 rcp32767d = 1.0 / 32767.0;
 static cfl64 rcp32768d = 1.0 / 32768.0;
 static cfl64 rcp65535d = 1.0 / 65535.0;
 static cfl64 rcp65536d = 1.0 / 65536.0;
 
 static cVEC3Df null3Df = { 0.0f, 0.0f, 0.0f };
 
-static cfl32x4 null128f = _mm_setzero_ps();
-static cui128  null128  = _mm_setzero_si128();
-static cui128  max128   = { .m128i_i64 = { -1, -1 } };
+static cfl32x4 null128f  = _mm_setzero_ps();
+static cfl32x4 ones32x4f = _mm_set_ps1(1.0f);
+static cui128  null128   = _mm_setzero_si128();
+static cui128  ones32x4  = _mm_set1_epi32(1u);
+static cui128  max128    = _mm_set1_epi32(-1);
 
 #ifdef __AVX__
-static cui256 null256  = _mm256_setzero_si256();
-static cui256 ones32x8 = { .m256i_i32 = { 1, 1, 1, 1, 1, 1, 1, 1 } };
-static cui256 max256   = { .m256i_i64 = { -1, -1, -1, -1 } };
+static cfl32x8 null256f  = _mm256_setzero_ps();
+static cfl32x8 ones32x8f = _mm256_set1_ps(1.0f);
+static cui256  null256   = _mm256_setzero_si256();
+static cui256  ones32x8  = _mm256_set1_epi32(1u);
+static cui256  max256    = _mm256_set1_epi32(-1);
 #endif
 
 inline void swap(ui8 &a, ui8 &b) { a ^= b; b ^= a; a ^= b; }

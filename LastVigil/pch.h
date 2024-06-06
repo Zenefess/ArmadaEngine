@@ -27,6 +27,7 @@
    #include <24-bit integers.h>
    #include <vector structures.h>
    #include <Fixed-point data types.h>
+   #include <Common functions.h>
    #include <stdlib.h>
    #include <tchar.h>
 #endif

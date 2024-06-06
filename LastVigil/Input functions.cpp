@@ -1,6 +1,6 @@
 /************************************************************
 * File: Input functions.cpp            Created: 2024/04/22 *
-*                                Last modified: 2024/05/23 *
+*                                Last modified: 2024/06/05 *
 *                                                          *
 * Desc:                                                    *
 *                                                          *
@@ -74,21 +74,21 @@ void ProcessInputs(GLOBALCTRLVARS &ctrlVars) {
       siChunk = siCell / md.chunkCells;
 
       // Mouse button 0
-      if(siActiveLayer.m128i_i32[1] < 0 && ctrlVars.imm.b[16] & 0x01) {
+      if(siActiveLayer.m128i_i32[1] < 0 && ctrlVars.imm.k[16] & 0x01) {
          if(siCell != 0x080000001) {
             mapMan.world[0].map[0]->cell[siCell].pixel->gev += fElapsedTime * 8.0f;
             mapMan.world[0].map[0]->chunkMod[siChunk >> 6] |= ui64(0x01) << (siChunk & 0x03F);
          }
       }
       // Mouse button 1
-      if(siActiveLayer.m128i_i32[2] < 0 && ctrlVars.imm.b[16] & 0x02) {
+      if(siActiveLayer.m128i_i32[2] < 0 && ctrlVars.imm.k[16] & 0x02) {
          if(siCell != 0x080000001) {
             mapMan.world[0].map[0]->cell[siCell].pixel->gev -= fElapsedTime * 8.0f;
             mapMan.world[0].map[0]->chunkMod[siChunk >> 6] |= ui64(0x01) << (siChunk & 0x03F);
          }
       }
       // Mouse button 3
-      if(ctrlVars.imm.b[16] & 0x08) {
+      if(ctrlVars.imm.k[16] & 0x08) {
          if(siCell != 0x080000001) {
             mapMan.ModQuadCellDensity(md.mcrv.activeCell, -fElapsedTime, 0, 0);
             //            gpu.gui.element_dgs[gpu.gui.element[panelElement0].vertexIndex].rotAngle -= fElapsedTime;
@@ -96,7 +96,7 @@ void ProcessInputs(GLOBALCTRLVARS &ctrlVars) {
          }
       }
       // Mouse button 4
-      if(ctrlVars.imm.b[16] & 0x010) {
+      if(ctrlVars.imm.k[16] & 0x010) {
          if(siCell != 0x080000001) {
             mapMan.ModQuadCellDensity(md.mcrv.activeCell, fElapsedTime, 0, 0);
             //            gpu.gui.element_dgs[gpu.gui.element[panelElement0].vertexIndex].rotAngle += fElapsedTime;
@@ -104,25 +104,25 @@ void ProcessInputs(GLOBALCTRLVARS &ctrlVars) {
          }
       }
       // Mouse wheel left
-      if(ctrlVars.imm.b[16] & 0x020) {
+      if(ctrlVars.imm.k[16] & 0x020) {
          if(siCell != 0x080000001) {
             mapMan.ModQuadCellDensity(md.mcrv.activeCell, -fElapsedTime, 0, 0);
          }
       }
       // Mouse wheel right
-      if(ctrlVars.imm.b[16] & 0x040) {
+      if(ctrlVars.imm.k[16] & 0x040) {
          if(siCell != 0x080000001) {
             mapMan.ModQuadCellDensity(md.mcrv.activeCell, fElapsedTime, 0, 0);
          }
       }
-      if(ctrlVars.imm.b[4] & 0x01)
+      if(ctrlVars.imm.k[4] & 0x01)
          if(siCell != 0x080000001) {
             mapMan.world[0].map[0]->cell[siCell].geometry->et.x = (ctrlVars.misc[1] & 0x03u) + 1u;
             mapMan.world[0].map[0]->chunkMod[siChunk >> 6] |= ui64(0x01u) << (siChunk & 0x03Fu);
          }
    }
    // Mouse button 2
-   if(ctrlVars.imm.b[16] & 0x04) {
+   if(ctrlVars.imm.k[16] & 0x04) {
       if(ctrlVars.misc[7] & 0x08) {
          //gpu.MouseCursor(hWnd, false);
          ctrlVars.misc[7] &= 0x0F7;
@@ -134,4 +134,7 @@ void ProcessInputs(GLOBALCTRLVARS &ctrlVars) {
          //gpu.MouseCursor(hWnd, true);
          ctrlVars.misc[7] |= 0x08;
       }
+   // Gamepad 0x02 input
+   gpu.cam.data[0].fXrot -= ctrlVars.joy[2].s.x1 * fElapsedTime;
+   gpu.cam.data[0].fYrot += ctrlVars.joy[2].s.y1 * fElapsedTime;
 }
