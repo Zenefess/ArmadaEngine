@@ -1,6 +1,6 @@
 2024/06/06 update:
 
-   Input processing is complete. Input mappings for triggering functions can be any combination of all 512 binary inputs (keys, mouse buttons, and controller buttons & POV directions) and, optionally, any combination of scalar inputs (mouse and game controller axes). Work on custom function handling is still underway, being worked on in parallel with the rest of the GUI system.
+   Input processing is complete. Input mappings for triggering functions can be any combination of all 512 binary inputs (keys, mouse buttons, and controller buttons & POV directions) and, optionally, any combination of scalar inputs (mouse and game controller axes). Work on custom function handling is still underway, being worked on in parallel with the rest of the GUI system. Game controller axes support deadzones and sensitivity adjmustments. Only 1 mouse and 1 keyboard are supported, currently; this may change in the future.
    
    The following is supported:
    
@@ -8,7 +8,6 @@
 * Keyboard: Up to 192 unique keys
 * Game controllers: Up to 8 devices, each of which allows for up to 8 axes, 4 POVs, and 32 buttons
 
-Only 1 mouse and 1 keyboard are supported, currently. This may change in the future.
 
 
 
