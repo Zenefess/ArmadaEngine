@@ -1,6 +1,6 @@
 2024/06/06 update:
 
-   Input processing is complete. Input mappings for triggering functions can be any combination of all 512 binary inputs (keys, mouse buttons, and controller buttons & POV directions) and, optionally, any combination of scalar inputs (mouse and game controller axes). Work on custom function handling is still underway, being worked on in parallel with the GUI system.
+   Input processing is complete. Input mappings for triggering functions can be any combination of all 512 binary inputs (keys, mouse buttons, and controller buttons & POV directions) and, optionally, any combination of scalar inputs (mouse and game controller axes). Work on custom function handling is still underway, being worked on in parallel with the rest of the GUI system.
    
    The following is supported:
    
