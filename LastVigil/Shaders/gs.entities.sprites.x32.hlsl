@@ -14,7 +14,7 @@
 #include "common.hlsli"
 
 cbuffer CB_VIEW : register(b0) { // 160 bytes (10 vectors)
-   const matrix projection;   // Perspective transformation
+   const matrix perspective;  // Perspective transformation
    const matrix orthographic; // Orthographic transformation
    const float2 guiScale;     // Final X & Y scaling factors for GUI
    const uint2  bitField;     // 0-63==???
@@ -160,7 +160,7 @@ void main(point const uint4x8 index[1] : INDEX, const uint iID : SV_GSInstanceID
    if(!bBillboard) output.position -= fVert1;
    float4 prePos = mul(float4(output.position, 1.0f), camera);
    if(bBillboard) prePos -= float4(fVert1, 0.0f);
-   output.pos = mul(prePos, projection);
+   output.pos = mul(prePos, perspective);
    output.tex = float2(fTC.x + fFrameOS, fTC.w);
    triStream.Append(output);
    // Top(-left) vertex
@@ -168,7 +168,7 @@ void main(point const uint4x8 index[1] : INDEX, const uint iID : SV_GSInstanceID
    if(!bBillboard && !bShape) output.position += fVert2;   // Shift to top-left if quadrilateral
    prePos = mul(float4(output.position, 1.0f), camera);
    if(bBillboard && !bShape) prePos += float4(fVert2, 0.0f);
-   output.pos = mul(prePos, projection);
+   output.pos = mul(prePos, perspective);
    output.tex = float2(fTC.x + fFrameOS, fTC.y);
    triStream.Append(output);
    // Bottom-right vertex
@@ -176,7 +176,7 @@ void main(point const uint4x8 index[1] : INDEX, const uint iID : SV_GSInstanceID
    if(!bBillboard) output.position -= fVert2;
    prePos = mul(float4(output.position, 1.0f), camera);
    if(bBillboard) prePos -= float4(fVert2, 0.0f);
-   output.pos = mul(prePos, projection);
+   output.pos = mul(prePos, perspective);
    output.tex = float2(fTC.z + fFrameOS, fTC.w);
    triStream.Append(output);
    // Top-right vertex
@@ -185,7 +185,7 @@ void main(point const uint4x8 index[1] : INDEX, const uint iID : SV_GSInstanceID
    if(!bBillboard) output.position += fVert1;
    prePos = mul(float4(output.position, 1.0f), camera);
    if(bBillboard) prePos += float4(fVert1, 0.0f);
-   output.pos = mul(prePos, projection);
+   output.pos = mul(prePos, perspective);
    output.tex = float2(fTC.z + fFrameOS, fTC.y);
    triStream.Append(output);
 }

@@ -1,6 +1,6 @@
 /**********************************************************************
  * File: gs.mesh displacement functions.hlsli     Created: 2023/05/13 *
- *                                              Last mod.: 2023/05/21 *
+ *                                              Last mod.: 2024/06/11 *
  *                                                                    *
  * Desc: Common shader functions.                                     *
  *                                                                    *
@@ -67,17 +67,278 @@ inline const float3 Displace4x4(in const matrix density, in const float2 positio
 
       switch(method & 0x07) {
       case 0: // 00==Standard
-         return float3(position, result);
+         return float3(position, -result);
       case 1: // 02==Smoothstep
          return float3(position, -smoothstep(0.0f, 1.0f, result));
-      case 2: // 01==Flatten bottom
-         return float3(position, -max(0.0f, result));
-      case 3: // 01==Flatten top
+      case 2: // 01==Flatten top
          return float3(position, -min(1.0f, result));
+      case 3: // 01==Flatten bottom
+         return float3(position, -max(0.0f, result));
       }
       break;
    case 1: // Cube
       return float3(position, density[2][2]);
+   }
+}
+
+// 4-triangle strip for 16x8 mesh
+inline const float3x6 Displace4x4_16x8(in const matrix density, in const float3 origin, in const float2 offset, in const uint method) {
+   float3x6 vertices;
+   uint2    step;
+
+   switch(method >> 3u) {
+   case 0: // Quad2 waves
+      switch(method & 0x07) {
+      case 0: // 00==Standard
+         [unroll] for(step.x = 0; step.x < 3; ++step.x)
+            [unroll] for(step.y = 0; step.y < 2; ++step.y) {
+               const float2 position = (float2(step) * 0.125f) + offset;
+
+               const float2 fBias_ = (position - 0.5f);
+               const float2 fBias  = (0.25f - (fBias_ * fBias_)) * 2.0f;
+
+               const vector vInner = lerp(density[1], density[2], position.x);
+               const vector vOuter = lerp((density[1] - density[0]) * 0.5f + density[1], (density[2] - density[3]) * 0.5f + density[2], position.x);
+               const vector vXLerp = lerp(vInner, vOuter, fBias.x);
+               const float  vMajor = lerp(vXLerp[1], vXLerp[2], position.y);
+               const float  vMinor = lerp((vXLerp[1] - vXLerp[0]) * 0.5f + vXLerp[1], (vXLerp[2] - vXLerp[3]) * 0.5f + vXLerp[2], position.y);
+
+               const float result = lerp(vMajor, vMinor, fBias.y);
+
+               vertices[step.x * 2 + step.y] = origin + float3(position, -result);
+            }
+         return vertices;
+      case 1: // 01==Smoothstep
+         [unroll] for(step.x = 0; step.x < 3; ++step.x)
+            [unroll] for(step.y = 0; step.y < 2; ++step.y) {
+               const float2 position = (float2(step) * 0.125f) + offset;
+
+               const float2 fBias_ = (position - 0.5f);
+               const float2 fBias  = (0.25f - (fBias_ * fBias_)) * 2.0f;
+
+               const vector vInner = lerp(density[1], density[2], position.x);
+               const vector vOuter = lerp((density[1] - density[0]) * 0.5f + density[1], (density[2] - density[3]) * 0.5f + density[2], position.x);
+               const vector vXLerp = lerp(vInner, vOuter, fBias.x);
+               const float  vMajor = lerp(vXLerp[1], vXLerp[2], position.y);
+               const float  vMinor = lerp((vXLerp[1] - vXLerp[0]) * 0.5f + vXLerp[1], (vXLerp[2] - vXLerp[3]) * 0.5f + vXLerp[2], position.y);
+
+               const float result = lerp(vMajor, vMinor, fBias.y);
+
+               vertices[step.x * 2 + step.y] = origin + float3(position, -smoothstep(0.0f, 1.0f, result));
+            }
+         return vertices;
+      case 2: // 02==Flatten top
+         [unroll] for(step.x = 0; step.x < 3; ++step.x)
+            [unroll] for(step.y = 0; step.y < 2; ++step.y) {
+               const float2 position = (float2(step) * 0.125f) + offset;
+
+               const float2 fBias_ = (position - 0.5f);
+               const float2 fBias  = (0.25f - (fBias_ * fBias_)) * 2.0f;
+
+               const vector vInner = lerp(density[1], density[2], position.x);
+               const vector vOuter = lerp((density[1] - density[0]) * 0.5f + density[1], (density[2] - density[3]) * 0.5f + density[2], position.x);
+               const vector vXLerp = lerp(vInner, vOuter, fBias.x);
+               const float  vMajor = lerp(vXLerp[1], vXLerp[2], position.y);
+               const float  vMinor = lerp((vXLerp[1] - vXLerp[0]) * 0.5f + vXLerp[1], (vXLerp[2] - vXLerp[3]) * 0.5f + vXLerp[2], position.y);
+
+               const float result = lerp(vMajor, vMinor, fBias.y);
+
+               vertices[step.x * 2 + step.y] = origin + float3(position, -min(1.0f, result));
+            }
+         return vertices;
+      case 3: // 03==Flatten bottom
+         [unroll] for(step.x = 0; step.x < 3; ++step.x)
+            [unroll] for(step.y = 0; step.y < 2; ++step.y) {
+               const float2 position = float2(step) * 0.125f;
+
+               const float2 fBias_ = (position - 0.5f);
+               const float2 fBias  = (0.25f - (fBias_ * fBias_)) * 2.0f;
+
+               const vector vInner = lerp(density[1], density[2], position.x);
+               const vector vOuter = lerp((density[1] - density[0]) * 0.5f + density[1], (density[2] - density[3]) * 0.5f + density[2], position.x);
+               const vector vXLerp = lerp(vInner, vOuter, fBias.x);
+               const float  vMajor = lerp(vXLerp[1], vXLerp[2], position.y);
+               const float  vMinor = lerp((vXLerp[1] - vXLerp[0]) * 0.5f + vXLerp[1], (vXLerp[2] - vXLerp[3]) * 0.5f + vXLerp[2], position.y);
+
+               const float result = lerp(vMajor, vMinor, fBias.y);
+
+               vertices[step.x * 2 + step.y] = origin + float3(position, -max(0.0f, result));
+            }
+         return vertices;
+      }
+      break;
+   case 1: // Acute edge
+      switch(method & 0x07) {
+      case 0: // 08==Shallow
+         [unroll] for(step.x = 0; step.x < 3; ++step.x)
+            [unroll] for(step.y = 0; step.y < 2; ++step.y) {
+               const float2 position = float2(step) * 0.125f;
+
+               const float4 fPosInv = pow(float4(position, 1.0f - position), 6);
+               const float2 fScaleX = float2((density[1].y <= density[2].y ? fPosInv.x : 1.0f - fPosInv.z), (density[1].z <= density[2].z ? fPosInv.x : 1.0f - fPosInv.z));
+               const float2 fMinor  = lerp(density[1].yz, density[2].yz, fScaleX);
+               const float  fScaleY = (fMinor.x <= fMinor.y ? fPosInv.y : 1.0f - fPosInv.w);
+               const float  fMajor  = lerp(fMinor[0], fMinor[1], fScaleY);
+
+               const float result = fMajor;
+
+               vertices[step.x * 2 + step.y] = origin + float3(position, -result);
+            }
+         return vertices;
+      case 1: // 09==Wide
+         [unroll] for(step.x = 0; step.x < 3; ++step.x)
+            [unroll] for(step.y = 0; step.y < 2; ++step.y) {
+               const float2 position = float2(step) * 0.125f;
+
+               const float4 fPosInv = pow(float4(1.0f - position, position), 6);
+               const float2 fScaleX = float2((density[1].y <= density[2].y ? 1.0f - fPosInv.x : fPosInv.z), (density[1].z <= density[2].z ? 1.0f - fPosInv.x : fPosInv.z));
+               const float2 fMinor  = lerp(density[1].yz, density[2].yz, fScaleX);
+               const float  fScaleY = (fMinor.x <= fMinor.y ? 1.0f - fPosInv.y : fPosInv.w);
+               const float  fMajor  = lerp(fMinor[0], fMinor[1], fScaleY);
+
+               const float result = fMajor;
+
+               vertices[step.x * 2 + step.y] = origin + float3(position, -result);
+            }
+         return vertices;
+      }
+      break;
+   }
+}
+
+// 4-triangle strip for 16x8 mesh
+inline void Displace4x4_16x8(out float3x6 vertices, in const matrix density, in const float3 origin, in const uint strip, in const uint method) {
+   uint x, y;
+
+   switch(method >> 3u) {
+   case 0: // Quad2 waves
+      switch(method & 0x07) {
+      case 0: // 00==Standard
+         [unroll]
+         for(x = 0; x < 3; x++)
+            [unroll]
+            for(y = 0; y < 2; y++) {
+               const float2 position = float2(x, y + strip) * 0.125f;
+
+               const float2 fBias_ = (position - 0.5f);
+               const float2 fBias  = (0.25f - (fBias_ * fBias_)) * 2.0f;
+
+               const vector vInner = lerp(density[1], density[2], position.x);
+               const vector vOuter = lerp((density[1] - density[0]) * 0.5f + density[1], (density[2] - density[3]) * 0.5f + density[2], position.x);
+               const vector vXLerp = lerp(vInner, vOuter, fBias.x);
+               const float  vMajor = lerp(vXLerp[1], vXLerp[2], position.y);
+               const float  vMinor = lerp((vXLerp[1] - vXLerp[0]) * 0.5f + vXLerp[1], (vXLerp[2] - vXLerp[3]) * 0.5f + vXLerp[2], position.y);
+
+               const float result = lerp(vMajor, vMinor, fBias.y);
+
+               vertices[x * 2 + y] = origin + float3(position, -result);
+            }
+         return;
+      case 1: // 01==Smoothstep
+         [unroll]
+         for(x = 0; x < 3; x++)
+            [unroll]
+            for(y = 0; y < 2; y++) {
+               const float2 position = float2(x, y + strip) * 0.125f;
+
+               const float2 fBias_ = (position - 0.5f);
+               const float2 fBias  = (0.25f - (fBias_ * fBias_)) * 2.0f;
+
+               const vector vInner = lerp(density[1], density[2], position.x);
+               const vector vOuter = lerp((density[1] - density[0]) * 0.5f + density[1], (density[2] - density[3]) * 0.5f + density[2], position.x);
+               const vector vXLerp = lerp(vInner, vOuter, fBias.x);
+               const float  vMajor = lerp(vXLerp[1], vXLerp[2], position.y);
+               const float  vMinor = lerp((vXLerp[1] - vXLerp[0]) * 0.5f + vXLerp[1], (vXLerp[2] - vXLerp[3]) * 0.5f + vXLerp[2], position.y);
+
+               const float result = lerp(vMajor, vMinor, fBias.y);
+
+               vertices[x * 2 + y] = origin + float3(position, -smoothstep(0.0f, 1.0f, result));
+            }
+         return;
+      case 2: // 02==Flatten top
+         [unroll]
+         for(x = 0; x < 3; x++)
+            [unroll]
+            for(y = 0; y < 2; y++) {
+               const float2 position = float2(x, y + strip) * 0.125f;
+
+               const float2 fBias_ = (position - 0.5f);
+               const float2 fBias  = (0.25f - (fBias_ * fBias_)) * 2.0f;
+
+               const vector vInner = lerp(density[1], density[2], position.x);
+               const vector vOuter = lerp((density[1] - density[0]) * 0.5f + density[1], (density[2] - density[3]) * 0.5f + density[2], position.x);
+               const vector vXLerp = lerp(vInner, vOuter, fBias.x);
+               const float  vMajor = lerp(vXLerp[1], vXLerp[2], position.y);
+               const float  vMinor = lerp((vXLerp[1] - vXLerp[0]) * 0.5f + vXLerp[1], (vXLerp[2] - vXLerp[3]) * 0.5f + vXLerp[2], position.y);
+
+               const float result = lerp(vMajor, vMinor, fBias.y);
+
+               vertices[x * 2 + y] = origin + float3(position, -min(1.0f, result));
+            }
+         return;
+      case 3: // 03==Flatten bottom
+         [unroll]
+         for(x = 0; x < 3; x++)
+            [unroll]
+            for(y = 0; y < 2; y++) {
+               const float2 position = float2(x, y + strip) * 0.125f;
+
+               const float2 fBias_ = (position - 0.5f);
+               const float2 fBias  = (0.25f - (fBias_ * fBias_)) * 2.0f;
+
+               const vector vInner = lerp(density[1], density[2], position.x);
+               const vector vOuter = lerp((density[1] - density[0]) * 0.5f + density[1], (density[2] - density[3]) * 0.5f + density[2], position.x);
+               const vector vXLerp = lerp(vInner, vOuter, fBias.x);
+               const float  vMajor = lerp(vXLerp[1], vXLerp[2], position.y);
+               const float  vMinor = lerp((vXLerp[1] - vXLerp[0]) * 0.5f + vXLerp[1], (vXLerp[2] - vXLerp[3]) * 0.5f + vXLerp[2], position.y);
+
+               const float result = lerp(vMajor, vMinor, fBias.y);
+
+               vertices[x * 2 + y] = origin + float3(position, -max(0.0f, result));
+            }
+         return;
+      }
+      break;
+   case 1: // Acute edge
+      switch(method & 0x07) {
+      case 0: // 08==Shallow
+         [unroll]
+         for(x = 0; x < 3; x++)
+            [unroll]
+            for(y = 0; y < 2; y++) {
+               const float2 position = float2(x, y + strip) * 0.125f;
+
+               const float4 fPosInv = pow(float4(position, 1.0f - position), 6);
+               const float2 fScaleX = float2((density[1].y <= density[2].y ? fPosInv.x : 1.0f - fPosInv.z), (density[1].z <= density[2].z ? fPosInv.x : 1.0f - fPosInv.z));
+               const float2 fMinor  = lerp(density[1].yz, density[2].yz, fScaleX);
+               const float  fScaleY = (fMinor.x <= fMinor.y ? fPosInv.y : 1.0f - fPosInv.w);
+               const float  fMajor  = lerp(fMinor[0], fMinor[1], fScaleY);
+
+               const float result = fMajor;
+
+               vertices[x * 2 + y] = origin + float3(position, -result);
+            }
+         return;
+      case 1: // 09==Wide
+         [unroll]
+         for(x = 0; x < 3; x++)
+            [unroll]
+            for(y = 0; y < 2; y++) {
+               const float2 position = float2(x, y + strip) * 0.125f;
+
+               const float4 fPosInv = pow(float4(1.0f - position, position), 6);
+               const float2 fScaleX = float2((density[1].y <= density[2].y ? 1.0f - fPosInv.x : fPosInv.z), (density[1].z <= density[2].z ? 1.0f - fPosInv.x : fPosInv.z));
+               const float2 fMinor  = lerp(density[1].yz, density[2].yz, fScaleX);
+               const float  fScaleY = (fMinor.x <= fMinor.y ? 1.0f - fPosInv.y : fPosInv.w);
+               const float  fMajor  = lerp(fMinor[0], fMinor[1], fScaleY);
+
+               const float result = fMajor;
+
+               vertices[x * 2 + y] = origin + float3(position, -result);
+            }
+         return;
+      }
+      break;
    }
 }
 
@@ -217,7 +478,6 @@ inline const float3x18 Displace4x4_16x8(in const matrix density, in const float3
       break;
    }
 }
-
 
 // 16-triangle strip for 16x8 mesh
 inline void Displace4x4_16x8(out float3x18 vertices, in const matrix density, in const float3 origin, in const uint strip, in const uint method) {

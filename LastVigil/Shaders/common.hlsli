@@ -1,6 +1,6 @@
 /************************************************************
  * File: common.hlsli                   Created: 2023/01/18 *
- *                                    Last mod.: 2023/05/14 *
+ *                                    Last mod.: 2024/06/10 *
  *                                                          *
  * Desc: Common shader presets.                             *
  *                                                          *
@@ -17,7 +17,9 @@ struct TIME { uint seconds; float fraction; }; // High-resolution time variable
 
 // Type defines
 typedef int2   int2x18[18];
+typedef float3 float3x6[6];
 typedef float3 float3x18[18];
+typedef float4 float4x6[6];
 typedef uint4  uint4x8[8];
 typedef int4   int4x11[11];
 
@@ -65,7 +67,9 @@ typedef const float4x3  cfloat4x3;
 typedef const float2x4  cfloat2x4;
 typedef const float3x4  cfloat3x4;
 typedef const float4x4  cfloat4x4;
+typedef const float3x6  cfloat3x6;
 typedef const float3x18 cfloat3x18;
+typedef const float4x6  cfloat4x6;
 typedef const vector    cvector;
 typedef const matrix    cmatrix;
 typedef const TIME      cTIME;
@@ -112,6 +116,11 @@ inline uint rand_ui31(in const uint index) {
 
 inline uint2 rand_ui31(in const uint2 indices) {
    const uint2 i = (indices << 13u) ^ indices;
+   return (i * (i * i * 15731u + 789221u) + 1376312589u) & 0x07FFFFFFF;
+}
+
+inline uint3 rand_ui31(in const uint3 indices) {
+   const uint3 i = (indices << 13u) ^ indices;
    return (i * (i * i * 15731u + 789221u) + 1376312589u) & 0x07FFFFFFF;
 }
 

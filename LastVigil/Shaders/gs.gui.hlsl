@@ -34,7 +34,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
    float2 parTranslation = 0.0f;
 
    // Does the element have a parent?
-   [branch] if(curElement.pei != 0x0FFFFFFFF) {
+   [branch] if(curElement.pei != input[0]) {
       const GUI_EL_DYN curParent = element[curElement.pei];
 
       parScaling.zw = curParent.coords[0].zw;
@@ -55,7 +55,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
          if(curParent.seo_bits & 0x040000) parTranslation.y *= -1.0f;                         // Flip Y coordinate relative to top of viewport
 
          // Does the parent have a parent?
-         if(curParent.pei != 0x0FFFFFFFF) {
+         if(curParent.pei != curElement.pei) {
             const GUI_EL_DYN curParent2  = element[curParent.pei];
             const float2     tempScaling = parScaling.xy;
 
@@ -77,7 +77,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
                if(curParent2.seo_bits & 0x040000) parTranslation.y *= -1.0f;                          // Flip Y coordinate relative to top of viewport
 
                // Does the grandparent have a parent?
-               if(curParent2.pei != 0x0FFFFFFFF) {
+               if(curParent2.pei != curParent.pei) {
                   const GUI_EL_DYN curParent3   = element[curParent2.pei];
                   const float2     tempScaling2 = parScaling.xy;
 
@@ -108,7 +108,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
    const uint ai_type = ((curElement.ind_type >> 16) & 0x07F) | (type << 7);
    
    float2 coords = 0.0f;
-   float  border = ((curElement.pei != 0x0FFFFFFFF) && (curBits & 0x0200) ? invScale.y : invScale.x);
+   float  border = ((curElement.pei != input[0]) && (curBits & 0x0200) ? invScale.y : invScale.x);
 
    // Type!=Text
    [branch] if(type) {
@@ -145,7 +145,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
          coords = float2((rotVals.x * rotVals.w) - (rotVals.y * rotVals.z), (rotVals.x * rotVals.z) + (rotVals.y * rotVals.w));
 
       // If parented, scale & translate coordinates to parent space
-      if(curElement.pei != 0x0FFFFFFFF) {
+      if(curElement.pei != input[0]) {
          coords *= parScaling.zw;
          coords += parTranslation;
       }
@@ -292,7 +292,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       }
 
       // If parented, scale & translate coordinates to parent space
-      if(curElement.pei != 0x0FFFFFFFF) {
+      if(curElement.pei != input[0]) {
          coords *= parScaling.zw;
          coords += parTranslation;
       }
