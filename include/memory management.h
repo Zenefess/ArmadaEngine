@@ -1,6 +1,6 @@
 /************************************************************
  * File: memory management.h            Created: 2008/12/08 *
- *                                Last modified: 2024/06/06 *
+ *                                Last modified: 2024/06/14 *
  *                                                          *
  * Notes: 2024/05/02: Added support for data tracking.      *
  *                                                          *
@@ -21,6 +21,7 @@ extern SYSTEM_DATA sysData;
 #define malloc16(byteCount) malloc(byteCount, 16)
 #define malloc32(byteCount) malloc(byteCount, 32)
 
+// Allocate RAM at aligned boundary
 inline ptrc malloc(csize_t byteCount, csize_t alignment) {
    ptrc pointer = _aligned_malloc(byteCount, alignment);
 #ifdef DATA_TRACKING
@@ -33,116 +34,123 @@ inline ptrc malloc(csize_t byteCount, csize_t alignment) {
    return pointer;
 }
 
-#define bitPatternx8 bitPattern, bitPattern, bitPattern, bitPattern, bitPattern, bitPattern, bitPattern, bitPattern
+// Allocates RAM at 16-byte boundary, then sets the entire array to a repeating pattern of 8~512 bits
+#define salloc16(byteCount, bitPattern) salloc(byteCount, 16, bitPattern)
 
-// Allocates RAM on 16-byte boundary, then sets the entire array to a repeating 128-bit pattern
-inline ptrc salloc16(csize_t byteCount, cui128 bitPattern);
+// Allocates RAM at 32-byte boundary, then sets the entire array to a repeating pattern of 8~512 bits
+#define salloc32(byteCount, bitPattern) salloc(byteCount, 32, bitPattern)
 
-// Allocates RAM on 16-byte boundary, then sets the entire array to a repeating 8-bit pattern
-inline ptrc salloc16(csize_t byteCount, cui8 bitPattern) {
-   return salloc16(byteCount, cui128{ .m128i_u8 = { bitPatternx8, bitPatternx8 } });
+// Allocates RAM at 64-byte boundary, then sets the entire array to a repeating pattern of 8~512 bits
+#define salloc64(byteCount, bitPattern) salloc(byteCount, 64, bitPattern)
+
+// Allocates RAM at 16-byte boundary, then sets the entire array to zero
+#define zalloc16(byteCount) salloc(byteCount, 16, _mm_setzero_si128())
+
+#ifdef __AVX__
+// Allocates RAM at 32-byte boundary, then sets the entire array to zero
+#define zalloc32(byteCount) salloc(byteCount, 32, _mm256_setzero_si256())
+#else
+// Allocates RAM at 32-byte boundary, then sets the entire array to zero
+#define zalloc32(byteCount) salloc(byteCount, 32, _mm_setzero_si128())
+#endif
+
+#ifdef __AVX512__
+// Allocates RAM at 64-byte boundary, then sets the entire array to zero
+#define zalloc64(byteCount) salloc(byteCount, 64, _mm512_setzero_si512())
+#else
+#ifdef __AVX__
+// Allocates RAM at 64-byte boundary, then sets the entire array to zero
+#define zalloc64(byteCount) salloc(byteCount, 64, _mm256_setzero_si256())
+#else
+// Allocates RAM at 64-byte boundary, then sets the entire array to zero
+#define zalloc64(byteCount) salloc(byteCount, 64, _mm_setzero_si128())
+#endif
+#endif
+
+// Allocates RAM at aligned boundary, then sets the entire array to a repeating 8-bit pattern
+inline ptrc salloc(csize_t numBytes, csize_t alignment, cui8 bitPattern) {
+   ptrc pointer = _aligned_malloc(numBytes, alignment);
+   if(pointer) {
+#ifdef DATA_TRACKING
+      sysData.mem.byteCount[sysData.mem.allocations]  = numBytes;
+      sysData.mem.location[sysData.mem.allocations++] = pointer;
+      sysData.mem.allocated += numBytes;
+#endif
+      cui64 bitPat8  = ui64(bitPattern);
+      cui64 bitPat16 = bitPat8  | (bitPat8 << 8u);
+      cui64 bitPat32 = bitPat16 | (bitPat16 << 16u);
+      cui64 bitPat64 = bitPat32 | (bitPat32 << 32u);
+      cui64 limit    = numBytes >> 3;
+      ui64  os;
+
+      for(os = 0; os < limit; os++) ((ui64ptr)pointer)[os] = bitPat64;
+      for(os <<= 3; os < numBytes; os++) ((ui8ptr)pointer)[os] = ((ui8 (&)[8])bitPat64)[os & 0x07];
+}
+   return pointer;
 }
 
-// Allocates RAM on 16-byte boundary, then sets the entire array to a repeating 16-bit pattern
-inline ptrc salloc16(csize_t byteCount, cui16 bitPattern) {
-   return salloc16(byteCount, cui128{ .m128i_u16 = { bitPatternx8 } });
+// Allocates RAM at aligned boundary, then sets the entire array to a repeating 16-bit pattern
+inline ptrc salloc(csize_t numBytes, csize_t alignment, cui16 bitPattern) {
+   ptrc pointer = _aligned_malloc(numBytes, alignment);
+   if(pointer) {
+#ifdef DATA_TRACKING
+      sysData.mem.byteCount[sysData.mem.allocations]  = numBytes;
+      sysData.mem.location[sysData.mem.allocations++] = pointer;
+      sysData.mem.allocated += numBytes;
+#endif
+      cui64 bitPat16 = ui64(bitPattern);
+      cui64 bitPat32 = bitPat16 | (bitPat16 << 16u);
+      cui64 bitPat64 = bitPat32 | (bitPat32 << 32u);
+      cui64 limit    = numBytes >> 3;
+      ui64  os;
+
+      for(os = 0; os < limit; os++) ((ui64ptr)pointer)[os] = bitPat64;
+      for(os <<= 3; os < numBytes; os++) ((ui8ptr)pointer)[os] = ((ui8 (&)[8])bitPat64)[os & 0x07];
+   }
+   return pointer;
 }
 
-// Allocates RAM on 16-byte boundary, then sets the entire array to a repeating 32-bit pattern
-inline ptrc salloc16(csize_t byteCount, cui32 bitPattern) {
-   return salloc16(byteCount, cui128{ .m128i_u32 = { bitPattern, bitPattern, bitPattern, bitPattern } });
+// Allocates RAM at aligned boundary, then sets the entire array to a repeating 32-bit pattern
+inline ptrc salloc(csize_t numBytes, csize_t alignment, cui32 bitPattern) {
+   ptrc pointer = _aligned_malloc(numBytes, alignment);
+   if(pointer) {
+#ifdef DATA_TRACKING
+      sysData.mem.byteCount[sysData.mem.allocations]  = numBytes;
+      sysData.mem.location[sysData.mem.allocations++] = pointer;
+      sysData.mem.allocated += numBytes;
+#endif
+      cui64 bitPat32 = ui64(bitPattern);
+      cui64 bitPat64 = bitPat32 | (bitPat32 << 32u);
+      cui64 limit    = numBytes >> 3;
+      ui64  os;
+
+      for(os = 0; os < limit; os++) ((ui64ptr)pointer)[os] = bitPat64;
+      for(os <<= 3; os < numBytes; os++) ((ui8ptr)pointer)[os] = ((ui8 (&)[8])bitPat64)[os & 0x07];
+   }
+   return pointer;
 }
 
-// Allocates RAM on 16-byte boundary, then sets the entire array to a repeating 64-bit pattern
-inline ptrc salloc16(csize_t byteCount, cui64 bitPattern) {
-   return salloc16(byteCount, cui128{ .m128i_u64 = { bitPattern, bitPattern } });
+// Allocates RAM at aligned boundary, then sets the entire array to a repeating 64-bit pattern
+inline ptrc salloc(csize_t numBytes, csize_t alignment, cui64 bitPattern) {
+   ptrc pointer = _aligned_malloc(numBytes, alignment);
+   if(pointer) {
+#ifdef DATA_TRACKING
+      sysData.mem.byteCount[sysData.mem.allocations]  = numBytes;
+      sysData.mem.location[sysData.mem.allocations++] = pointer;
+      sysData.mem.allocated += numBytes;
+#endif
+      cui64 limit = numBytes >> 3;
+      ui64  os;
+
+      for(os = 0; os < limit; os++) ((ui64ptr)pointer)[os] = bitPattern;
+      for(os <<= 3; os < numBytes; os++) ((ui8ptr)pointer)[os] = ((ui8 (&)[8])bitPattern)[os & 0x07];
+   }
+   return pointer;
 }
 
-// Allocates RAM on 32-byte boundary, then sets the entire array to a repeating 256-bit pattern
-inline ptrc salloc32(csize_t byteCount, cui256 bitPattern);
-
-// Allocates RAM on 32-byte boundary, then sets the entire array to a repeating 8-bit pattern
-inline ptrc salloc32(csize_t byteCount, cui8 bitPattern) {
-   return salloc32(byteCount, cui256{ .m256i_u8 = { bitPatternx8, bitPatternx8, bitPatternx8, bitPatternx8 } });
-}
-
-// Allocates RAM on 32-byte boundary, then sets the entire array to a repeating 16-bit pattern
-inline ptrc salloc32(csize_t byteCount, cui16 bitPattern) {
-   return salloc32(byteCount, cui256{ .m256i_u16 = { bitPatternx8, bitPatternx8 } });
-}
-
-// Allocates RAM on 32-byte boundary, then sets the entire array to a repeating 32-bit pattern
-inline ptrc salloc32(csize_t byteCount, cui32 bitPattern) {
-   return salloc32(byteCount, cui256{ .m256i_u32 = { bitPatternx8 } });
-}
-
-// Allocates RAM on 32-byte boundary, then sets the entire array to a repeating 64-bit pattern
-inline ptrc salloc32(csize_t byteCount, cui64 bitPattern) {
-   return salloc32(byteCount, cui256{ .m256i_u64 = { bitPattern, bitPattern, bitPattern, bitPattern } });
-}
-
-// Allocates RAM on 32-byte boundary, then sets the entire array to a repeating 128-bit pattern
-inline ptrc salloc32(csize_t byteCount, cui128 bitPattern) {
-   return salloc32(byteCount, cui256{ .m256i_u64 =
-      { bitPattern.m128i_u64[0], bitPattern.m128i_u64[1], bitPattern.m128i_u64[0], bitPattern.m128i_u64[1]} });
-}
-
-// Allocates RAM on 64-byte boundary, then sets the entire array to a repeating 512-bit pattern
-inline ptrc salloc64(csize_t byteCount, cui512 bitPattern);
-
-// Allocates RAM on 64-byte boundary, then sets the entire array to a repeating 8-bit pattern
-inline ptrc salloc64(csize_t byteCount, cui8 bitPattern) {
-   return salloc64(byteCount, cui512{ .m512i_u8 = { bitPatternx8, bitPatternx8, bitPatternx8, bitPatternx8,
-                                                    bitPatternx8, bitPatternx8, bitPatternx8, bitPatternx8 } });
-}
-
-// Allocates RAM on 64-byte boundary, then sets the entire array to a repeating 16-bit pattern
-inline ptrc salloc64(csize_t byteCount, cui16 bitPattern) {
-   return salloc64(byteCount, cui512{ .m512i_u16 = { bitPatternx8, bitPatternx8, bitPatternx8, bitPatternx8 } });
-}
-
-// Allocates RAM on 64-byte boundary, then sets the entire array to a repeating 32-bit pattern
-inline ptrc salloc64(csize_t byteCount, cui32 bitPattern) {
-   return salloc64(byteCount, cui512{ .m512i_u32 = { bitPatternx8, bitPatternx8 } });
-}
-
-// Allocates RAM on 64-byte boundary, then sets the entire array to a repeating 64-bit pattern
-inline ptrc salloc64(csize_t byteCount, cui64 bitPattern) {
-   return salloc64(byteCount, cui512{ .m512i_u64 = { bitPattern, bitPattern, bitPattern, bitPattern,
-                                                     bitPattern, bitPattern, bitPattern, bitPattern } });
-}
-
-// Allocates RAM on 64-byte boundary, then sets the entire array to a repeating 128-bit pattern
-inline ptrc salloc64(csize_t byteCount, cui128 bitPattern) {
-   return salloc64(byteCount, cui512{ .m512i_u64 =
-      { bitPattern.m128i_u64[0], bitPattern.m128i_u64[1], bitPattern.m128i_u64[0], bitPattern.m128i_u64[1],
-        bitPattern.m128i_u64[0], bitPattern.m128i_u64[1], bitPattern.m128i_u64[0], bitPattern.m128i_u64[1]} });
-}
-
-// Allocates RAM on 64-byte boundary, then sets the entire array to a repeating 256-bit pattern
-inline ptrc salloc64(csize_t byteCount, cui256 bitPattern) {
-   return salloc64(byteCount, cui512{ .m512i_u64 =
-      { bitPattern.m256i_u64[0], bitPattern.m256i_u64[1], bitPattern.m256i_u64[2], bitPattern.m256i_u64[3],
-        bitPattern.m256i_u64[0], bitPattern.m256i_u64[1], bitPattern.m256i_u64[2], bitPattern.m256i_u64[3]} });
-}
-
-// Allocates RAM on 16-byte boundary, then sets the entire array to zero
-inline ptrc zalloc16(csize_t byteCount) {
-   return salloc16(byteCount, cui128{ .m128i_u64 = { 0x0, 0x0 } });
-}
-
-// Allocates RAM on 32-byte boundary, then sets the entire array to zero
-inline ptrc zalloc32(csize_t byteCount) {
-   return salloc32(byteCount, cui256{ .m256i_u64 = { 0x0, 0x0, 0x0, 0x0 } });
-}
-
-// Allocates RAM on 64-byte boundary, then sets the entire array to zero
-inline ptrc zalloc64(csize_t byteCount) {
-   return salloc64(byteCount, cui512{ .m512i_u64 = { 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0 } });
-}
-
-inline ptrc salloc16(csize_t numBytes, cui128 bitPattern) {
-   ptrc pointer = _aligned_malloc(numBytes, 16);
+// Allocates RAM at aligned (to multiple of 16 byte) boundary, then sets the entire array to a repeating 128-bit pattern
+inline ptrc salloc(csize_t numBytes, csize_t alignment, cui128 bitPattern) {
+   ptrc pointer = _aligned_malloc(numBytes, alignment);
    if(pointer) {
 #ifdef DATA_TRACKING
       sysData.mem.byteCount[sysData.mem.allocations]  = numBytes;
@@ -153,13 +161,14 @@ inline ptrc salloc16(csize_t numBytes, cui128 bitPattern) {
       ui64  os;
 
       for(os = 0; os < limit; os++) ((ui128ptr)pointer)[os] = bitPattern;
-      for(os <<= 4; os < numBytes; os++) ((ui8ptr)pointer)[os] = bitPattern.m128i_u8[os & 0x0F];
+      for(os <<= 4; os < numBytes; os++) ((ui8ptr)pointer)[os] = ((ui8 (&)[16])bitPattern)[os & 0x0F];
    }
    return pointer;
 }
 
-inline ptrc salloc32(csize_t numBytes, cui256 bitPattern) {
-   ptrc pointer = _aligned_malloc(numBytes, 32);
+// Allocates RAM at aligned (to multiple of 32 byte) boundary, then sets the entire array to a repeating 256-bit pattern
+inline ptrc salloc(csize_t numBytes, csize_t alignment, cui256 bitPattern) {
+   ptrc pointer = _aligned_malloc(numBytes, alignment);
    if(pointer) {
 #ifdef DATA_TRACKING
       sysData.mem.byteCount[sysData.mem.allocations]  = numBytes;
@@ -170,13 +179,14 @@ inline ptrc salloc32(csize_t numBytes, cui256 bitPattern) {
       ui64  os;
 
       for(os = 0; os < limit; os++) ((ui256ptr)pointer)[os] = bitPattern;
-      for(os <<= 5; os < numBytes; os++) ((ui8ptr)pointer)[os] = bitPattern.m256i_u8[os & 0x01F];
+      for(os <<= 5; os < numBytes; os++) ((ui8ptr)pointer)[os] = ((ui8 (&)[32])bitPattern)[os & 0x01F];
    }
    return pointer;
 }
 
-inline ptrc salloc64(csize_t numBytes, cui512 bitPattern) {
-   ptrc pointer = _aligned_malloc(numBytes, 64);
+// Allocates RAM at aligned (to multiple of 64 byte) boundary, then sets the entire array to a repeating 512-bit pattern
+inline ptrc salloc(csize_t numBytes, csize_t alignment, cui512 bitPattern) {
+   ptrc pointer = _aligned_malloc(numBytes, alignment);
    if(pointer) {
 #ifdef DATA_TRACKING
       sysData.mem.byteCount[sysData.mem.allocations]  = numBytes;
@@ -187,8 +197,8 @@ inline ptrc salloc64(csize_t numBytes, cui512 bitPattern) {
       ui64  os;
 
       for(os = 0; os < limit; os++) ((ui512ptr)pointer)[os] = bitPattern;
-      for(os <<= 3; os < (numBytes >> 3); os++) ((ui32ptr)pointer)[os] = bitPattern.m512i_u32[os & 0x0F];
-      for(os <<= 6; os < numBytes; os++) ((ui8ptr)pointer)[os] = bitPattern.m512i_u8[os & 0x03F];
+      for(os <<= 3; os < (numBytes >> 3); os++) ((ui32ptr)pointer)[os] = ((ui8 (&)[16])bitPattern)[os & 0x0F];
+      for(os <<= 6; os < numBytes; os++) ((ui8ptr)pointer)[os] = ((ui8 (&)[64])bitPattern)[os & 0x03F];
    }
    return pointer;
 }
@@ -259,10 +269,84 @@ inline cui64 mdealloc_(ptrc pointer, ...) {
    return retVal;
 }
 
+// Set a region of memory to zero
+inline void mzero(ptrc addr, cui64 numBytes) {
+   ui64 i;
+#ifdef __AVX512__
+   if(numBytes & 0x02F) {
+#endif
+#ifdef __AVX__
+      if(numBytes & 0x01F) {
+#endif
+         if(numBytes & 0x0F) {
+            cui64 count = numBytes >> 3;
+            for(i = 0; i < count; ++i) ((ui64ptr)addr)[i] = 0ull;
+            for(i <<= 3; i < numBytes; ++i) ((ui8ptr)addr)[i] = 0u;
+            return;
+         }
+         cui64 count = numBytes >> 4;
+         for(i = 0; i < count; ++i) ((ui128ptr)addr)[i] = _mm_setzero_si128();
+         for(i <<= 2; i < (numBytes >> 2); ++i) ((ui32ptr)addr)[i] = 0u;
+         for(i <<= 2; i < numBytes; ++i) ((ui8ptr)addr)[i] = 0u;
+         return;
+#ifdef __AVX__
+      }
+      cui64 count = numBytes >> 5;
+      for(i = 0; i < count; ++i) ((ui256ptr)addr)[i] = _mm256_setzero_si256();
+      for(i <<= 3; i < (numBytes >> 2); ++i) ((ui32ptr)addr)[i] = 0u;
+      for(i <<= 2; i < numBytes; ++i) ((ui8ptr)addr)[i] = 0u;
+      return;
+#endif
+#ifdef __AVX512__
+   }
+   cui64 count = numBytes >> 6;
+   for(i = 0; i < count; ++i) ((ui512ptr)addr)[i] = _mm512_setzero_si512();
+   for(i <<= 3; i < (numBytes >> 3); ++i) ((ui64ptr)addr)[i] = 0u;
+   for(i <<= 3; i < numBytes; ++i) ((ui8ptr)addr)[i] = 0u;
+#endif
+}
+
+// Set a region of memory to zero
+inline void mzero(vptrc addr, cui64 numBytes) {
+   ui64 i;
+#ifdef __AVX512__
+   if(numBytes & 0x02F) {
+#endif
+#ifdef __AVX__
+      if(numBytes & 0x01F) {
+#endif
+         if(numBytes & 0x0F) {
+            cui64 count = numBytes >> 3;
+            for(i = 0; i < count; ++i) ((ui64ptr)addr)[i] = 0ull;
+            for(i <<= 3; i < numBytes; ++i) ((ui8ptr)addr)[i] = 0u;
+            return;
+         }
+         cui64 count = numBytes >> 4;
+         for(i = 0; i < count; ++i) ((ui128ptr)addr)[i] = _mm_setzero_si128();
+         for(i <<= 2; i < (numBytes >> 2); ++i) ((ui32ptr)addr)[i] = 0u;
+         for(i <<= 2; i < numBytes; ++i) ((ui8ptr)addr)[i] = 0u;
+         return;
+#ifdef __AVX__
+      }
+      cui64 count = numBytes >> 5;
+      for(i = 0; i < count; ++i) ((ui256ptr)addr)[i] = _mm256_setzero_si256();
+      for(i <<= 3; i < (numBytes >> 2); ++i) ((ui32ptr)addr)[i] = 0u;
+      for(i <<= 2; i < numBytes; ++i) ((ui8ptr)addr)[i] = 0u;
+      return;
+#endif
+#ifdef __AVX512__
+   }
+   cui64 count = numBytes >> 6;
+   for(i = 0; i < count; ++i) ((ui512ptr)addr)[i] = _mm512_setzero_si512();
+   for(i <<= 3; i < (numBytes >> 3); ++i) ((ui64ptr)addr)[i] = 0u;
+   for(i <<= 3; i < numBytes; ++i) ((ui8ptr)addr)[i] = 0u;
+#endif
+}
+
 // Set a region of memory to a repeating pattern
 #define setmem(addr, numBytes, bitPattern) mset(addr, numBytes, bitPattern)
 
-// Set a region of memory to a repeating 128-bit pattern
+// Set a region of 16-byte-aligned memory to a repeating 128-bit pattern
 inline void mset(ptrc addr, cui64 numBytes, cui128 bitPattern) {
    cui64 limit = numBytes >> 4;
    ui64  os;
@@ -271,7 +355,7 @@ inline void mset(ptrc addr, cui64 numBytes, cui128 bitPattern) {
    for(os <<= 4; os < numBytes; os++) ((ui8ptr)addr)[os] = bitPattern.m128i_u8[os & 0x0F];
 }
 
-// Set a region of memory to a repeating 256-bit pattern
+// Set a region of 32-byte-aligned memory to a repeating 256-bit pattern
 inline void mset(ptrc addr, cui64 numBytes, cui256 bitPattern) {
    cui64 limit = numBytes >> 5;
    ui64  os;
@@ -280,72 +364,57 @@ inline void mset(ptrc addr, cui64 numBytes, cui256 bitPattern) {
    for(os <<= 5; os < numBytes; os++) ((ui8ptr)addr)[os] = bitPattern.m256i_u8[os & 0x01F];
 }
 
-// Set a region of memory to a repeating 512-bit pattern
+// Set a region of 64-byte-aligned memory to a repeating 512-bit pattern
 inline void mset(ptrc addr, cui64 numBytes, cui512 bitPattern) {
    cui64 limit = numBytes >> 6;
    ui64  os;
 
    for(os = 0; os < limit; os++) ((ui512ptr)addr)[os] = bitPattern;
-   for(os <<= 3; os < (numBytes >> 3); os++) ((ui8ptr)addr)[os] = bitPattern.m512i_u32[os & 0x0F];
-   for(os <<= 6; os < numBytes; os++) ((ui8ptr)addr)[os] = bitPattern.m512i_u8[os & 0x03F];
+   for(os <<= 3; os < (numBytes >> 3); os++) ((ui64ptr)addr)[os] = bitPattern.m512i_u64[os & 0x0F];
+   for(os <<= 3; os < numBytes; os++) ((ui8ptr)addr)[os] = bitPattern.m512i_u8[os & 0x03F];
 }
 
-// Set a region of memory to a repeating 8-bit pattern
-inline void mset(ptrc addr, cui64 numBytes, cui8 bitPattern) {
 #ifdef __AVX512__
-   cui512 bits = { .m512i_u8 = { bitPatternx8, bitPatternx8, bitPatternx8, bitPatternx8,
-                                 bitPatternx8, bitPatternx8, bitPatternx8, bitPatternx8 } };
+#define _mm_PB64_mm_ cui512 { .m512i_u64 = { bitPattern64, bitPattern64, bitPattern64, bitPattern64, \
+                                             bitPattern64, bitPattern64, bitPattern64, bitPattern64 } }
 #else
 #ifdef __AVX__
-   cui256 bits = { .m256i_u8 = { bitPatternx8, bitPatternx8, bitPatternx8, bitPatternx8 } };
+#define _mm_PB64_mm_ cui256 { .m256i_u64 = { bitPattern64, bitPattern64, bitPattern64, bitPattern64 } }
 #else
-   cui128 bits = { .m128i_u8 = { bitPatternx8, bitPatternx8 } };
+#define _mm_PB64_mm_ cui128 { .m128i_u64 = { bitPattern64, bitPattern64 } }
 #endif
 #endif
-   mset(addr, numBytes, bits);
+
+// Set a region of 64-byte-aligned memory to a repeating 8-bit pattern
+inline void mset(ptrc addr, cui64 numBytes, cui8 bitPattern8) {
+   cui64 bitPattern   = ui64(bitPattern8);
+   cui64 bitPattern16 = bitPattern   | (bitPattern   << 8u);
+   cui64 bitPattern32 = bitPattern16 | (bitPattern16 << 16u);
+   cui64 bitPattern64 = bitPattern32 | (bitPattern32 << 32u);
+   mset(addr, numBytes, _mm_PB64_mm_);
 }
 
-// Set a region of memory to a repeating 16-bit pattern
-inline void mset(ptrc addr, cui64 numBytes, cui16 bitPattern) {
-#ifdef __AVX512__
-   cui512 bits = { .m512i_u16 = { bitPatternx8, bitPatternx8, bitPatternx8, bitPatternx8 } };
-#else
-#ifdef __AVX__
-   cui256 bits = { .m256i_u16 = { bitPatternx8, bitPatternx8 } };
-#else
-   cui128 bits = { .m128i_u16 = { bitPatternx8 } };
-#endif
-#endif
-   mset(addr, numBytes, bits);
+// Set a region of 64-byte-aligned memory to a repeating 16-bit pattern
+inline void mset(ptrc addr, cui64 numBytes, cui16 bitPattern16) {
+   cui64 bitPattern   = ui64(bitPattern16);
+   cui64 bitPattern32 = bitPattern   | (bitPattern   << 16u);
+   cui64 bitPattern64 = bitPattern32 | (bitPattern32 << 32u);
+   mset(addr, numBytes, _mm_PB64_mm_);
 }
 
-// Set a region of memory to a repeating 32-bit pattern
-inline void mset(ptrc addr, cui64 numBytes, cui32 bitPattern) {
-#ifdef __AVX512__
-   cui512 bits = { .m512i_u32 = { bitPatternx8, bitPatternx8 } };
-#else
-#ifdef __AVX__
-   cui256 bits = { .m256i_u32 = { bitPatternx8 } };
-#else
-   cui128 bits = { .m128i_u32 = { bitPattern, bitPattern, bitPattern, bitPattern } };
-#endif
-#endif
-   mset(addr, numBytes, bits);
+// Set a region of 64-byte-aligned memory to a repeating 32-bit pattern
+inline void mset(ptrc addr, cui64 numBytes, cui32 bitPattern32) {
+   cui64 bitPattern   = ui64(bitPattern32);
+   cui64 bitPattern64 = bitPattern | (bitPattern << 32u);
+   mset(addr, numBytes, _mm_PB64_mm_);
 }
 
-// Set a region of memory to a repeating 64-bit pattern
-inline void mset(ptrc addr, cui64 numBytes, cui64 bitPattern) {
-#ifdef __AVX512__
-   cui512 bits = { .m512i_u64 = { bitPatternx8 } };
-#else
-#ifdef __AVX__
-   cui256 bits = { .m256i_u64 = { bitPattern, bitPattern, bitPattern, bitPattern } };
-#else
-   cui128 bits = { .m128i_u64 = { bitPattern, bitPattern } };
-#endif
-#endif
-   mset(addr, numBytes, bits);
+// Set a region of 64-byte-aligned memory to a repeating 64-bit pattern
+inline void mset(ptrc addr, cui64 numBytes, cui64 bitPattern64) {
+   mset(addr, numBytes, _mm_PB64_mm_);
 }
+
+#undef _mm_PB64_mm_
 
 // Copy byteCount bytes of unaligned data
 inline void Copy(cptrc source, ptrc dest, cui64 byteCount) {
@@ -371,7 +440,7 @@ inline void Copy(cptrc source, ptrc dest, cui64 byteCount) {
 }
 
 // Copy byteCount (rounded-down to the nearest 8) bytes of data
-inline void Copy8(ptrc source, ptrc dest, cui64 byteCount) {
+inline void Copy8(cptrc source, ptrc dest, cui64 byteCount) {
    cui64 j = byteCount >> 3;
    for(ui64 i = 0; i < j; i++) ((ui64ptr)dest)[i] = ((ui64ptr)source)[i];
 }
@@ -383,7 +452,7 @@ inline void Copy8(vptrc source, vptrc dest, cui64 byteCount) {
 }
 
 // Copy byteCount (rounded-down to the nearest 16) bytes of 128-bit-aligned data via SIMD instruction
-inline void Copy16(ptrc source, ptrc dest, cui64 byteCount) {
+inline void Copy16(cptrc source, ptrc dest, cui64 byteCount) {
    cui64 j = byteCount >> 4;
    for(ui64 i = 0; i < j; i++) ((ui128ptr)dest)[i] = _mm_load_si128(&((ui128ptr)source)[i]);
 }
@@ -395,7 +464,7 @@ inline void Copy16(vptrc source, vptrc dest, cui64 byteCount) {
 }
 
 // Copy byteCount (rounded-down to the nearest 32) bytes of 256-bit-aligned data via SIMD instruction
-inline void Copy32(ptrc source, ptrc dest, cui64 byteCount) {
+inline void Copy32(cptrc source, ptrc dest, cui64 byteCount) {
 #ifdef __AVX__
    cui64 j = byteCount >> 5;
    for(ui64 i = 0; i < j; i++) ((ui256ptr)dest)[i] = _mm256_load_si256(&((ui256ptr)source)[i]);
@@ -405,7 +474,7 @@ inline void Copy32(ptrc source, ptrc dest, cui64 byteCount) {
 #endif
 }
 
-// Copy byteCount (rounded-up to the nearest 32) bytes of 256-bit-aligned data via SIMD instruction
+// Copy byteCount (rounded-down to the nearest 32) bytes of 256-bit-aligned data via SIMD instruction
 inline void Copy32(vptrc source, vptrc dest, cui64 byteCount) {
 #ifdef __AVX__
    cui64 j = byteCount >> 5;
@@ -417,7 +486,7 @@ inline void Copy32(vptrc source, vptrc dest, cui64 byteCount) {
 }
 
 // Copy byteCount (rounded-down to the nearest 64) bytes of 512-bit-aligned data via SIMD instruction
-inline void Copy64(ptrc source, ptrc dest, cui64 byteCount) {
+inline void Copy64(cptrc source, ptrc dest, cui64 byteCount) {
 #ifdef __AVX512__
    cui64 j = byteCount >> 6;
    for(ui64 i = 0; i < j; i++) ((ui512ptr)dest)[i] = _mm512_load_epi32(&((ui512ptr)source)[i]);
@@ -432,7 +501,7 @@ inline void Copy64(ptrc source, ptrc dest, cui64 byteCount) {
 #endif
 }
 
-// Copy byteCount (rounded-up to the nearest 64) bytes of 512-bit-aligned data via SIMD instruction
+// Copy byteCount (rounded-down to the nearest 64) bytes of 512-bit-aligned data via SIMD instruction
 inline void Copy64(vptrc source, vptrc dest, cui64 byteCount) {
 #ifdef __AVX512__
    cui64 j = ui64((byteCount + 63) >> 6);
@@ -448,37 +517,75 @@ inline void Copy64(vptrc source, vptrc dest, cui64 byteCount) {
 #endif
 }
 
-// Interlock copy byteCount (rounded-up to nearest 8) bytes
+// Non-temporally copy byteCount (rounded-down to the nearest 16) bytes of 128-bit-aligned data via SIMD instruction
+inline void Stream16(cptrc source, ptrc dest, cui64 byteCount) {
+#ifdef __AVX__
+   cui64 j = byteCount >> 4;
+   for(ui64 i = 0; i < j; i++) ((ui128ptr)dest)[i] = _mm_stream_load_si128(&((ui128ptr)source)[i]);
+#else
+   cui64 j = byteCount >> 4;
+   for(ui64 i = 0; i < j; i++) _mm_stream_si128(&((ui128ptr)dest)[i], ((ui128ptr)source)[i]);
+#endif
+}
+
+// Non-temporally copy byteCount (rounded-down to the nearest 32) bytes of 256-bit-aligned data via SIMD instruction
+inline void Stream32(cptrc source, ptrc dest, cui64 byteCount) {
+#ifdef __AVX__
+   cui64 j = byteCount >> 5;
+   for(ui64 i = 0; i < j; i++) ((ui256ptr)dest)[i] = _mm256_stream_load_si256(&((ui256ptr)source)[i]);
+#else
+   cui64 j = byteCount >> 4;
+   for(ui64 i = 0; i < j; i++) ((ui128ptr)dest)[i] = _mm_stream_load_si128(&((ui128ptr)source)[i]);
+#endif
+}
+
+// Non-temporally copy byteCount (rounded-down to the nearest 64) bytes of 512-bit-aligned data via SIMD instruction
+inline void Stream64(cptrc source, ptrc dest, cui64 byteCount) {
+#ifdef __AVX512__
+   cui64 j = ui64((byteCount + 63) >> 6);
+   for(ui64 i = 0; i < j; i++) ((ui512ptr)dest)[i] = _mm512_stream_load_epi32(&((ui512ptr)source)[i]);
+#else
+#ifdef __AVX__
+   cui64 j = ui64((byteCount + 31) >> 5);
+   for(ui64 i = 0; i < j; i++) ((ui256ptr)dest)[i] = _mm256_stream_load_si256(&((ui256ptr)source)[i]);
+#else
+   cui64 j = ui64((byteCount + 15) >> 4);
+   for(ui64 i = 0; i < j; i++) ((ui128ptr)dest)[i] = _mm_stream_load_si128(&((ui128ptr)source)[i]);
+#endif
+#endif
+}
+
+// Interlock copy byteCount (rounded-down to the nearest 8) bytes of data
 inline void LockedCopy(ptrc source, vptrc dest, csi32 byteCount) {
    csi32 j = (byteCount + 7) >> 3;
    for(si32 i = 0; i < j; i++) _InterlockedExchange64(&((vsi64ptr)dest)[i], ((si64ptr)source)[i]);
 }
 
-// Interlock copy byteCount (rounded-up to nearest 8) bytes
+// Interlock copy byteCount (rounded-down to the nearest 8) bytes of data
 inline void LockedCopy(vptrc source, vptrc dest, csi32 byteCount) {
    csi32 j = (byteCount + 7) >> 3;
    for(si32 i = 0; i < j; i++) _InterlockedExchange64(&((vsi64ptr)dest)[i], ((si64ptr)source)[i]);
 }
 
-// Interlock swap byteCount (rounded-up to nearest 8) bytes
+// Interlock swap byteCount (rounded-down to the nearest 8) bytes of data
 inline void LockedSwap(ptrc source1, vptrc source2, csi32 byteCount) {
    csi32 j = (byteCount + 7) >> 3;
    for(si32 i = 0; i < j; i++) ((vsi64ptr)source1)[i] = _InterlockedExchange64(&((vsi64ptr)source2)[i], ((si64ptr)source1)[i]);
 }
 
-// Interlock swap byteCount (rounded-up to nearest 8) bytes
+// Interlock swap byteCount (rounded-down to the nearest 8) bytes of data
 inline void LockedSwap(vptrc source1, vptrc source2, csi32 byteCount) {
    csi32 j = (byteCount + 7) >> 3;
    for(si32 i = 0; i < j; i++) ((vsi64ptr)source1)[i] = _InterlockedExchange64(&((vsi64ptr)source2)[i], ((si64ptr)source1)[i]);
 }
 
-// Interlock move byteCount (rounded-up to nearest 8) bytes and set source to zero
+// Interlock move byteCount (rounded-down to the nearest 8) bytes of data and zeroes source
 inline void LockedMoveAndClear(vptrc source, ptrc dest, csi32 byteCount) {
    csi32 j = (byteCount + 7) >> 3;
    for(si32 i = 0; i < j; i++) ((vsi64ptr)dest)[i] = _InterlockedExchange64(&((vsi64ptr)source)[i], 0);
 }
 
-// Interlock move byteCount (rounded-up to nearest 8) bytes and set source to zero
+// Interlock move byteCount (rounded-down to the nearest 8) bytes of data and zeroes source
 inline void LockedMoveAndClear(vptrc source, vptrc dest, csi32 byteCount) {
    csi32 j = (byteCount + 7) >> 3;
    for(si32 i = 0; i < j; i++)
