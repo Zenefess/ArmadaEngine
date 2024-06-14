@@ -1,11 +1,11 @@
 /****************************************************************
- * File: typedefs.h                           Created: Jul.2007 *
- *                                    Last modified: 2024/05/25 *
+ * File: typedefs.h                         Created:   Jul.2007 *
+ *                                    Last modified: 2024/06/12 *
  *                                                              *
  * Desc: Shorthand type defines & composites, and static        *
  *       constant values of common data-type sizes.             *
  *                                                              *
- * Notes: 2023/05/23: Added SSE & AVX vector types              *
+ * Notes: 2023/05/23: Added SSE & AVX data types                *
  *        2023/06/05: Added ui24 data type                      *
  *        2024/05/02: Added csize_t data type                   *
  *        2024/05/11: Added all (~2) void pointer combinations  *
@@ -101,6 +101,7 @@ typedef const          __m256d cfl64x4;
 typedef const          __m512d cfl64x8;
 typedef const          char    cchar;
 typedef const          wchar_t cwchar;
+typedef const          HANDLE  cHANDLE;
 
 // Volatile types
 typedef vol          bool    vbool;
@@ -134,6 +135,7 @@ typedef vol          __m256d vfl64x4;
 typedef vol          __m512d vfl64x8;
 typedef vol             char vchar;
 typedef vol          wchar_t vwchar;
+typedef vol          HANDLE  vHANDLE;
 
 // Void pointer types
 typedef void       *               ptr;       // Pointer

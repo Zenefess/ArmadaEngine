@@ -12,7 +12,7 @@
 #include "Shlobj.h"
 
 // Input: Maxmimum memory allocations
-al32 struct SYSTEM_DATA {
+al64 struct SYSTEM_DATA {
    ///--- APU read-outs?
    ///--- Network read-outs
    ///--- CPU read-outs
@@ -48,6 +48,12 @@ al32 struct SYSTEM_DATA {
       vui32 filesOpened  = 0;
       vui32 filesClosed  = 0;
    } storage;
+   ///--- Input read-outs
+   struct {
+      vfl64 ticRate  = 0.0;
+      vfl64 ticTime  = 0.0;
+      vui64 ticTotal = 0;
+   } input;
    ///--- Misc. read-outs
    struct { // Culling information
       struct {

@@ -1,6 +1,6 @@
 /************************************************************
  * File: vector structures.h            Created: 2022/12/05 *
- *                                Last modified: 2024/06/06 *
+ *                                Last modified: 2024/06/08 *
  *                                                          *
  * Notes: 2023/04/27: Added constant vector typedefs.       *
  *        2024/04/04: Added support for 24-bit integers.    *
@@ -368,8 +368,8 @@ union VEC4Dd {
 union VEC6Df {
    fl32 _fl32[6];
    struct {
-      union { VEC3Df x, pos, face, s; };
-      union { VEC3Df y, ori, up, vel, rot; };
+      union { VEC3Df x; };
+      union { VEC3Df y; };
    };
    struct {
       VEC2Df x2, y2, z2;
@@ -379,8 +379,8 @@ union VEC6Df {
 union VEC6Dd {
    fl64 _fl64[6];
    struct {
-      union { VEC3Dd x, p, f, s; };
-      union { VEC3Dd y, o, u, v, r; };
+      union { VEC3Dd x; };
+      union { VEC3Dd y; };
    };
    struct {
       VEC2Dd x2, y2, z2;
