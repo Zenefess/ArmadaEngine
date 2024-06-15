@@ -1,12 +1,13 @@
 /************************************************************
  * File: GUI functions.cpp              Created: 2023/06/13 *
- *                                Last modified: 2024/05/24 *
+ *                                Last modified: 2024/06/07 *
  *                                                          *
  * Desc: User interface functions for in-game menus and     *
  *       developer environment.                             *
  *                                                          *
  *  Copyright (c) David William Bull. All rights reserved.  *
  ************************************************************/
+
 #include "pch.h"
 #include "data tracking.h"
 #include "typedefs.h"
@@ -139,15 +140,31 @@ void __Activate0_0_Default_Input(cptrc indices) {
    GUI_ELEMENT (&element)[3] = (GUI_ELEMENT (&)[3])(*(const CLASS_GUI *)ptrLib[4]).element[data.element];
    GUI_EL_DGS  (&vertex)[3]  = (GUI_EL_DGS (&)[3])(*(const CLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
 
-   if(!(element[0].stateBits & 0x04)) {
-      element[0].stateBits |= 0x04;
-      //element[1].stateBits |= 0x040;
+   if(!(textBufferInfo.source.bitField & 0x010))
+      if(element[0].stateBits & 0x04) {
+         if(!(textBufferInfo.source.bitField & 0x08))
+            textBufferInfo.source.bitField |= 0x013;
+      } else {
+         element[0].stateBits |= 0x04;
+         //element[1].stateBits |= 0x040;
 
-      textBufferInfo.source.pCH        = &(*(const CLASS_GUI *)ptrLib[4]).textBuffer[(vertex[2].textArrayOS & 0x03FFFFFF) << 4];
-      textBufferInfo.source.byteCount  = element[2].vertexCount[1] << 5;
-      textBufferInfo.source.byteOffset = element[2].charCount << (element[2].bitField & 0x0800 ? 1 : 0);
-      textBufferInfo.source.bitField   |= 0x01;
-   }
+         textBufferInfo.source.pCH = &(*(const CLASS_GUI *)ptrLib[4]).textBuffer[(vertex[2].textArrayOS & 0x03FFFFFF) << 4];
+         textBufferInfo.source.byteCount = element[2].vertexCount[1] << 5;
+         textBufferInfo.source.byteOffset = element[2].charCount << (element[2].bitField & 0x0800 ? 1 : 0);
+         textBufferInfo.source.bitField |= 0x09;
+      }
+}
+
+void __Activate0_1_Default_Input(cptrc indices) {
+   if((*(const CLASS_GUI *)ptrLib[4]).element[((const GUI_INDICES &)indices).element].stateBits & 0x04)
+      textBufferInfo.source.bitField &= 0x0F7;
+   else
+      textBufferInfo.source.bitField &= 0x0EF;
+}
+
+void __Activate1_0_Default_Input(cptrc indices) {
+   if((*(const CLASS_GUI *)ptrLib[4]).element[((const GUI_INDICES &)indices).element].stateBits & 0x04)
+      textBufferInfo.source.bitField = 0x05;
 }
 
 void __Passive_Default_Input(cptrc indices) {
@@ -173,16 +190,17 @@ void __Passive_Default_Input(cptrc indices) {
       element[2].charCount = textBufferInfo.source.byteOffset >> (element[2].bitField & 0x0800 ? 1 : 0);
 
       if(newVertCount < oldVertCount) {
-         vertex[oldVertCount].origin[0] = { 0.0f, 0.0f };
-         vertex[oldVertCount].origin[1] = { 0.0f, 0.0f };
-         vertex[oldVertCount].origin[2] = { 0.0f, 0.0f };
-         vertex[oldVertCount].origin[3] = { 0.0f, 0.0f };
+#ifdef __AVX__
+         vertex[oldVertCount].coords.ymm = _mm256_setzero_ps();
+#else
+         vertex[oldVertCount].coords.xmm[0] = _mm_setzero_ps();
+         vertex[oldVertCount].coords.xmm[1] = _mm_setzero_ps();
+#endif
          vertex[oldVertCount].align |= 0x080;
       } else if(newVertCount > oldVertCount) {
          vertex[newVertCount].origin[0] = (*(const CLASS_GUI *)ptrLib[4])._CalculateOrigin(indexVert, indexVert + newVertCount, vertex[0].alphabetIndex);
          vertex[newVertCount].origin[1] = { 16384.0f, 16384.0f };
-         vertex[newVertCount].origin[2] = { 16384.0f, 16384.0f };
-         vertex[newVertCount].origin[3] = { 16384.0f, 16384.0f };
+         vertex[oldVertCount].coords.xmm[1] = _mm_set_ps1(16384.0f);
          vertex[newVertCount].align &= 0x07F;
       }
 
@@ -208,18 +226,9 @@ void __Passive_Default_Input(cptrc indices) {
       } else
          vertex[-1].viewPos.x = 1.0f;
 
-      // Is the 'confirm' flag set?
-      if(textBufferInfo.source.bitField & 0x2) {
-
-         textBufferInfo.source.bitField = 0;
-         element[0].stateBits &= 0x0FB;
-         //element[1].stateBits &= 0x0BF;
-         vertex[-1].align |= 0x080;
-      }
-      // Is the 'cancel' flag set?
-      if(textBufferInfo.source.bitField & 0x4) {
-
-         textBufferInfo.source.bitField = 0;
+      // Is the 'confirm' or 'cancel' flag set?
+      if(textBufferInfo.source.bitField & 0x06) {
+         textBufferInfo.source.bitField = 0x010;
          element[0].stateBits &= 0x0FB;
          //element[1].stateBits &= 0x0BF;
          vertex[-1].align |= 0x080;

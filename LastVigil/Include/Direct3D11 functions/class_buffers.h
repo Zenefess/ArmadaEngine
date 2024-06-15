@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_buffers.h                Created: 2022/10/20 *
- *                                Last modified: 2023/06/19 *
+ *                                Last modified: 2024/06/15 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -28,21 +28,22 @@ enum AE_GPU_STAGE : ui8 {
    STAGES_VERTEX_GEOMETRY_PIXEL
 };
 
-al32 struct CLASS_BUFFERS {   // malloc pointers and change to "&" where appropriate
-   ID3D11Buffer                     *pBuffer[4][256] {}; // 0 == Vertex, 1 == Index, 2 == Constant, 3 == Structured
+al16 struct CLASS_BUFFERS {
    ID3D11Device                     *dev;
    ID3D11DeviceContext             **devcon;
-   ID3D11ShaderResourceView         *pSRV[1024] {};
-   ID3D11UnorderedAccessView        *pUAV[1024] {};
-   D3D11_SHADER_RESOURCE_VIEW_DESC   srvd[16] {};
-   D3D11_UNORDERED_ACCESS_VIEW_DESC  uavd[16] {};
-   D3D11_BUFFER_DESC                 bd[4][256] {};
-   ui32                              uiStrides[2][272] {}, uiOffsets[2][272] {};
-   si16                              bufferCount[4] {};
+   ID3D11Buffer                   *(*const pBuffer)[256]   = (ID3D11Buffer*(*)[256])malloc64(sizeof(ptr[4][256])); // 0 == Vertex, 1 == Index, 2 == Constant, 3 == Structured
+   ID3D11ShaderResourceView        **const pSRV            = (ID3D11ShaderResourceView**)malloc64(sizeof(ptr[1024]));
+   ID3D11UnorderedAccessView       **const pUAV            = (ID3D11UnorderedAccessView**)malloc64(sizeof(ptr[1024]));
+   D3D11_SHADER_RESOURCE_VIEW_DESC  *const srvd            = (D3D11_SHADER_RESOURCE_VIEW_DESC*)zalloc64(sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC[16]));
+   D3D11_UNORDERED_ACCESS_VIEW_DESC *const uavd            = (D3D11_UNORDERED_ACCESS_VIEW_DESC*)zalloc64(sizeof(D3D11_UNORDERED_ACCESS_VIEW_DESC[16]));
+   D3D11_BUFFER_DESC               (*const bd)[256]        = (D3D11_BUFFER_DESC(*)[256])zalloc64(sizeof(D3D11_BUFFER_DESC[4][256])); // 0 == Vertex, 1 == Index, 2 == Constant, 3 == Structured
+   ui32                            (*const uiStrides)[272] = (ui32(*)[272])zalloc64(sizeof(ui32[2][272]));
+   ui32                            (*const uiOffsets)[272] = (ui32(*)[272])zalloc64(sizeof(ui32[2][272]));
    D3D11_MAPPED_SUBRESOURCE          ms {};
    D3D11_SUBRESOURCE_DATA            srd {};
+   si16                              bufferCount[4] {};
 
-   si32 CreateVertex(void *source, ui32 stride, ui32 numVerts, si16 count) {
+   si32 CreateVertex(ptrc source, cui32 stride, cui32 numVerts, csi16 count) {
       si32 index = bufferCount[0];
 
       bd[0][index].ByteWidth           = stride * numVerts;
@@ -56,13 +57,13 @@ al32 struct CLASS_BUFFERS {   // malloc pointers and change to "&" where appropr
 
       for (si32 xx = 0; xx < count; xx++) {
          srd.pSysMem = (ui8 *)source + ui64(stride * numVerts * xx);
-         Try(stCreateBuf, dev->CreateBuffer(&bd[0][index + xx], &srd, &pBuffer[0][index + xx]));
+         Try(stCreateBuf, dev->CreateBuffer(&bd[0][index + xx], &srd, &pBuffer[0][index + xx]), video);
          bufferCount[0]++;
       }
       return index;   // Index of first buffer allocated
    }
 
-   si32 CreateIndex(ui8 context, void *source, ui32 stride, si16 count) {
+   si32 CreateIndex(cui8 context, ptrc source, cui32 stride, csi16 count) {
       si32 index = bufferCount[1];
 
       bd[1][index].ByteWidth           = stride;
@@ -74,14 +75,14 @@ al32 struct CLASS_BUFFERS {   // malloc pointers and change to "&" where appropr
 
       for (si32 xx = 0; xx < count; xx++) {
          srd.pSysMem = (ui8 *)source + ui64(stride * xx);
-         Try(stCreateBuf, dev->CreateBuffer(&bd[1][index + xx], &srd, &pBuffer[1][index + xx]));
+         Try(stCreateBuf, dev->CreateBuffer(&bd[1][index + xx], &srd, &pBuffer[1][index + xx]), video);
          bufferCount[1]++;
       }
 
       return index;   // Index of first buffer allocated
    }
 
-   si32 CreateConstant(ui8 context, void *source, ui32 stride, si16 count, ui16 slot, ui8 stage, bool immutable) {
+   si32 CreateConstant(cui8 context, ptrc source, cui32 stride, csi16 count, cui16 slot, cui8 stage, cbool immutable) {
       si32 index = bufferCount[2];
 
       bd[2][index].ByteWidth           = stride;
@@ -93,7 +94,7 @@ al32 struct CLASS_BUFFERS {   // malloc pointers and change to "&" where appropr
 
       for (si32 xx = 0; xx < count; xx++) {
          srd.pSysMem = (ui8 *)source + ui64(stride * xx);
-         Try(stCreateBuf, dev->CreateBuffer(&bd[2][index + xx], &srd, &pBuffer[2][index + xx]));
+         Try(stCreateBuf, dev->CreateBuffer(&bd[2][index + xx], &srd, &pBuffer[2][index + xx]), video);
          bufferCount[2]++;
       }
       if(stage & STAGE_VERTEX)
@@ -118,7 +119,7 @@ al32 struct CLASS_BUFFERS {   // malloc pointers and change to "&" where appropr
       bd[3][index].StructureByteStride = stride;
 
       srd.pSysMem = (ui8 *)source;
-      Try(stCreateBuf, dev->CreateBuffer(&bd[3][index], &srd, &pBuffer[3][index]));
+      Try(stCreateBuf, dev->CreateBuffer(&bd[3][index], &srd, &pBuffer[3][index]), video);
       bufferCount[3]++;
 
       srvd[0].Format = DXGI_FORMAT_UNKNOWN;
@@ -142,7 +143,7 @@ al32 struct CLASS_BUFFERS {   // malloc pointers and change to "&" where appropr
       bd[3][index].StructureByteStride = stride;
 
       srd.pSysMem = (ui8 *)source;
-      Try(stCreateBuf, dev->CreateBuffer(&bd[3][index], &srd, &pBuffer[3][index]));
+      Try(stCreateBuf, dev->CreateBuffer(&bd[3][index], &srd, &pBuffer[3][index]), video);
       bufferCount[3]++;
 
       uavd[0].Format = DXGI_FORMAT_UNKNOWN;
@@ -163,7 +164,7 @@ al32 struct CLASS_BUFFERS {   // malloc pointers and change to "&" where appropr
 
    // Update [count] vertices of vertex buffer [index] with data from [source]
    inline void UpdateVertex(cui8 context, si16 index, ui32 count, cptr source) {
-      Try(stMap, devcon[context]->Map(pBuffer[0][index], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms));
+      Try(stMap, devcon[context]->Map(pBuffer[0][index], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), video);
       memcpy(ms.pData, (ui8 *)source, bd[0][index].StructureByteStride * count);
       devcon[context]->Unmap(pBuffer[0][index], NULL);
    }
@@ -172,7 +173,7 @@ al32 struct CLASS_BUFFERS {   // malloc pointers and change to "&" where appropr
    inline void UpdateVertex(cui8 context, cptr source, si16 index, si16 numBuffers) {
       do {
          numBuffers--;
-         Try(stMap, devcon[context]->Map(pBuffer[0][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms));
+         Try(stMap, devcon[context]->Map(pBuffer[0][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), video);
          memcpy(ms.pData, (ui8 *)source + bd[0][index].ByteWidth * numBuffers, bd[0][index].ByteWidth);
          devcon[context]->Unmap(pBuffer[0][index + numBuffers], NULL);
       } while (numBuffers);
@@ -181,7 +182,7 @@ al32 struct CLASS_BUFFERS {   // malloc pointers and change to "&" where appropr
    inline void UpdateIndex(cui8 context, cptr source, si16 index, si16 numBuffers) {
       do {
          numBuffers--;
-         Try(stMap, devcon[context]->Map(pBuffer[1][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms));
+         Try(stMap, devcon[context]->Map(pBuffer[1][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), video);
          memcpy(ms.pData, (ui8 *)source + bd[1][index].ByteWidth * numBuffers, bd[1][index].ByteWidth);
          devcon[context]->Unmap(pBuffer[1][index + numBuffers], NULL);
       } while (numBuffers);
@@ -190,8 +191,9 @@ al32 struct CLASS_BUFFERS {   // malloc pointers and change to "&" where appropr
    inline void UpdateConstant(cui8 context, cptr source, si16 index, si16 numBuffers) {
       do {
          numBuffers--;
-         Try(stMap, devcon[context]->Map(pBuffer[2][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms));
-         memcpy(ms.pData, (ui8 *)source + bd[2][index].ByteWidth * numBuffers, bd[2][index].ByteWidth);
+         Try(stMap, devcon[context]->Map(pBuffer[2][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), video);
+         //memcpy(ms.pData, (ui8 *)source + bd[2][index].ByteWidth * numBuffers, bd[2][index].ByteWidth);
+         Stream16((ui8 *)source + bd[2][index].ByteWidth * numBuffers, ms.pData, bd[2][index].ByteWidth);
          devcon[context]->Unmap(pBuffer[2][index + numBuffers], NULL);
       } while (numBuffers);
    }
@@ -199,14 +201,15 @@ al32 struct CLASS_BUFFERS {   // malloc pointers and change to "&" where appropr
    inline void UpdateStructured(cui8 context, cptr source, si16 index, si16 numBuffers) {
       do {
          numBuffers--;
-         Try(stMap, devcon[context]->Map(pBuffer[3][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms));
-         memcpy(ms.pData, (ui8 *)source + bd[3][index].ByteWidth * numBuffers, bd[3][index].ByteWidth);
+         Try(stMap, devcon[context]->Map(pBuffer[3][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), video);
+         //memcpy(ms.pData, (ui8 *)source + bd[3][index].ByteWidth * numBuffers, bd[3][index].ByteWidth);
+         Stream16((ui8 *)source + bd[3][index].ByteWidth * numBuffers, ms.pData, bd[3][index].ByteWidth);
          devcon[context]->Unmap(pBuffer[3][index + numBuffers], NULL);
       } while (numBuffers);
    }
 
    inline ptr LockStructuredBeforeUpdate(cui8 context, csi16 index) {
-      Try(stMap, devcon[context]->Map(pBuffer[3][index], NULL, D3D11_MAP_WRITE_NO_OVERWRITE, NULL, &ms));
+      Try(stMap, devcon[context]->Map(pBuffer[3][index], NULL, D3D11_MAP_WRITE_NO_OVERWRITE, NULL, &ms), video);
 
       return ms.pData;
    }

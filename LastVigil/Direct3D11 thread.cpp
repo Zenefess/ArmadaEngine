@@ -1,17 +1,13 @@
 /************************************************************
  * File: Direct3D11 thread.cpp          Created: 2022/10/12 *
- *                               Code last mod.: 2024/05/30 *
+ *                               Code last mod.: 2024/06/15 *
  *                                                          *
  * Desc: Video rendering via Direct3D 11 API.               *
  *                                                          *
- *  Copyright (c) David William Bull. All rights reserved.  *
+ * Copyright (c) David William Bull.   All rights reserved. *
  ************************************************************/
+
 #include "pch.h"
-#include "Data structures.h"
-#include "thread flags.h"
-#include "main thread.h"
-#include "Common functions.h"
-#include "class_timers.h"
 #include "Direct3D11 thread.h"
 #include "Direct3D11 functions.h"
 #include "colours.h"
@@ -21,11 +17,7 @@
 #include "Armada Intelligence/GUI functions.h"
 
  // For development only
-al32 struct GUI_SPRITE_DEFAULTS {
-   cwchptrc name;
-   cVEC4Df  tc;
-   cVEC2Df  aa;
-} defaultUISprite[81] = {
+al32 struct GUI_SPRITE_DEFAULTS { cwchptrc name; cVEC4Df tc; cVEC2Df aa; } defaultUISprite[81] = {
    { L"Opaque 2048x88r6", { 0.0f, 0.765625f, 1.0f, 0.80859375f }, { 2004.0f / 2048.0f, 44.0f / 88.0f } },                             // 0
    { L"Opaque 1024x392r6", { 0.0f, 0.80859375f, 0.5f, 1.0f }, { 980.0f / 1024.0f, 348.0f / 392.0f } },
    { L"Opaque 512x392r6", { 0.5f, 0.80859375f, 0.75f, 1.0f }, { 468.0f / 512.0f, 348.0f / 392.0f } },
@@ -121,8 +113,8 @@ al16 HWND    hWnd; // Main window's handle
      cwchptr renderWndClass       = L"LV_D3D";
      cwchptr rndrWndTitle         = L"The Last Vigil :: Direct3D 11 render window";
      vui64   THREAD_LIFE_V        = 0; // D3D11 subthread flags
-     vui128  MAPMAN_THREAD_STATUS {};
-     vui128  ENTMAN_THREAD_STATUS {};
+     vui128  MAPMAN_THREAD_STATUS = {};
+     vui128  ENTMAN_THREAD_STATUS = {};
 
 // Early develepment only...
 RESOLUTION ScrRes = { 3600, 1600, 16.0f / 36.0f, 36.0f / 16.0f, 1.0f, DXGI_FORMAT_R10G10B10A2_UNORM, DXGI_FORMAT_R24_UNORM_X8_TYPELESS, 1, -1, 8, 0,
@@ -130,25 +122,20 @@ RESOLUTION ScrRes = { 3600, 1600, 16.0f / 36.0f, 36.0f / 16.0f, 1.0f, DXGI_FORMA
                       3840, 2160, 9.0f / 16.0f, 16.0f / 9.0f, 2.2f, DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_D32_FLOAT, 1, -1, 8, 0,
                       120, 360, 0, 0, 0 };
 
-#define FPDT_NO_CUSTOM
-//cfp16n cfp16nInit = { 0.0f, 65535.0f / 65534.0f }; // Set scaling range of datatype:fp16n to 0.0~(65535.0/65534.0)
-
 void Direct3D11Thread(ptr argList) {
-   CLASS_GPU gpu;
+   CLASS_GPU gpu = files;
 
    CLASS_TIMER  frameTimer;
    CLASS_TIMERS animTimer;
 
-   union { GLOBALCTRLVARS gcvLocal; ui256 gcvLocal32[10] {}; };
-   union { GLOBALCOORDS   gcoLocal; ui256 gcoLocal32[2] {}; };
-
-   vsi64ptr const gcoPtr      = (vsi64ptr)&gco;
-   si64ptr  const gcoLocalPtr = (si64ptr)&gcoLocal;
+   GLOBALCTRLVARS gcvLocal = {};
+   GLOBALCOORDS   gcoLocal = {};
 
    HWND     hRndrWnd;
    ui64     threadLife;
    MARGINS  wndMargins { -1, -1, -1, -1 };
-   ui32     iTotalFrames = 0, iCurrentFrames = 0;
+   ui32     iTotalFrames = 0;
+   ui32     iCurrentFrames = 0;
 
    // Prevent thread from shutting down (after engine reset)
    THREAD_LIFE &= ~VIDEO_THREAD_DIED;
@@ -158,9 +145,6 @@ void Direct3D11Thread(ptr argList) {
 Reinitialise_:
    THREAD_LIFE &= ~VIDEO_THREAD_RESET;
 
-   HANDLE waitGPU = gpu.InitialiseBackbuffer(hRndrWnd, ScrRes.window.w, ScrRes.window.h, ScrRes.window.fmtBB, 8, 1, true);
-//   gpu.InitialiseBackbuffer(hRndrWnd, ScrRes.borderless.w, ScrRes.borderless.h, ScrRes.borderless.fmtBB, 8, 1, true);
-//   gpu.InitialiseBackbuffer(hRndrWnd, ScrRes.full.w, ScrRes.full.h, ScrRes.full.fmtBB, 8, 1, false);
    gpu.cfg.LoadAllShaderGroups();
    gpu.cfg.CreateVertexFormat(0, 0, 0);
    gpu.cfg.CreateVertexFormat(1, 1, 4);
@@ -179,6 +163,11 @@ Reinitialise_:
    gpu.cfg.CreateCullingState();
    gpu.cfg.SetCullingState(0, 0);
 
+   cHANDLE waitGPU =
+      gpu.InitialiseBackbuffer(hRndrWnd, ScrRes.window.w, ScrRes.window.h, ScrRes.window.fmtBB, 8, 1, true);
+//       gpu.InitialiseBackbuffer(hRndrWnd, ScrRes.borderless.w, ScrRes.borderless.h, ScrRes.borderless.fmtBB, 8, 1, true);
+//       gpu.InitialiseBackbuffer(hRndrWnd, ScrRes.full.w, ScrRes.full.h, ScrRes.full.fmtBB, 8, 1, false);
+
    si32 siTextureSet[4];
    gpu.tex.ConfigData(-1, -1, -1, 8, D3D11_USAGE_IMMUTABLE, false, false, true, false, false);
    siTextureSet[0] = gpu.tex.LoadTextureSet(L"1024", SPRITE);
@@ -186,7 +175,7 @@ Reinitialise_:
    gpu.tex.SetPS2D(0, siTextureSet[0], 20, 3);
    gpu.tex.SetPS2D(0, siTextureSet[1], 16, 3);
 
-   CLASS_MAPMAN      mapMan;
+   CLASS_MAPMAN      mapMan(gpu.files);
    CLASS_ENTMAN      entMan;
    CLASS_D3D11HELPER gpuHelper(gpu, mapMan, entMan);
    // Test map
@@ -257,7 +246,7 @@ Reinitialise_:
    csi16 alphabetIndex = gpu.gui.CreateAlphabet(L"Bogan", 16, 16, { 0.5f, 0.75f }, 0, uiAtlasIndex[0]);
    gpu.gui.UploadAlphabetBuffer(0);
 
-   GUI_EL_DESC elementDesc;
+   GUI_EL_DESC elementDesc {};
 
    elementDesc.viewPos    = { 0.0f, 0.0f };
    elementDesc.index      = { -1, -1, 0, 34 };
@@ -375,14 +364,16 @@ Reinitialise_:
    al16 fl32 fAngle = 0.0f, fScale = 1.0f;
    ui8 bMouseCursor = true;
 
-   gpu.cam.CreateCamera(0, STAGES_VERTEX_GEOMETRY, 0, true);
-   gpu.cam.data[0].fXpos = 0.0f; gpu.cam.data[0].fYpos = 0.0f; gpu.cam.data[0].fZpos = -192.0f;
-   gpu.cam.data[0].fXrot = 0.0f; gpu.cam.data[0].fYrot = 0.0f; gpu.cam.data[0].fZrot = 0.0f;
-   gpu.cam.data[0].fZoom = 1.0f; gpu.cam.data[0].fSize = 256.0f;
-   gpu.cam.data[0].fWidth  = ScrRes.dims[ScrRes.state].aspectI;
-   gpu.cam.data[0].fHeight = 1.0f;
-   gpu.cam.data[0].fNearZ = 1.0f;
-   gpu.cam.data[0].fFarZ = 16384.0f;
+   gpu.cam.CreateCamera(0, STAGES_VERTEX_GEOMETRY, STAGES_VERTEX_GEOMETRY, 0, true);
+   gpu.cam.data32[0].fXpos   = 0.0f; gpu.cam.data32[0].fYpos = 0.0f;   gpu.cam.data32[0].fZpos = -192.0f;
+   gpu.cam.data32[0].fXrot   = 0.0f; gpu.cam.data32[0].fYrot = 0.0f;   gpu.cam.data32[0].fZrot = 0.0f;
+   gpu.cam.data32[0].fZoom   = 1.0f; gpu.cam.data32[0].fSize = 256.0f;
+   gpu.cam.data32[0].fWidth  = ScrRes.dims[ScrRes.state].aspectI;
+   gpu.cam.data32[0].fHeight = 1.0f;
+   gpu.cam.data32[0].fNearZ  = 1.0f;
+   gpu.cam.data32[0].fFarZ   = 16384.0f;
+   gpu.cam.PrecalculateProjections(0);
+   gpu.cam.UploadProjections(0x0, 0);
 
    // Display the render window
    gpu.SetBorderedWindow(hWnd);
@@ -442,45 +433,33 @@ Reinitialise_:
       TriggerInputProcessing;
 
       // Clamp camera rotation
-      if(gpu.cam.data[0].fXrot < -1.0f) gpu.cam.data[0].fXrot = -1.0f;
-      if(gpu.cam.data[0].fXrot > 1.0f) gpu.cam.data[0].fXrot = 1.0f;
-      if(gpu.cam.data[0].fYrot < -1.0f) gpu.cam.data[0].fYrot = -1.0f;
-      if(gpu.cam.data[0].fYrot > 1.0f) gpu.cam.data[0].fYrot = 1.0f;
+      if(gpu.cam.data32[0].fXrot < -1.0f) gpu.cam.data32[0].fXrot = -1.0f;
+      if(gpu.cam.data32[0].fXrot > 1.0f) gpu.cam.data32[0].fXrot = 1.0f;
+      if(gpu.cam.data32[0].fYrot < -1.0f) gpu.cam.data32[0].fYrot = -1.0f;
+      if(gpu.cam.data32[0].fYrot > 1.0f) gpu.cam.data32[0].fYrot = 1.0f;
 
       // Update local copy of global control variables
-      Copy32(&gcv, gcvLocal32, 384u);
+      Stream64(ptr(&gcv), &gcvLocal, 448u);
 
       // Update camera
-      gpu.cam.MoveCameraRightXZ(gcvLocal.joy[2].s.x2 * fElapsedTime * 32.0f, 0);
-      gpu.cam.MoveCameraForwardXZ(gcvLocal.joy[2].s.y2 * fElapsedTime * -32.0f, 0);
-      gpu.cam.MoveCameraUpY(gcvLocal.joy[2].t.x * fElapsedTime * -32.0f, 0);
-      gpu.cam.TransformProjections(0);
-      gpu.cam.TransformCamera(0, 0);
+      gpu.cam.MoveCameraRightXZ(gcvLocal.joy[0].s.x2 * fElapsedTime * 32.0f, 0);
+      gpu.cam.MoveCameraForwardXZ(gcvLocal.joy[0].s.y2 * fElapsedTime * -32.0f, 0);
+      gpu.cam.MoveCameraUpY(gcvLocal.joy[0].t.x * fElapsedTime * -32.0f, 0);
+      gpu.cam.TransformCamera(0, false);
 
       // Begin culling out-of-view entities and map chunks
       gpuHelper.ent.StartViewCulling(0);
       gpuHelper.map.StartViewCulling(0, 0);
 
       // Upload camera
-      gpu.cam.UploadProjections(NULL, 0);
-      gpu.cam.UploadCamera(dTotalTime, fElapsedTime, uiFrameCount++, NULL, 0);
+      gpu.cam.UploadCamera(dTotalTime, fElapsedTime, uiFrameCount++, 0x0, 0);
 
       // Update audio listener data
-      gcoLocal.vel.x = gcoLocal.pos.x;
-      gcoLocal.vel.y = gcoLocal.pos.y;
-      gcoLocal.vel.z = gcoLocal.pos.z;
-      gcoLocal.pos.x = gpu.cam.data[0].fXpos;
-      gcoLocal.pos.y = -gpu.cam.data[0].fYpos;
-      gcoLocal.pos.z = gpu.cam.data[0].fZpos;
-      gcoLocal.ori.face.x = gpu.cam.vCamDir.m128_f32[0];
-      gcoLocal.ori.face.y = -gpu.cam.vCamDir.m128_f32[1];
-      gcoLocal.ori.face.z = gpu.cam.vCamDir.m128_f32[2];
-      gcoLocal.ori.up.x = gpu.cam.vCamUp.m128_f32[0];
-      gcoLocal.ori.up.y = -gpu.cam.vCamUp.m128_f32[1];
-      gcoLocal.ori.up.z = gpu.cam.vCamUp.m128_f32[2];
+      gcoLocal.vel = gcoLocal.pos;
+      gcoLocal.pos = gpu.cam.data32[0].pos;
+      gcoLocal.ori = gpu.cam.vCamOri;
       
-      // Forcing volatile copy to avoid glitches 
-      LockedMoveAndClear(gcoLocalPtr, gcoPtr, sizeof(gcoLocal));
+      LockedMoveAndClear(&gcoLocal, &gco, 64); // Forcing volatile copy to avoid glitches
 
       //WaitForSingleObjectEx(waitGPU, 1000, false);
       gpu.ClearFlipRenderViews(c4_black_trans);
@@ -492,25 +471,23 @@ Reinitialise_:
       cSSE4Du32 mapManThreadData = gpuHelper.map.WaitThenUploadAndRender(0, 0);
       uiVisChunks = mapManThreadData.x;
 
-      // Render 3D overlays
+      // Update UI readouts
+      snprintf(textBuffer, 128, "Pos: <%.3f, %.3f, %.3f>   Rot: <%.3f, %.3f, %.3f>   Cull time: %.3fs   Mouse tilt: %d   Entities: %d",
+               gpu.cam.data32[0].fXpos, gpu.cam.data32[0].fYpos, gpu.cam.data32[0].fZpos, gpu.cam.data32[0].fXrot, gpu.cam.data32[0].fYrot, gpu.cam.data32[0].fZrot,
+               sysData.culling.entity.time, gcvLocal.mouse.w, sysData.culling.entity.vis[0]);
+      snprintf(textInputs, 128, "0x%03X 0x%03X 0x%03X 0x%03X", inputsImmediate.x, inputsImmediate.y, inputsImmediate.z, inputsImmediate.w);
+      if(siCell != 0x0CDCDCDCD && siCell != 0x080000001) snprintf(textBoxText, 128, "0x%08X: %.3f", siCell, mapMan.world[0].map[0]->cell[siCell].geometry->dens);
+
+      // Render 3D overlay(s)
       gpu.cfg.SetBlendState(0, 1);
       gpu.cfg.SetDepthStencilState(0, 0, 0);
       if(siActiveLayer.m128i_i32[0] < 0 && siCell != 0x080000001) gpu.ren.DrawVoxel((*(MAP_DESC *)ptrLib[14]).mcrv.activeCell, c4_light_violet);
 
       // Render GUI
-      snprintf(textBuffer, 128, "Pos: <%.3f, %.3f, %.3f>   Rot: <%.3f, %.3f, %.3f>   Cull time: %.3fms   Mouse tilt: %d   Entities: %d",
-               gpu.cam.data[0].fXpos, gpu.cam.data[0].fYpos, gpu.cam.data[0].fZpos, gpu.cam.data[0].fXrot, gpu.cam.data[0].fYrot, gpu.cam.data[0].fZrot,
-               sysData.culling.entity.time, gcvLocal.mouse.w, sysData.culling.entity.vis[0]);
-      snprintf(textInputs, 128, "0x%03X 0x%03X 0x%03X 0x%03X", inputsImmediate.x, inputsImmediate.y, inputsImmediate.z, inputsImmediate.w);
-      cfl32 cellDensity = (siCell != 0x080000001 && siCell != 0x0CDCDCDCD ? mapMan.world[0].map[0]->cell[siCell].geometry->dens : 0.0f);
-      snprintf(textBoxText, 128, "%0.8x %0.8x", gcvLocal.imm.k32[7], gcvLocal.rel.k32[7]);
       gpu.gui.UpdateText(textBuffer, textElement);
       gpu.gui.UpdateText(textInputs, textInputEl);
       gpu.gui.UpdateText(textBoxText, textBox);
-      gpu.gui.UploadTextBuffer(0);
-      gpu.gui.UploadEntryBuffer(0);
-      gpu.gui.SetResources(0, 0);
-      gpu.gui.DrawInterface(0);
+      gpu.ren.DrawGUIElements(0, interfaceMain);
 
       // Display backbuffer
       gpu.PresentRenderTarget(0);

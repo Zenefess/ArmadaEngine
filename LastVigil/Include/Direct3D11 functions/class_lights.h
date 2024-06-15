@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_lights.h                 Created: 2022/10/20 *
- *                                Last modified: 2024/05/23 *
+ *                                Last modified: 2024/06/15 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -9,8 +9,6 @@
 #pragma once
 
 #include "Data structures.h"
-
-#define MAX_LIGHTS 1024
 
 al16 struct CLASS_LIGHTS {
    ID3D11Device         *dev;
@@ -38,7 +36,7 @@ al16 struct CLASS_LIGHTS {
       bd.MiscFlags = 0;
       bd.StructureByteStride = sizeof(CB_LIGHT);
       srd.pSysMem = n;
-      Try(stCreateBuf, dev->CreateBuffer(&bd, &srd, &pCB));
+      Try(stCreateBuf, dev->CreateBuffer(&bd, &srd, &pCB), video);
       devcon[context]->PSSetConstantBuffers(cBufSlot, 1, (ID3D11Buffer *const *)&pCB);
 
       return totalLights;
@@ -47,8 +45,8 @@ al16 struct CLASS_LIGHTS {
    inline void SetColour(cui16 light, cVEC3Df colour) { n[light].col = colour; }
 
    inline void UploadAll(cui8 context) {
-      Try(stMap, devcon[context]->Map(pCB, 0, D3D11_MAP_WRITE_DISCARD, NULL, &ms));
-      memcpy(ms.pData, n, sizeof(CB_LIGHT) * totalLights);
+      Try(stMap, devcon[context]->Map(pCB, 0, D3D11_MAP_WRITE_DISCARD, NULL, &ms), video);
+      Stream32(n, ms.pData, sizeof(CB_LIGHT) * totalLights);
       devcon[context]->Unmap(pCB, 0);
    }
 

@@ -1,6 +1,6 @@
 /************************************************************
 * File: Input functions.cpp            Created: 2024/04/22 *
-*                                Last modified: 2024/06/05 *
+*                                Last modified: 2024/06/06 *
 *                                                          *
 * Desc:                                                    *
 *                                                          *
@@ -28,7 +28,7 @@ void ProcessInputs(INPUT_PROC_DATA &ipd, GLOBALCTRLVARS &ctrlVars) {
    imLast = ipd.input.global;
 
    // Populate intersection lists  --  Thread? Not required until 'Process world space inputs'
-   md.mcrv.activeLocations.xmm0 = gpu.cam.data[0].pos32.xmm;
+   md.mcrv.activeLocations.xmm0 = gpu.cam.data32[0].pos.xmm;
    md.mcrv.activeLocation1.z    = fl32(md.mapDim.z - md.zso);
    gpu.cam.CursorLayerIntersect(md.mcrv.locationOS[1], ctrlVars.curCoords, gpu.cam.currentCamProj);
    (*(CLASS_MAPMAN *)ptrLib[6]).PopulateCellList(md.mcrv.activeLocations, md.wlrv.world, md.wlrv.map);
@@ -127,14 +127,14 @@ void ProcessInputs(GLOBALCTRLVARS &ctrlVars) {
          //gpu.MouseCursor(hWnd, false);
          ctrlVars.misc[7] &= 0x0F7;
       }
-      gpu.cam.data[0].fXrot -= ctrlVars.mouse.y;
-      gpu.cam.data[0].fYrot += ctrlVars.mouse.x;
+      gpu.cam.data32[0].fXrot -= ctrlVars.mouse.y;
+      gpu.cam.data32[0].fYrot += ctrlVars.mouse.x;
    } else
       if(!(ctrlVars.misc[7] & 0x04)) {
          //gpu.MouseCursor(hWnd, true);
          ctrlVars.misc[7] |= 0x08;
       }
    // Gamepad 0x02 input
-   gpu.cam.data[0].fXrot -= ctrlVars.joy[2].s.x1 * fElapsedTime;
-   gpu.cam.data[0].fYrot += ctrlVars.joy[2].s.y1 * fElapsedTime;
+   gpu.cam.data32[0].fXrot -= ctrlVars.joy[0].s.x1 * fElapsedTime;
+   gpu.cam.data32[0].fYrot += ctrlVars.joy[0].s.y1 * fElapsedTime;
 }

@@ -1,15 +1,13 @@
 /************************************************************
  * File: OpenAL1_1 thread.cpp           Created: 2022/11/12 *
- *                           Code last modified: 2022/11/12 *
+ *                           Code last modified: 2024/06/15 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
- *  Copyright (c) David William Bull. All rights reserved.  *
+ * Copyright (c) David William Bull.   All rights reserved. *
  ************************************************************/
 
 #include "pch.h"
-
-#include "thread flags.h"
 #include "OpenAL1_1 thread.h"
 
 #ifdef _DEBUG
@@ -18,18 +16,15 @@
 #include "D3D11SDKLayers.h"
 #endif
 
-extern vui64 THREAD_LIFE; // 'Thread active' flags
-
 void OpenAL1_1Thread(void* argList) {
-   al16 ALCdevice          *ALdev = NULL;
-        ALCcontext         *ALdevcon = NULL;
-   al16 CLASS_OAL11FILEOPS  files;
-        ui64                threadLife = NULL;
-        GLOBALCOORDS        gcoLocal {};
-   al16 vsi64ptr            gcoPtr = (vsi64ptr)&gco;
-   al16 si64ptr             gcoLocalPtr = (si64ptr)&gcoLocal;
-        si32                siSound[4096];
-        ui8                 uiMaxEAX = 0, uiNumBuffers = 4;
+   GLOBALCOORDS        gcoLocal     = {};
+   CLASS_OAL11FILEOPS  sndFiles     = files;
+   ALCdevice          *ALdev        = NULL;
+   ALCcontext         *ALdevcon     = NULL;
+   ui64                threadLife   = NULL;
+   si32ptrc            siSound      = (si32ptrc)malloc32(sizeof(si32) * MAX_SOUNDS);
+   ui8                 uiMaxEAX     = 0;
+   ui8                 uiNumBuffers = 4;
 
    // Prevent thread from shutting down (after engine reset)
    THREAD_LIFE &= ~AUDIO_THREAD_DIED;
@@ -40,9 +35,9 @@ Reinitialise_:
 
    // Initialisation
    ALdev = alcOpenDevice(NULL);
-   if(!ALdev) Try(stOpenDev, -2);
+   if(!ALdev) Try(stOpenDev, -2, audio);
    ALdevcon = alcCreateContext(ALdev, NULL);
-   if(!ALdevcon) Try(stCreateCon, -3);
+   if(!ALdevcon) Try(stCreateCon, -3, audio);
    bool bOK = alcMakeContextCurrent(ALdevcon);
 
    if(alIsExtensionPresent("EAX2.0")) uiMaxEAX = 2;
@@ -56,16 +51,16 @@ Reinitialise_:
    alcGetIntegerv(ALdev, ALC_MONO_SOURCES, 1, &nummono);
    alcGetIntegerv(ALdev, ALC_STEREO_SOURCES, 1, &numstereo);
    
-   ALfloat listenerPos[] = { 0.0f, 0.0f, 0.0f };
-   ALfloat listenerVel[] = { 0.0f, 0.0f, 0.0f };
-   ALfloat listenerOri[] = { 0.0f, 0.0f, 1.0f, 0.0f ,1.0f ,0.0f };
+   VEC3Df listenerPos = null3Df;
+   VEC3Df listenerVel = null3Df;
+   VEC6Df listenerOri = { 0.0f, 0.0f, 1.0f, 0.0f ,1.0f ,0.0f };
    alListenerf(AL_GAIN, 1.0f);
-   alListenerfv(AL_POSITION, listenerPos);
-   alListenerfv(AL_VELOCITY, listenerVel);
-   alListenerfv(AL_ORIENTATION, listenerOri);
+   alListenerfv(AL_POSITION, listenerPos._fl32);
+   alListenerfv(AL_VELOCITY, listenerVel._fl32);
+   alListenerfv(AL_ORIENTATION, listenerOri._fl32);
 
    // Test loading
-   siSound[0] = files.LoadWAV((wchptr)L"sounds\\mirrors.wav");
+   siSound[0] = sndFiles.LoadWAV(L"mirrors.wav", L"sounds");
    //alSourcePlay(siSound[0]);
 
    // Primary rendering loop
@@ -73,9 +68,7 @@ Reinitialise_:
       threadLife = THREAD_LIFE & AUDIO_THREAD;
 
       // Read camera's global coordinates
-      gcoPtr = (vsi64ptr)&gco;
-      gcoLocalPtr = (si64ptr)&gcoLocal;
-      memcpy(gcoLocalPtr, (ptr)gcoPtr, sizeof(GLOBALCOORDS));
+      Copy64(&gco, &gcoLocal, sizeof(GLOBALCOORDS));
 
       alListenerfv(AL_POSITION, gcoLocal.p);
       alListenerfv(AL_VELOCITY, gcoLocal.v);

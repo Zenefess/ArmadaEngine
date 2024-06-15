@@ -1,6 +1,6 @@
 /************************************************************
  * File: GUI functions.h                Created: 2023/06/13 *
- *                                Last modified: 2024/03/27 *
+ *                                Last modified: 2024/06/06 *
  *                                                          *
  * Desc: Forward declarations for user interface functions  *
  *       for in-game menus and developer environment.       *
@@ -28,6 +28,8 @@ void __Activate1_0_Default_Scalar(cptrc);
 void __Activate1_1_Default_Scalar(cptrc);
 
 void __Activate0_0_Default_Input(cptrc);
+void __Activate0_1_Default_Input(cptrc);
+void __Activate1_0_Default_Input(cptrc);
 void __Passive_Default_Input(cptrc);
 
 void __OnHover_Default(cptrc);

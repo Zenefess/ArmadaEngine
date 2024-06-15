@@ -248,11 +248,13 @@
     <ClInclude Include="Include\DirectInput8 thread.h" />
     <ClInclude Include="Include\WorldGen threads.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="project definitions.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Direct3D11 thread.cpp" />
+    <ClCompile Include="GUI editor.cpp" />
     <ClCompile Include="Input functions.cpp" />
     <ClCompile Include="LastVigil.cpp">
       <CallingConvention Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Cdecl</CallingConvention>

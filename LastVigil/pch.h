@@ -13,7 +13,7 @@
 #ifndef PCH_H
    #define PCH_H
 
-   #define DATA_TRACKING
+   #include "project definitions.h"
 
    #include "targetver.h"
 
@@ -23,13 +23,19 @@
    #include <process.h>
    #include <data tracking.h>
    #include <typedefs.h>
-   #include <memory management.h>
    #include <24-bit integers.h>
    #include <vector structures.h>
    #include <Fixed-point data types.h>
+   #include <memory management.h>
    #include <Common functions.h>
    #include <stdlib.h>
    #include <tchar.h>
+   #include <thread flags.h>
+   #include <File operations.h>
+   #include <Data structures.h>
+   #include <Common functions.h>
+   #include <class_timers.h>
+   #include <main thread.h>
 #endif
 
 #include "resource.h"

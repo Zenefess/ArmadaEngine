@@ -1,6 +1,6 @@
 /**********************************************************
  * File: D3D11 type defines.h         Created: 2023/04/16 *
- *                              Last modified: 2023/04/28 *
+ *                              Last modified: 2024/06/08 *
  *                                                        *
  * Desc:                                                  *
  *                                                        *
@@ -74,11 +74,48 @@ struct PLANEfl64 { // 32 bytes
    };
 };
 
-struct FRUSTUM_DATA { // 192 bytes
+struct FRUSTUM_DATAf32 { // 96 bytes
    union {
       union {
+         fl32x8 ymm[3];
+         fl32x4 xmm[6];
+         struct {
+            fl32x8 ymm0;
+            fl32x8 ymm1;
+            fl32x8 ymm2;
+         };
+         struct {
+            fl32x4 xmm0;
+            fl32x4 xmm1;
+            fl32x4 xmm2;
+            fl32x4 xmm3;
+            fl32x4 xmm4;
+            fl32x4 xmm5;
+         };
+      };
+      PLANEfl32 fPlane[6];
+      struct {
+         PLANEfl32 fLeft;
+         PLANEfl32 fBottom;
+         PLANEfl32 fRight;
+         PLANEfl32 fTop;
+         PLANEfl32 fNear;
+         PLANEfl32 fFar;
+      };
+   };
+};
+
+struct FRUSTUM_DATAf64 { // 192 bytes
+   union {
+      union {
+         fl64x8 zmm[3];
          fl64x4 ymm[6];
          fl64x2 xmm[12];
+         struct {
+            fl64x8 zmm0;
+            fl64x8 zmm1;
+            fl64x8 zmm2;
+         };
          struct {
             fl64x4 ymm0;
             fl64x4 ymm1;
@@ -101,24 +138,7 @@ struct FRUSTUM_DATA { // 192 bytes
             fl64x2 xmm10;
             fl64x2 xmm11;
          };
-      } f64;
-      union {
-         fl32x8 ymm[3];
-         fl32x4 xmm[6];
-         struct {
-            fl32x8 ymm0;
-            fl32x8 ymm1;
-            fl32x8 ymm2;
-         };
-         struct {
-            fl32x4 xmm0;
-            fl32x4 xmm1;
-            fl32x4 xmm2;
-            fl32x4 xmm3;
-            fl32x4 xmm4;
-            fl32x4 xmm5;
-         };
-      } f32;
+      };
       PLANEfl64 dPlane[6];
       struct {
          PLANEfl64 dLeft;
@@ -128,38 +148,15 @@ struct FRUSTUM_DATA { // 192 bytes
          PLANEfl64 dNear;
          PLANEfl64 dFar;
       };
-      PLANEfl32 fPlane[6];
-      struct {
-         PLANEfl32 fLeft;
-         PLANEfl32 fBottom;
-         PLANEfl32 fRight;
-         PLANEfl32 fTop;
-         PLANEfl32 fNear;
-         PLANEfl32 fFar;
-      };
    };
 };
 
-al32 struct CAMERA_DATA {
+al32 struct CAMERA_DATAf32 { // 192 bytes
    union {
+      AVX8Df32 pos_rot;
       struct {
-         AVX4Df64 pos64;
-         AVX4Df64 rot64;
-      };
-      AVX8Df32 pos_rot32;
-      struct {
-         SSE4Df32 pos32;
-         SSE4Df32 rot32;
-      };
-      struct {
-         double dXpos;
-         double dYpos;
-         double dZpos;
-         double dSize;
-         double dXrot;
-         double dYrot;
-         double dZrot;
-         double dZoom;
+         SSE4Df32 pos;
+         SSE4Df32 rot;
       };
       struct {
          float fXpos;
@@ -172,15 +169,8 @@ al32 struct CAMERA_DATA {
          float fZoom;
       };
    };
-   FRUSTUM_DATA frustum;
+   FRUSTUM_DATAf32 frustum;
    union {
-      AVX4Df64 dView;
-      struct {
-         fl64 dWidth;
-         fl64 dHeight;
-         fl64 dNearZ;
-         fl64 dFarZ;
-      };
       SSE4Df32 fView;
       struct {
          fl32 fWidth;
@@ -189,11 +179,38 @@ al32 struct CAMERA_DATA {
          fl32 fFarZ;
       };
    };
+   SSE4Df32 RES;
+   SSE4Df32 fDims[2];
+};
+
+al64 struct CAMERA_DATAf64 { // 384 bytes
    union {
-      AVX4Df64 dDims[2];
+      AVX8Df64 pos_rot;
       struct {
-         SSE4Df32 fDims[2];
-         SSE4Ds32 iDims[2];
+         AVX4Df64 pos;
+         AVX4Df64 rot;
+      };
+      struct {
+         double dXpos;
+         double dYpos;
+         double dZpos;
+         double dSize;
+         double dXrot;
+         double dYrot;
+         double dZrot;
+         double dZoom;
       };
    };
+   FRUSTUM_DATAf64 frustum;
+   union {
+      AVX4Df64 dView;
+      struct {
+         fl64 dWidth;
+         fl64 dHeight;
+         fl64 dNearZ;
+         fl64 dFarZ;
+      };
+   };
+   AVX4Df64 RES;
+   AVX4Df64 dDims[2];
 };

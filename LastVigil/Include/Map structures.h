@@ -64,9 +64,10 @@ al16 struct CELL_DGS { // 16 bytes
    VEC4Du8 et;   // Element type for each layer
    VEC4Du8 er;   // Element ratios                                      <<< Change both ???
    VEC4Du8 end;  // Roughness (lerp noise deviation) for each layer     <<< to p8n0_1x4 ???
+   fl32    dens; // Density/viscosity (dictates mesh array median height)
+/// Unpacking .dens is noticeably slower
 //   fp16n   dens; // Density/viscosity (dictates mesh array median height) : p16n0.0~(1.0+1.0/65534.0)
 //   f0p8x2  warp; // Texture warp scalars [XY] : 0p8
-   fl32    dens; // Density/viscosity (dictates mesh array median height)
 };
 
 al16 struct CELL_DPS { // 16 bytes
@@ -91,7 +92,8 @@ al8 struct CELL { // 40 bytes
 };
 
 al16 struct MAPDIMS_ICB { // 16 bytes   ---   Map Cells and Chunk Cells not needed?
-   ui64 dimData[2];
+   ui64     dimData[2];
+   CELL_DGS oobCell;
    // Map dimensions: X, Y, Z cell counts - 1     --- 30 bits -- [..][..][..][30]
    // Chunk dimensions: X, Y, Z cell counts - 1   --- 18 bits -- [..][..][16][32]
    // Map Cells: Total cells per map - 1          --- 30 bits -- [..][14][32][..]
@@ -99,11 +101,11 @@ al16 struct MAPDIMS_ICB { // 16 bytes   ---   Map Cells and Chunk Cells not need
    // Map chunks: X, Y, Z chunk counts - 1        --- 21 bits -- [21][..][..][..]
    // flag                                        ---  1 bits -- [22][..][..][..]
    // zso: Z spawning offset - 1                  --- 10 bits -- [32][..][..][..]
-   void setMapDims(csi32 value0, csi32 value1, csi32 value2) { dimData[0] = ui64(value0 & 0x03FF) | (ui64(value1 & 0x03FF) << 10u) | (ui64(value2 & 0x03FF) << 20u) | (dimData[0] & 0x0FFFFFFFFC0000000u); }
-   void setChunkDims(csi32 value0, csi32 value1, csi32 value2) { dimData[0] = (ui64(value0 & 0x03F) << 30u) | (ui64(value1 & 0x03F) << 36u) | (ui64(value2 & 0x03F) << 42u) | (dimData[0] & 0x03FFFFFFFu); }
-   void setMapCells(csi64 value) { dimData[0] = (ui64(value & 0x0FFFF) << 48u) | (dimData[0] & 0x0FFFFFFFFFFFFu); dimData[1] = ui64((value >> 16) & 0x03FFF) | (dimData[1] & 0x0FFFFFFFFFFFFC000u); }
-   void setChunkCells(csi64 value) { dimData[1] = ui64(value << 14) | (dimData[1] & 0x0FFFFFFFF00003FFFu); }
-   void setMapChunks(csi32 value0, csi32 value1, csi32 value2) { dimData[1] = (ui64(value0 & 0x07F) << 32u) | (ui64(value1 & 0x07F) << 39u) | (ui64(value2 & 0x07F) << 46u) | (dimData[1] & 0x0FFE00000FFFFFFFFu); }
+   void setMapDims(csi32 value0, csi32 value1, csi32 value2) { dimData[0] = ui64(value0 & 0x03FFu) | (ui64(value1 & 0x03FFu) << 10u) | (ui64(value2 & 0x03FFu) << 20u) | (dimData[0] & 0x0FFFFFFFFC0000000u); }
+   void setChunkDims(csi32 value0, csi32 value1, csi32 value2) { dimData[0] = (ui64(value0 & 0x03Fu) << 30u) | (ui64(value1 & 0x03Fu) << 36u) | (ui64(value2 & 0x03Fu) << 42u) | (dimData[0] & 0x03FFFFFFFu); }
+   void setMapCells(csi64 value) { dimData[0] = (ui64(value & 0x0FFFFu) << 48u) | (dimData[0] & 0x0FFFFFFFFFFFFu); dimData[1] = ui64((value >> 16) & 0x03FFFu) | (dimData[1] & 0x0FFFFFFFFFFFFC000u); }
+   void setChunkCells(csi64 value) { dimData[1] = ui64(value << 14u) | (dimData[1] & 0x0FFFFFFFF00003FFFu); }
+   void setMapChunks(csi32 value0, csi32 value1, csi32 value2) { dimData[1] = (ui64(value0 & 0x07Fu) << 32u) | (ui64(value1 & 0x07Fu) << 39u) | (ui64(value2 & 0x07Fu) << 46u) | (dimData[1] & 0x0FFE00000FFFFFFFFu); }
    void setFlag(cbool value) { dimData[1] = dimData[1] | (dimData[1] & 0x0FFDFFFFFFFFFFFFFu); }
    void setSpawnOffset(csi16 value) { dimData[1] = (ui64(value) << 54u) | (dimData[1] & 0x03FFFFFFFFFFFFFu); }
 };

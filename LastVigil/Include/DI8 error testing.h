@@ -1,18 +1,12 @@
 /************************************************************
  * File: DI8 error testing.h            Created: 2023/02/07 *
- *                                Last modified: 2024/06/01 *
+ *                                Last modified: 2024/06/15 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
  *                         Copyright (c) David William Bull *
  ************************************************************/
 #pragma once
-
-#include "pch.h"
-#include "typedefs.h"
-#include <stdio.h>
-
-extern void WriteError(cchptr const, cbool);
 
 cchar stDI8Create[]      = "DirectInput8Create";
 cchar stCreateDev[]      = "di8->CreteDevice";
@@ -28,15 +22,3 @@ cchar stGetKeyDevState[] = "di8Key->GetDeviceState";
 cchar stEnumGamepads[]   = "di8->EnumDevices";
 cchar stPollMouse[]      = "di8Mse->Poll";
 cchar stPollGamepad[]    = "di8Pad[]->Poll";
-
-inline static void Try(cchptr stEvent, ui32 uiResult) {
-   static char stDescription[64];
-
-   if(uiResult & 0x080000000) {
-      sprintf(stDescription, "INPUT:%04X : %s", uiResult & 0x03FFFFFFF, stEvent);
-      if(uiResult & 0x040000000)
-         WriteError(stDescription, true);
-      else
-         WriteError(stDescription, false);
-   }
-}

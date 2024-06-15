@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_timer.h                  Created: 2022/10/20 *
- *                                Last modified: 2023/05/13 *
+ *                                Last modified: 2024/06/15 *
  *                                                          *
  * Desc: Single and multi timer classes.                    *
  *                                                          *
@@ -8,10 +8,10 @@
  ************************************************************/
 #pragma once
 
-al32 struct CLASS_TIMER {
+al16 struct CLASS_TIMER {
    double dGrandTotal, dTotal, dElapsed, dScale, dScaleConst, dScaleAccel, _dScaleAccelTemp;
-   si64   siFrequency, siOriginTics, siStartTics, siPrevTics, siCurrentTics, siTotalTics, siElapsedTics, siPauseTics;
    si32   siTotalUpdates, siUpdatesSinceLastReset;
+   si64   siFrequency, siOriginTics, siStartTics, siPrevTics, siCurrentTics, siTotalTics, siElapsedTics, siPauseTics;
 
    void Init(void) {
       QueryPerformanceCounter((LARGE_INTEGER *)&siOriginTics);

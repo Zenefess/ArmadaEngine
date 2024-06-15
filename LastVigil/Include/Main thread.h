@@ -1,11 +1,12 @@
 /**********************************************************
  * File: Main thread.h                Created: 2008/09/16 *
- *                              Last modified: 2024/04/23 *
+ *                              Last modified: 2024/06/15 *
  *                                                        *
  * Desc:                                                  *
  *                                                        *
  * Copyright (c) David William Bull. All rights reserved. *
  **********************************************************/
+#pragma once
 
 /*/
  *  Library of pointers to classes and resources
@@ -31,18 +32,19 @@
 #define AE_PTR_LIB
 extern cptr ptrLib[16];
 
-#ifdef DATA_TRACKING
-#include "data tracking.h"
-extern SYSTEM_DATA sysData;
-#endif
-
 #define AE_D3D11_2
-extern vui64     THREAD_LIFE;  // 'Thread active' flags
-extern wchptr    stThrdStat;   // Debug output
-extern HINSTANCE hInst;        // Current instance's handle
-extern HWND      hWnd;         // Main window's handle
-extern HANDLE    hErrorOutput; // File handle for error output
-extern HRESULT   hr;
-extern wchar     stErrorFilename[64];
+extern     SYSTEM_DATA   sysData;      // Automated tracking of system data
+extern     CLASS_FILEOPS files;        // File handler
+extern     CLASS_TIMER   mainTimer;    // Primary (single) timer
+extern     vui64         THREAD_LIFE;  // 'Thread active' flags
+extern     wchptr        stThrdStat;   // Debug output
+extern     HINSTANCE     hInst;        // Current instance's handle
+extern     HWND          hWnd;         // Main window's handle
+extern     HWND          hWndDebug;    // Debug window's handle
+extern     HANDLE        hErrorOutput; // File handle for error output
+extern     HRESULT       hr;
+extern     wchar         stErrorFilename[64];
+extern vol GLOBALCOORDS  gco;
 
-extern void WriteError(cchptrc, cbool);
+extern inline void Try(cchptr stEvent, ui32 uiResult, AE_SUBSYSTEM_ENUM subsystem);
+extern        void WriteError(cchptrc, cbool);

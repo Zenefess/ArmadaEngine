@@ -1,6 +1,6 @@
 /************************************************************
  * File: Common functions.h             Created: 2023/02/02 *
- *                                    Last mod.: 2024/06/06 *
+ *                                    Last mod.: 2024/06/08 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -34,18 +34,20 @@ static cfl64 rcp65536d = 1.0 / 65536.0;
 
 static cVEC3Df null3Df = { 0.0f, 0.0f, 0.0f };
 
-static cfl32x4 null128f  = _mm_setzero_ps();
-static cfl32x4 ones32x4f = _mm_set_ps1(1.0f);
-static cui128  null128   = _mm_setzero_si128();
-static cui128  ones32x4  = _mm_set1_epi32(1u);
-static cui128  max128    = _mm_set1_epi32(-1);
+static cfl32x4 null128f     = _mm_setzero_ps();
+static cfl32x4 ones32x4f    = _mm_set_ps1(1.0f);
+static cfl32x4 negOnes32x4f = _mm_set_ps1(-1.0f);
+static cui128  null128      = _mm_setzero_si128();
+static cui128  ones32x4     = _mm_set1_epi32(1u);
+static cui128  max128       = _mm_set1_epi32(-1);
 
 #ifdef __AVX__
-static cfl32x8 null256f  = _mm256_setzero_ps();
-static cfl32x8 ones32x8f = _mm256_set1_ps(1.0f);
-static cui256  null256   = _mm256_setzero_si256();
-static cui256  ones32x8  = _mm256_set1_epi32(1u);
-static cui256  max256    = _mm256_set1_epi32(-1);
+static cfl32x8 null256f     = _mm256_setzero_ps();
+static cfl32x8 ones32x8f    = _mm256_set1_ps(1.0f);
+static cfl32x8 negOnes32x8f = _mm256_set1_ps(-1.0f);
+static cui256  null256      = _mm256_setzero_si256();
+static cui256  ones32x8     = _mm256_set1_epi32(1u);
+static cui256  max256       = _mm256_set1_epi32(-1);
 #endif
 
 inline void swap(ui8 &a, ui8 &b) { a ^= b; b ^= a; a ^= b; }
@@ -236,3 +238,16 @@ inline cbool AllTrue(cui512 &source, cui512 &compare) {
 }
 
 #endif
+
+inline constexpr csi32 RoundUpToNearest16(csi32 input) { return (input + 15)    & 0x0FFFFFFF0; }
+inline constexpr cui32 RoundUpToNearest16(cui32 input) { return (input + 15u)   & 0x0FFFFFFF0u; }
+inline constexpr csi64 RoundUpToNearest16(csi64 input) { return (input + 15ll)  & 0x0FFFFFFFFFFFFFFF0; }
+inline constexpr cui64 RoundUpToNearest16(cui64 input) { return (input + 15ull) & 0x0FFFFFFFFFFFFFFF0u; }
+inline constexpr csi32 RoundUpToNearest32(csi32 input) { return (input + 31)    & 0x0FFFFFFE0; }
+inline constexpr cui32 RoundUpToNearest32(cui32 input) { return (input + 31u)   & 0x0FFFFFFE0u; }
+inline constexpr csi64 RoundUpToNearest32(csi64 input) { return (input + 31ll)  & 0x0FFFFFFFFFFFFFFE0; }
+inline constexpr cui64 RoundUpToNearest32(cui64 input) { return (input + 31ull) & 0x0FFFFFFFFFFFFFFE0u; }
+inline constexpr csi32 RoundUpToNearest64(csi32 input) { return (input + 63)    & 0x0FFFFFFC0; }
+inline constexpr cui32 RoundUpToNearest64(cui32 input) { return (input + 63u)   & 0x0FFFFFFC0u; }
+inline constexpr csi64 RoundUpToNearest64(csi64 input) { return (input + 63ll)  & 0x0FFFFFFFFFFFFFFC0; }
+inline constexpr cui64 RoundUpToNearest64(cui64 input) { return (input + 63ull) & 0x0FFFFFFFFFFFFFFC0u; }

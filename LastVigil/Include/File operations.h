@@ -1,6 +1,6 @@
 /************************************************************
- * File: D3D11 file operations.h        Created: 2022/11/06 *
- *                                Last modified: 2024/05/06 *
+ * File: File operations.h              Created: 2022/11/06 *
+ *                                Last modified: 2024/06/15 *
  *                                                          *
  * Notes: 2024/05/06: Added support for data tracking       *
  *                                                          *
@@ -9,29 +9,77 @@
 #pragma once
 #pragma warning(disable : 4996)
 
-#include "pch.h"
-#include <stdio.h>
-
 #ifdef DATA_TRACKING
 #include "data tracking.h"
-extern SYSTEM_DATA sysData;
 #endif
 
+#include <stdio.h>
+#include "typedefs.h"
+#include "class_timers.h"
+
+extern vui64       THREAD_LIFE;
+extern HANDLE      hErrorOutput;
+extern CLASS_TIMER mainTimer;
+
+enum AE_SUBSYSTEM_ENUM : ui8 { video, audio, input };
+
+extern inline void Try(cchptr stEvent, ui32 uiResult, AE_SUBSYSTEM_ENUM subsystem);
+
 al16 struct CLASS_FILEOPS {
-   al16 wchptr  pathWorking = (wchar *)_aligned_malloc(sizeof(wchar[512]), 16);
-        wchptr  stTemp = (wchar *)_aligned_malloc(sizeof(wchar[4096]), 16);
-        wchar (*stShader)[100][256] = NULL;
-        ui32    uiShaders = 0, uiBytes = 0, uiBanks[6]{};
-        ui8     uiIndex[6][100] = {};
+   wchptrc pathWorking         = (wchptr)malloc16(sizeof(wchar[512]));
+   wchptrc stTemp              = (wchptr)malloc16(sizeof(wchar[4096]));
+   ui32    uiBytes             = 0;
+   DWORD   bytesProcessed      = 0;
+   cchar   stLoadShaders[24]   = "Invalid shader.cfg file";
+
+   inline cHANDLE OpenFileForReading(cwchptrc filename, cwchptrc folder) const {
+      wcscpy(stTemp, folder);
+      wcscpy(stTemp + wcslen(folder), L"\\");
+      wcscpy(stTemp + wcslen(folder) + 1, filename);
+      cHANDLE hFile = CreateFile(stTemp, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, 0);
+      if(!hFile) return hFile;
+#ifdef DATA_TRACKING
+      sysData.storage.filesOpened++;
+#endif
+      return hFile;
+   }
+
+   inline cHANDLE OpenFileForWriting(cwchptrc filename, cwchptrc folder) const {
+      wcscpy(stTemp, folder);
+      wcscpy(stTemp + wcslen(folder), L"\\");
+      wcscpy(stTemp + wcslen(folder) + 1, filename);
+      cHANDLE hFile = CreateFile(stTemp, GENERIC_WRITE, FILE_SHARE_WRITE, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+      if(!hFile) return hFile;
+#ifdef DATA_TRACKING
+      sysData.storage.filesOpened++;
+#endif
+      return hFile;
+   }
+
+   inline cui32 ReadFromFile(cHANDLE file, ptrc dest, cui32 bytesToRead) {
+      ReadFile(file, dest, bytesToRead, &bytesProcessed, 0);
+#ifdef DATA_TRACKING
+      sysData.storage.bytesRead += bytesProcessed;
+#endif
+      return bytesProcessed;
+   }
+
+   inline cui32 WriteToFile(cHANDLE file, cptrc data, cui32 bytesToWrite) {
+      WriteFile(file, data, bytesToWrite, &bytesProcessed, 0);
+#ifdef DATA_TRACKING
+      sysData.storage.bytesWritten += bytesProcessed;
+#endif
+      return bytesProcessed;
+   }
 
    // Returns number of bytes read
-   inline cui32 ReadLine(wchar *stDest, HANDLE handle) const {
+   inline cui32 ReadLine(cHANDLE file, wchar *stDest) const {
       static wchar chCurrent = NULL;
 
       ui32 xx = 0;
 
       for(xx = 0; xx < 255; xx++) {
-         bool bOK = ReadFile(handle, &chCurrent, 1, (LPDWORD)&uiBytes, NULL);
+         cbool bOK = ReadFile(file, &chCurrent, 1, (LPDWORD)&uiBytes, NULL);
          if(!bOK || !uiBytes) {
             stDest[xx] = NULL;
             return 0;
@@ -56,14 +104,24 @@ al16 struct CLASS_FILEOPS {
       return uiBytes;
    }
 
+   // Returns true if identical
+   inline cbool ReadAndVerify(cHANDLE file, cwchptrc string) const {
+      ReadLine(file, stTemp);
+      return (wcsncmp(stTemp, string, wcslen(string)) ? true : false);
+   }
+
+   inline cbool CloseFile(cHANDLE file) const {
+      return CloseHandle(file);
+#ifdef DATA_TRACKING
+      sysData.storage.filesClosed++;
+#endif
+   }
+
    // Returns number of shaders loaded. 0x080000001 if shader list file does not exist
-   cui32 LoadShaderList(void) {
-      al16 cwchar stShadersDir[] = L"shaders\\";
-           cwchar stExtension[]  = L".cso";
-
-      if(!stShader) stShader = (wchar(*)[100][256])malloc16(sizeof(wchar[6][100][256]));
-
-      HANDLE hShaderGroups = CreateFile(L"config\\Shader list.cfg", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
+   cui32 LoadShaderList(ui8 (*const uiIndex)[CFG_MAX_SHADERS], wchar(*const stShader)[CFG_MAX_SHADERS][256], ui32ptrc uiBanks, ui32 &uiShaders) {
+      cwchar  stShadersDir[] = L"shaders\\";
+      cwchar  stExtension[]  = L".cso";
+      cHANDLE hShaderGroups  = CreateFile(L"config\\Shader list.cfg", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
 
       if(!hShaderGroups) return 0x080000001;
 #ifdef DATA_TRACKING
@@ -71,13 +129,13 @@ al16 struct CLASS_FILEOPS {
 #endif
 
       // Read (and discard) tag line
-      uiBytes = ReadLine(stTemp, hShaderGroups);
+      uiBytes = ReadLine(hShaderGroups, stTemp);
 #ifdef DATA_TRACKING
       sysData.storage.bytesRead += uiBytes;
 #endif
-      if(wcsncmp(stTemp, L"Stages: ", 8)) Try(stLoadShaders, -1);
+      if(wcsncmp(stTemp, L"Stages: ", 8)) Try(stLoadShaders, -1, video);
       // Read line
-      while(uiBytes = ReadLine(stTemp, hShaderGroups)) {
+      while(uiBytes = ReadLine(hShaderGroups, stTemp)) {
 #ifdef DATA_TRACKING
          sysData.storage.bytesRead += uiBytes;
 #endif
@@ -184,8 +242,7 @@ al16 struct CLASS_FILEOPS {
       return uiShaders;
    }
 
-   void _Deinitialise(void) {
-      if(stShader) mdealloc(stShader);
+   void _Deinitialise(void) const {
       mfree(stTemp, pathWorking);
    }
 };

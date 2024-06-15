@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_entitymanager.h          Created: 2023/05/06 *
- *                                Last modified: 2024/05/25 *
+ *                                Last modified: 2024/06/08 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -13,19 +13,6 @@
 #include "Entity structures.h"
 #include "Map structures.h"
 #include "Common functions.h"
-
-#define MAX_OBJECT_GROUPS    64
-#define MAX_ENTITY_GROUPS    64
-
-#define MAX_OBJECTS          4096
-//#define MAX_PARTS_PER_OBJECT 32
-#define MAX_PARTS            32768
-#define MAX_ENTITIES         1048576
-#define MAX_BONES_PER_ENTITY 32
-#define MAX_BONES            1048576
-#define MAX_OPAQUE_SPRITES   1048576
-#define MAX_TRANS_SPRITES    1048576
-
 
 extern vui128 ENTMAN_THREAD_STATUS;
 
@@ -138,7 +125,7 @@ al32 struct CLASS_ENTMAN {
 
       PART_IGS &curPart = curGroup.part[partIndex];
 
-      curGroup.part[partIndex] = { position, atlasIndex, orientation, partIndex, size, texCoords, { recoilState.pos, NULL, recoilState.ori } };
+      curGroup.part[partIndex] = { position, atlasIndex, orientation, partIndex, size, texCoords, { recoilState.x, NULL, recoilState.y } };
 
       for(ui8 i = partIndex + 1; i < lastIndex; i++)
          curGroup.part[i] = { null3Df, atlasIndex, null3Df, partIndex, {1.0f, 1.0f}, texCoords, { .sliderot = { null128f, null128f } } };
@@ -330,7 +317,7 @@ al32 struct CLASS_ENTMAN {
       objGroup[objectGroup].part[partIndex].pos     = position;
       objGroup[objectGroup].part[partIndex].rot     = orientation;
       objGroup[objectGroup].part[partIndex].size    = size;
-      objGroup[objectGroup].part[partIndex].trans   = { recoilState.pos, NULL, recoilState.ori };
+      objGroup[objectGroup].part[partIndex].trans   = { recoilState.x, NULL, recoilState.y, NULL };
       objGroup[objectGroup].part[partIndex].tc      = texCoords; // 1p15
       objGroup[objectGroup].part[partIndex].ai_bits = atlasIndex;
    }

@@ -94,7 +94,7 @@ al32 struct GUI_EL_DGS { // 96 bytes (24 scalars)   ///--- Rewrite to remove red
    fp16n0_3x16 colour;      // Panel corners / Every 8 characters : p16n0.0~3.0
    VEC2Df      size;        // Text/Element scale : % of viewspace
    fl32        rotAngle;    // Orientation
-   ui32        parentIndex; // GUI_EL_DGS index of parent element; 0x0FFFFFFFF==No parent
+   ui32        parentIndex; // GUI_EL_DGS index of parent element; this==No parent
    union {
       struct { // Type==Text
          fl32 width;         // Total width of vertex's text in view space
@@ -105,9 +105,9 @@ al32 struct GUI_EL_DGS { // 96 bytes (24 scalars)   ///--- Rewrite to remove red
       };
       struct { // Type==Scalar|Cursor
          VEC2Df animTime; // Durations of animation cycles
-         ui16   RES16;
          ui8    animType; // 0==Fade, 1==Zoom, 2==???, 3==Rotate, 4&5==Swing X&Y, 6~7==(Quantum=0, Linear=1, Smoothstep=2, ???=3)
-         ui8    RES_eT;
+         ui8    RES8;
+         // Remaining 2 bytes reserved for atlasIndex and elementType
       };
    };
    ui16 sibling; // 0~14==First sibling element offset / Sibling count (if bit15 set)
@@ -129,6 +129,17 @@ al32 struct GUI_ELEMENT { // 128 bytes
       };
       AVX8Df32 coords;
    };
+   si32 charCount;      // Current number of characters in buffer
+   si32 vertexIndex;    // Geometry data index in GUI vertex array
+   ui16 vertexCount[2]; // Number of vertices used; 0==Current, 1==Maximum
+   si16 soundBankIndex;
+   union {
+      ui16 bitField;
+      struct {
+         ui8 elementType; // 0~3==(Text=0, Panel=1, Button=2, Scalar=3, Input=4, Cursor=5, Dial=6), 4~5==???, 6==Wide characters, 7==Element actived
+         ui8 stateBits;   // 8~13==Function busy bits, 14==Visible, 15==Active
+      };
+   };
    union {
       struct {
          funcptr hover[2]; // Functions for onHover & offHover
@@ -142,40 +153,31 @@ al32 struct GUI_ELEMENT { // 128 bytes
       } func;
       funcptr function[6];
    };
-   si32 charCount;      // Current number of characters in buffer
-   si32 vertexIndex;    // Geometry data index in GUI vertex array
-   ui16 vertexCount[2]; // Number of vertices used; 0==Current, 1==Maximum
-   si16 soundBankIndex;
-   union {
-      ui16 bitField;
-      struct {
-         ui8 elementType; // 0~3==(Text=0, Panel=1, Button=2, Scalar=3, Input=4, Cursor=5, Dial=6), 4~5==???, 6==Wide characters, 7==Element actived
-         ui8 stateBits;   // 8~13==Function busy bits, 14==Visible, 15==Active
-      };
-   };
    union { // Scratch space
-      ui128 ui128Var;
-      si128 si128Var;
-      ptr   ptrVar[2];
-      fl64  fl64Var[2];
-      ui64  ui64Var[2];
-      si64  si64Var[2];
-      fl32  fl32Var[4];
-      ui32  ui32Var[4];
-      si32  si32Var[4];
-      ui16  ui16Var[8];
-      si16  si16Var[8];
-      ui8   ui8Var[16];
-      si8   si8Var[16];
+      ui256 ui256Var;
+      si256 si256Var;
+      ui128 ui128Var[2];
+      si128 si128Var[2];
+      ptr   ptrVar[4];
+      fl64  fl64Var[4];
+      ui64  ui64Var[4];
+      si64  si64Var[4];
+      fl32  fl32Var[8];
+      ui32  ui32Var[8];
+      si32  si32Var[8];
+      ui16  ui16Var[16];
+      si16  si16Var[16];
+      ui8   ui8Var[32];
+      si8   si8Var[32];
    };
 };
 
 al32 struct GUI_INTERFACE { // 64 bytes
-   ui16 *vertex;       // Vertex array of indices to element entries
-   si16  maxVertices;
-   si16  vertCount;
-   si16  maxInputs;
-   si16  inputCount;
+   ui32ptr vertex;      // Vertex array of indices to element entries
+   ui16    maxVertices; // Maximum element entries
+   ui16    vertCount;   // Current element entries
+   ui16    maxInputs;   // Maxmimum input bit patterns
+   ui16    inputCount;  // Current input bit patterns
    union {             // Array of input combinations
       VEC4Du8 *inputs;
       ui8    (*input)[4];

@@ -1,6 +1,6 @@
 /************************************************************
  * File: DirectInput8 thread.cpp        Created: 2022/11/01 *
- *                                Last modified: 2024/06/06 *
+ *                                Last modified: 2024/06/15 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -10,7 +10,6 @@
 #include "pch.h"
 #include <algorithm>
 #include <intrin.h>
-#include "thread flags.h"
 #include "DirectInput8 thread.h"
 #include "Xinput.h"
 #include "Armada Intelligence/Input functions.h"
@@ -20,9 +19,9 @@ BOOL CALLBACK GamepadEnumeration(const DIDEVICEINSTANCE *inst, ptrc con) {
 
    if FAILED(result) return DIENUM_CONTINUE;
    else {
-      Try(stSetPadFormat, di8Pad[padCount]->SetDataFormat(&dfGamepadAE));
-      Try(stSetPadCoop, di8Pad[padCount]->SetCooperativeLevel(NULL, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE));
-      //      Try(stSetPadCoop, di8Pad[gamepadCount]->SetCooperativeLevel(NULL, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE));
+      Try(stSetPadFormat, di8Pad[padCount]->SetDataFormat(&dfGamepadAE), input);
+      Try(stSetPadCoop, di8Pad[padCount]->SetCooperativeLevel(NULL, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE), input);
+      //      Try(stSetPadCoop, di8Pad[gamepadCount]->SetCooperativeLevel(NULL, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE), input);
       padCount++;
    }
 
@@ -50,9 +49,11 @@ inline static void ReorderGamepads(cui8 pad0, cui8 pad1, cui8 pad2, cui8 pad3, c
    padOrder[4] = pad4; padOrder[5] = pad5; padOrder[6] = pad6; padOrder[7] = pad7;
 }
 
-inline static void SetGamepadShaping(cVEC8Df padShapes) { Copy(&padShapes, &padShaping, 32u); }
+inline static void SetGamepadShaping(cui8 index, cfl32 shaping) { padShaping._fl[index] = shaping; }
 
-inline static void SetGamepadShaping(cfl32ptr padShapes) { Copy(padShapes, &padShaping, 32u); }
+inline static void SetGamepadShaping(cVEC8Df padShapes) { Copy8(&padShapes, &padShaping, 32u); }
+
+inline static void SetGamepadShaping(cfl32ptr padShapes) { Copy8(padShapes, &padShaping, 32u); }
 
 inline static void SetGamepadShaping(cAVX8Df32 padShapes) { padShaping = padShapes; }
 
@@ -68,7 +69,7 @@ inline static HRESULT PollKeyboard(void) {
       if((hr == DIERR_INPUTLOST) || (hr == DIERR_NOTACQUIRED))
          di8Key->Acquire();
       else
-         Try(stGetKeyDevState, -2);
+         Try(stGetKeyDevState, -2, input);
 
    return hr;
 }
@@ -78,7 +79,7 @@ inline static HRESULT PollMouse(void) {
 
    if(FAILED(hr)) do hr = di8Mse->Acquire(); while(hr == DIERR_INPUTLOST);
 
-   Try(stPollMouse, di8Mse->GetDeviceState(sizeof(DIMOUSESTATE38), &mseState[0]));
+   Try(stPollMouse, di8Mse->GetDeviceState(sizeof(DIMOUSESTATE38), &mseState[0]), input);
 
    // Process axes
    GetCursorPos((LPPOINT)gcvLocal.curCoord);
@@ -94,61 +95,66 @@ inline static HRESULT PollMouse(void) {
 
 inline static HRESULT PollGamepads(void) {
 #ifdef __AVX__
-   for(ui32 os = 0, index = padOrder[0]; index < padCount; index = padOrder[++os]) {
-      hr = di8Pad[index]->Poll();
+   for(ui32 vindex = 0; vindex < padCount; ++vindex) {
+      cui32 hindex = padOrder[vindex];
 
-      if(FAILED(hr)) do hr = di8Pad[index]->Acquire(); while(hr == DIERR_INPUTLOST);
+      hr = di8Pad[hindex]->Poll();
 
-      Try(stPollGamepad, di8Pad[index]->GetDeviceState(sizeof(DIJOYSTATEAE), &padState[0][index]));
+      if(FAILED(hr)) do hr = di8Pad[hindex]->Acquire(); while(hr == DIERR_INPUTLOST);
 
-      csi256 axes    = _mm256_sub_epi32(padState[0][index].ymm[0], padOS[index]);
-      csi256 zone[2] = { _mm256_set1_epi32(padDeadZone.vec2D[index].x), _mm256_set1_epi32(padDeadZone.vec2D[index].y) };
+      Try(stPollGamepad, di8Pad[hindex]->GetDeviceState(sizeof(DIJOYSTATEAE), &padState[0][vindex]), input);
+
+      csi256 axes    = _mm256_sub_epi32(padState[0][vindex].ymm[0], padOS[vindex]);
+      csi256 zone[2] = { _mm256_set1_epi32(padDeadZone.vec2D[vindex].x), _mm256_set1_epi32(padDeadZone.vec2D[vindex].y) };
 
       // Center & clip according to dead zone limits
-      gcvLocal.iaxis32[index] = _mm256_andnot_epi32(_mm256_cmpeq_epi32(_mm256_cmpgt_epi32(axes, zone[0]), _mm256_cmpgt_epi32(zone[1], axes)), axes);
+      gcvLocal.iaxis32[vindex] = _mm256_andnot_epi32(_mm256_cmpeq_epi32(_mm256_cmpgt_epi32(axes, zone[0]), _mm256_cmpgt_epi32(zone[1], axes)), axes);
 
       // Reduce axes by deadzone values if non-zero
-      gcvLocal.iaxis32[index] = _mm256_sub_epi32(gcvLocal.iaxis32[index], _mm256_and_epi32(_mm256_cmpgt_epi32(gcvLocal.iaxis32[index], null256), zone[1]));
-      gcvLocal.iaxis32[index] = _mm256_sub_epi32(gcvLocal.iaxis32[index], _mm256_and_epi32(_mm256_cmpgt_epi32(null256, gcvLocal.iaxis32[index]), zone[0]));
+      gcvLocal.iaxis32[vindex] = _mm256_sub_epi32(gcvLocal.iaxis32[vindex], _mm256_and_epi32(_mm256_cmpgt_epi32(gcvLocal.iaxis32[vindex], null256), zone[1]));
+      gcvLocal.iaxis32[vindex] = _mm256_sub_epi32(gcvLocal.iaxis32[vindex], _mm256_and_epi32(_mm256_cmpgt_epi32(null256, gcvLocal.iaxis32[vindex]), zone[0]));
 
       // Convert axes to floats
-      gcvLocal.faxis32[index] = _mm256_mul_ps(_mm256_cvtepi32_ps(gcvLocal.iaxis32[index]), padScale[index]);
+      gcvLocal.faxis32[vindex] = _mm256_mul_ps(_mm256_cvtepi32_ps(gcvLocal.iaxis32[vindex]), padScale[vindex]);
 
       // Reshape axes
-      gcvLocal.faxis32[index] = _mm256_add_ps(_mm256_mul_ps(gcvLocal.faxis32[index], _mm256_sub_ps(ones32x8f, padShaping.ymm)),
-                                              _mm256_mul_ps(_mm256_mul_ps(gcvLocal.faxis32[index], gcvLocal.faxis32[index]), padShaping.ymm));
+      gcvLocal.faxis32[vindex] = _mm256_add_ps(_mm256_mul_ps(gcvLocal.faxis32[vindex], _mm256_sub_ps(ones32x8f, padShaping.ymm)),
+                                               _mm256_mul_ps(_mm256_mul_ps(gcvLocal.faxis32[vindex], gcvLocal.faxis32[vindex]), padShaping.ymm));
    }
 #else
-   for(ui32 os = 0, index = gamepadOrder[0], index_1 = gamepadOrder[1]; index < (gamepadCount << 1u); index = gamepadOrder[i += 2], index_1 = gamepadOrder[i + 1]) {
-      hr = di8Pad[index]->Poll();
+   for(ui32 vindex   = 0; vindex < padCount; ++vindex) {
+      cui32 aindex   = hindex << 1u;
+      cui32 hindex   = padOrder[vindex];
+      cui32 aindex_1 = aindex + 1;
 
-      if(FAILED(hr)) do hr = di8Pad[index]->Acquire(); while(hr == DIERR_INPUTLOST);
+      hr = di8Pad[hindex]->Poll();
 
-      Try(stPollGamepad, di8Pad[index]->GetDeviceState(sizeof(DIJOYSTATEAE), &padState[0][index]));
+      if(FAILED(hr)) do hr = di8Pad[hindex]->Acquire(); while(hr == DIERR_INPUTLOST);
 
-      cui32  i       = index >> 1u;
-      csi128 axes[2] = _mm_sub_epi32(padState[0][i].xmm[0], padOS[i]);
-      csi128 zone[2] = { _mm_set1_epi32(padDeadZone.vec2D[i].x), _mm_set1_epi32(padDeadZone.vec2D[i].y) };
+      Try(stPollGamepad, di8Pad[hindex]->GetDeviceState(sizeof(DIJOYSTATEAE), &padState[0][vindex]));
+
+      csi128 axes[2] = { _mm_sub_epi32(padState[0][vindex].xmm[0], padOS[vindex][0]), _mm_sub_epi32(padState[0][vindex].xmm[1], padOS[vindex][1]) };
+      csi128 zone[2] = { _mm_set1_epi32(padDeadZone.vec2D[vindex].x), _mm_set1_epi32(padDeadZone.vec2D[vindex].y) };
 
       // Center & clip according to dead zone limits
-      gcvLocal.iaxis16[index]   = _mm_andnot_epi32(_mm_cmpeq_epi32(_mm_cmpgt_epi32(axes[0], zone[0]), _mm_cmpgt_epi32(zone[1], axes[0])), axes[0]);
-      gcvLocal.iaxis16[index_1] = _mm_andnot_epi32(_mm_cmpeq_epi32(_mm_cmpgt_epi32(axes[1], zone[0]), _mm_cmpgt_epi32(zone[1], axes[1])), axes[1]);
+      gcvLocal.iaxis16[aindex] = _mm_andnot_epi32(_mm_cmpeq_epi32(_mm_cmpgt_epi32(axes[0], zone[0]), _mm_cmpgt_epi32(zone[1], axes[0])), axes[0]);
+      gcvLocal.iaxis16[aindex_1] = _mm_andnot_epi32(_mm_cmpeq_epi32(_mm_cmpgt_epi32(axes[1], zone[0]), _mm_cmpgt_epi32(zone[1], axes[1])), axes[1]);
 
       // Reduce axes by deadzone values if non-zero
-      gcvLocal.iaxis16[index]   = _mm_sub_epi32(gcvLocal.iaxis16[index], _mm_and_epi32(_mm_cmpgt_epi32(gcvLocal.iaxis16[index], null128), zone[1]));
-      gcvLocal.iaxis16[index]   = _mm_sub_epi32(gcvLocal.iaxis16[index], _mm_and_epi32(_mm_cmpgt_epi32(null128, gcvLocal.iaxis16[index]), zone[0]));
-      gcvLocal.iaxis16[index_1] = _mm_sub_epi32(gcvLocal.iaxis16[index_1], _mm_and_epi32(_mm_cmpgt_epi32(gcvLocal.iaxis16[index_1], null128), zone[1]));
-      gcvLocal.iaxis16[index_1] = _mm_sub_epi32(gcvLocal.iaxis16[index_1], _mm_and_epi32(_mm_cmpgt_epi32(null128, gcvLocal.iaxis16[index_1]), zone[0]));
+      gcvLocal.iaxis16[aindex] = _mm_sub_epi32(gcvLocal.iaxis16[aindex], _mm_and_epi32(_mm_cmpgt_epi32(gcvLocal.iaxis16[aindex], null128), zone[1]));
+      gcvLocal.iaxis16[aindex_1] = _mm_sub_epi32(gcvLocal.iaxis16[aindex_1], _mm_and_epi32(_mm_cmpgt_epi32(gcvLocal.iaxis16[aindex_1], null128), zone[1]));
+      gcvLocal.iaxis16[aindex] = _mm_sub_epi32(gcvLocal.iaxis16[aindex], _mm_and_epi32(_mm_cmpgt_epi32(null128, gcvLocal.iaxis16[aindex]), zone[0]));
+      gcvLocal.iaxis16[aindex_1] = _mm_sub_epi32(gcvLocal.iaxis16[aindex_1], _mm_and_epi32(_mm_cmpgt_epi32(null128, gcvLocal.iaxis16[aindex_1]), zone[0]));
 
       // Convert axes to floats
-      gcvLocal.faxis16[index]   = _mm_mul_ps(_mm_cvtepi32_ps(gcvLocal.iaxis16[index]), padScale[i][0]);
-      gcvLocal.faxis16[index_1] = _mm_mul_ps(_mm_cvtepi32_ps(gcvLocal.iaxis16[index_1]), padScale[i][1]);
+      gcvLocal.faxis16[aindex] = _mm_mul_ps(_mm_cvtepi32_ps(gcvLocal.iaxis16[aindex]), padScale[vindex][0]);
+      gcvLocal.faxis16[aindex_1] = _mm_mul_ps(_mm_cvtepi32_ps(gcvLocal.iaxis16[aindex_1]), padScale[vindex][1]);
 
       // Reshape axes
-      gcvLocal.faxis16[index]   = _mm_add_ps(_mm_mul_ps(gcvLocal.faxis16[index], _mm_sub_ps(ones32x4f, padShaping.xmm[0])),
-                                             _mm_mul_ps(_mm_mul_ps(gcvLocal.faxis16[index], gcvLocal.faxis16[index]), padShaping.xmm[0]));
-      gcvLocal.faxis16[index_1] = _mm_add_ps(_mm_mul_ps(gcvLocal.faxis16[index_1], _mm_sub_ps(ones32x4f, padShaping.xmm[1])),
-                                             _mm_mul_ps(_mm_mul_ps(gcvLocal.faxis16[index_1], gcvLocal.faxis16[index_1]), padShaping.xmm[1]));
+      gcvLocal.faxis16[aindex] = _mm_add_ps(_mm_mul_ps(gcvLocal.faxis16[aindex], _mm_sub_ps(ones32x4f, padShaping.xmm[0])),
+                                            _mm_mul_ps(_mm_mul_ps(gcvLocal.faxis16[aindex], gcvLocal.faxis16[aindex]), padShaping.xmm[0]));
+      gcvLocal.faxis16[aindex_1] = _mm_add_ps(_mm_mul_ps(gcvLocal.faxis16[aindex_1], _mm_sub_ps(ones32x4f, padShaping.xmm[1])),
+                                                _mm_mul_ps(_mm_mul_ps(gcvLocal.faxis16[aindex_1], gcvLocal.faxis16[aindex_1]), padShaping.xmm[1]));
    }
 #endif
 
@@ -156,14 +162,14 @@ inline static HRESULT PollGamepads(void) {
 }
 
 inline static HRESULT PollGamepad(cui32 gamepadIndex) {
-#ifdef __AVX__
    hr = di8Pad[gamepadIndex]->Poll();
 
    if(FAILED(hr))
       do hr = di8Pad[gamepadIndex]->Acquire(); while(hr == DIERR_INPUTLOST);
 
-   Try(stPollGamepad, di8Pad[gamepadIndex]->GetDeviceState(sizeof(DIJOYSTATEAE), &padState[0][gamepadIndex]));
+   Try(stPollGamepad, di8Pad[gamepadIndex]->GetDeviceState(sizeof(DIJOYSTATEAE), &padState[0][gamepadIndex]), input);
 
+#ifdef __AVX__
    csi256 axes    = _mm256_sub_epi32(padState[0][gamepadIndex].ymm[0], padOS[gamepadIndex]);
    csi256 zone[2] = { _mm256_set1_epi32(padDeadZone.vec2D[gamepadIndex].x), _mm256_set1_epi32(padDeadZone.vec2D[gamepadIndex].y) };
 
@@ -177,13 +183,6 @@ inline static HRESULT PollGamepad(cui32 gamepadIndex) {
    // Convert axes to floats
    gcvLocal.faxis32[gamepadIndex] = _mm256_mul_ps(_mm256_cvtepi32_ps(gcvLocal.iaxis32[gamepadIndex]), padScale[gamepadIndex]);
 #else
-   hr = di8Pad[index]->Poll();
-
-   if(FAILED(hr))
-      do hr = di8Pad[gamepadIndex]->Acquire(); while(hr == DIERR_INPUTLOST);
-
-   Try(stPollGamepad, di8Pad[gamepadIndex]->GetDeviceState(sizeof(DIJOYSTATEAE), &padState[0][gamepadIndex]));
-
    cui32  index   = gamepadIndex << 1u
    cui32  index_1 = index + 1;
    csi128 axes[2] = _mm_sub_epi32(padState[0][gamepadIndex].xmm[0], padOS[gamepadIndex]);
@@ -299,23 +298,27 @@ inline static cchar DikToAscii(cui8 dikValue, cbool shift) {
 
 // Returns number of characters [buffer] has been incremented by
 inline static csi8 ModifyCharBuffer(TEXTBUFFER &textBuffer) {
-   ui64  (&keysI)[4] = (ui64 (&)[4])gcvLocalPtr->imm;
-   ui64  (&keysR)[4] = (ui64 (&)[4])gcvLocalPtr->rel;
-   cui16 byteOffset  = textBuffer.source.byteOffset;
+   ui64  (&keysI)[4] = (ui64 (&)[4])gcvLocal.imm;
+   ui64  (&keysR)[4] = (ui64 (&)[4])gcvLocal.rel;
+   cui64 byteOffset  = ui64(textBuffer.source.byteOffset) + 15u;
 
-   // Copy contents of source buffer to temporary buffer
-   cui16 byteLimit = (byteOffset + 15) >> 4;
-   for(ui16 i = 0; i < byteLimit; i++)
-      textBuffer.temp.pi256[i] = _mm256_load_si256(&textBuffer.source.pi256[i]);
-   textBuffer.temp.byteOffset = byteOffset;
-   textBuffer.temp.byteCount = textBuffer.source.byteCount;
+   if(!(textBuffer.temp.bitField & 0x01)) {
+      textBuffer.temp.bitField |= 0x01;
+      // Copy contents of source buffer to temporary buffer
+      Stream32(textBuffer.source.p, textBuffer.temp.p, byteOffset);
+      textBuffer.temp.byteOffset = textBuffer.source.byteOffset;
+      textBuffer.temp.byteCount  = textBuffer.source.byteCount;
+   }
 
    // Is the 'cancel' flag set?
    if(textBuffer.source.bitField & 0x04) {
       // Restore contents of source buffer
-      for(ui16 i = 0; i < byteLimit; i++)
-         textBuffer.source.pi256[i] = _mm256_load_si256(&textBuffer.temp.pi256[i]);
-      textBuffer.temp.byteOffset = byteOffset;
+      Copy32(textBuffer.temp.p, textBuffer.source.p, ui64(textBuffer.temp.byteOffset) + 15u);
+      textBuffer.source.byteOffset = textBuffer.temp.byteOffset;
+      textBuffer.source.byteCount  = textBuffer.temp.byteCount;
+      textBuffer.temp.byteOffset = 0;
+      textBuffer.temp.byteCount  = 0;
+      textBuffer.temp.bitField &= 0x0FE;
       return 0;
    }
 
@@ -336,20 +339,26 @@ inline static csi8 ModifyCharBuffer(TEXTBUFFER &textBuffer) {
    if((keysI[0] & 0x010000000 && keysR[0] & 0x010000000) || (keysI[2] & 0x010000000 && keysR[2] & 0x010000000)) {
       // Remove their activity status
       keysI[0] &= 0x0FFFFFFFF4FFFFFFF;
-      keysR[0] &= 0x0FFFFFFFF4FFFFFFF;
       keysI[2] &= 0x0FFFFFFFFEFFFFFFF;
+      keysR[0] &= 0x0FFFFFFFF4FFFFFFF;
       keysR[2] &= 0x0FFFFFFFFEFFFFFFF;
+      textBuffer.source.bitField |= 0x02;
+   }
+
+   // Are the 'active' and 'confirm' flags set?
+   if((textBuffer.source.bitField & 0x03) == 0x03) {
+      csi8 bytesWritten = textBuffer.temp.byteOffset - textBuffer.source.byteOffset;
       // Is the 'clear' flag set?
       if(textBuffer.source.bitField & 0x08) {
-         for(ui16 i = 0; i < byteLimit; i++)
-            textBuffer.temp.pi256[i] = _mm256_setzero_si256();
+//         for(ui16 i = 0; i < byteLimit; i++)
+//            textBuffer.temp.pi256[i] = _mm256_setzero_si256();
+         mzero(textBuffer.temp.p, byteOffset);
          textBuffer.temp.byteOffset = 0;
          textBuffer.temp.byteCount  = 0;
       }
-      textBuffer.source.bitField   = 0x03;
-      textBuffer.source.byteOffset = textBuffer.temp.byteOffset;
+      textBuffer.source.bitField = 0x02; // Deactivate
 
-      return si8(textBuffer.source.byteOffset - byteOffset);
+      return bytesWritten;
    }
 
    // Is either shift being depressed?
@@ -382,13 +391,11 @@ inline static csi8 ModifyCharBuffer(TEXTBUFFER &textBuffer) {
 }
 
 void DirectInput8Thread(ptr ArgList) {
+   CLASS_TIMER inputTimer;
    DIPROPDWORD dpw {};
-
-   ui64 threadLife, i, j, k;
-   ui16 keyCode;
-   bool povState;
-
-   gcvLocalPtr = &gcvLocal;
+   ui64        threadLife, i, j, k;
+   ui16        keyCode;
+   bool        povState;
 
    // Prevent thread from shutting down (after engine reset)
    THREAD_LIFE &= ~INPUT_THREAD_DIED;
@@ -399,43 +406,56 @@ Reinitialise_:
 
    Sleep(1000);
 
-   Try(stDI8Create, DirectInput8Create(hInst, DIRECTINPUT_VERSION, IID_IDirectInput8, (ptrptr)&di8, NULL));
+   Try(stDI8Create, DirectInput8Create(hInst, DIRECTINPUT_VERSION, IID_IDirectInput8, (ptrptr)&di8, NULL), input);
    // Obtain keyboard
-   Try(stCreateDev, di8->CreateDevice(GUID_SysKeyboard, &di8Key, NULL));
-   Try(stSetKeyFormat, di8Key->SetDataFormat(&c_dfDIKeyboard));
-//   Try(stSetKeyCoop, di8Key->SetCooperativeLevel(hWnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE));
-   Try(stSetKeyCoop, di8Key->SetCooperativeLevel(hWnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE));
-   Try(stKeyAcquire, di8Key->Acquire());
+   Try(stCreateDev, di8->CreateDevice(GUID_SysKeyboard, &di8Key, NULL), input);
+   Try(stSetKeyFormat, di8Key->SetDataFormat(&c_dfDIKeyboard), input);
+//   Try(stSetKeyCoop, di8Key->SetCooperativeLevel(hWnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE), input);
+   Try(stSetKeyCoop, di8Key->SetCooperativeLevel(hWnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE), input);
+   Try(stKeyAcquire, di8Key->Acquire(), input);
    // Obtain mouse
-   Try(stCreateDev, di8->CreateDevice(GUID_SysMouse, &di8Mse, NULL));
-   Try(stSetMseFormat, di8Mse->SetDataFormat(&dfMouse38));
+   Try(stCreateDev, di8->CreateDevice(GUID_SysMouse, &di8Mse, NULL), input);
+   Try(stSetMseFormat, di8Mse->SetDataFormat(&dfMouse38), input);
    dpw.diph.dwHeaderSize = sizeof(dpw.diph);
    dpw.diph.dwHow = DIPH_DEVICE;
    dpw.diph.dwObj = NULL;
    dpw.diph.dwSize = sizeof(dpw);
    dpw.dwData = DIPROPAXISMODE_REL;
-   Try(stSetMseProperty, di8Mse->SetProperty(DIPROP_AXISMODE,&dpw.diph));
-//   Try(stSetMseCoop, di8Mse->SetCooperativeLevel(hWnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE));
-   Try(stSetMseCoop, di8Mse->SetCooperativeLevel(hWnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE));
+   Try(stSetMseProperty, di8Mse->SetProperty(DIPROP_AXISMODE, &dpw.diph), input);
+//   Try(stSetMseCoop, di8Mse->SetCooperativeLevel(hWnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE), input);
+   Try(stSetMseCoop, di8Mse->SetCooperativeLevel(hWnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE), input);
    PollMouse();
    // Obtain gamepads
-   Try(stEnumGamepads, di8->EnumDevices(DI8DEVCLASS_GAMECTRL, GamepadEnumeration, NULL, DIEDFL_ATTACHEDONLY));
+   Try(stEnumGamepads, di8->EnumDevices(DI8DEVCLASS_GAMECTRL, GamepadEnumeration, NULL, DIEDFL_ATTACHEDONLY), input);
+
+   inputTimer.Init();
+   inputTimer.Reset(1.0);
+   cfl64 dCurrentFrameTime = 0.0;
+
    do {
       threadLife = THREAD_LIFE;
       if (threadLife & INPUT_THREAD_RESET) goto Reinitialise_;
 
       // Stall if no state change requested
       if(!(gcv.misc[7] & 0x080)) {
-         Sleep(1);
          _mm_pause(); // To flush branch prediction. Sleep(0 || user defineable)???
+         Sleep(1);
          continue;
       }
       gcv.misc[7] &= 0x07F;
 
+      // Thread timing snapshot
+      inputTimer.Update();
+      cfl64 dCurrentTicTime = inputTimer.GetTotalTimeScaled();
+      if (dCurrentFrameTime >= 1.0) {
+         sysData.input.ticRate = inputTimer.UpdatesPerSecondScaled();
+         inputTimer.Reset(1.0);
+      }
+
       // Backup state changes
-      Copy32(keyState[0], keyState[1], 256u);
-      Copy8(&mseState[0], &mseState[1], 24u);
-      Copy32(padState[0], padState[1], 768u);
+      Stream64(keyState[0], keyState[1], 256u);
+      Stream32(&mseState[0], &mseState[1], 32u);
+      Stream64(padState[0], padState[1], 768u);
 
 #ifdef __AVX__
       // Clear button states
@@ -445,7 +465,7 @@ Reinitialise_:
       gcvLocal.rel.button = _mm256_setzero_si256();
 #else
       // Clear button states
-      gcvLocal.imm[0].key = _mm_setzero_si128();
+      gcvLocal.imm[0].key    = _mm_setzero_si128();
       gcvLocal.imm[1].key    = _mm_setzero_si128();
       gcvLocal.imm[0].button = _mm_setzero_si128();
       gcvLocal.imm[1].button = _mm_setzero_si128();
@@ -455,8 +475,8 @@ Reinitialise_:
       gcvLocal.rel[1].button = _mm_setzero_si128();
 #endif
 
-      PollKeyboard();
       PollMouse();
+      PollKeyboard();
       PollGamepads();
 
       // Populate input arrays with keyboard data
@@ -549,89 +569,93 @@ Reinitialise_:
 
       // Populate global input registers
       (ui64 &)inputsImmediate = 0x0;
-      // Test first 256 entires
+      // Test first 256 entires (keys, mouse buttons & wheel state, gamepad POVs)
       for(i = 0, k = 0, keyCode = 0; i < 4 && k < 4; i++)
          for(j = 0x01u; j && k < 4; j <<= 1, keyCode++)
             if(gcvLocal.imm.k64[i] & j)
                inputsImmediate._ui16[k++] = keyCode;
-      // Test last 256 entries
+      // Test last 256 entries (gamepad buttons)
       for(i = 0; i < 4 && k < 4; i++)
          for(j = 0x01u; j && k < 4; j <<= 1, keyCode++)
             if(gcvLocal.imm.b64[i] & j)
                inputsImmediate._ui16[k++] = keyCode;
 
-      ///--- Old input system ---///
+///--- Old input system ---///
       for(i = 0; i < 256; i++) {
          // Key has changed state since last poll
          if(keyState[0][i] != keyState[1][i]) {
-            if(keyState[0][i] & 0x080) {   // Key is down
+            if(keyState[0][i] & 0x080) { // Key is down
                switch(i) {
                case DIK_1:
                   gcvLocal.misc[0] = 0x00;
-                  break;
+                  continue;
                case DIK_2:
                   gcvLocal.misc[0] = 0x01;
-                  break;
+                  continue;
                case DIK_3:
                   gcvLocal.misc[0] = 0x02;
-                  break;
+                  continue;
                case DIK_Q:
                   gcvLocal.misc[2] = 0x00;
-                  break;
+                  continue;
                case DIK_W:
                   gcvLocal.misc[2] = 0x01;
-                  break;
+                  continue;
                case DIK_E:
                   gcvLocal.misc[2] = 0x02;
-                  break;
+                  continue;
                case DIK_SPACE:
-                  gcvLocal.misc[1] = (gcvLocal.misc[1] + 1) & 0x03;
-                  break;
+                  gcvLocal.misc[1] = ++gcvLocal.misc[1] & 0x03;
+                  continue;
                default:
                   gcvLocal.misc[3] |= 0x040;
+                  continue;
                }
             } else {   // Key is up
                0;
             }
             continue;
          }
-         if(keyState[0][i] & 0x080) {// Key is down
+         if(keyState[0][i] & 0x080) { // Key is down
             switch(i) {
             case DIK_NUMPAD8:
-               gcvLocal.joy[2].s.y2 = -1.0f;
-               break;
+               gcvLocal.joy[0].s.y2 = -1.0f;
+               continue;
             case DIK_NUMPAD5:
-               gcvLocal.joy[2].s.y2 = 1.0f;
-               break;
+               gcvLocal.joy[0].s.y2 = 1.0f;
+               continue;
             case DIK_NUMPAD4:
-               gcvLocal.joy[2].s.x2 = -1.0f;
-               break;
+               gcvLocal.joy[0].s.x2 = -1.0f;
+               continue;
             case DIK_NUMPAD6:
-               gcvLocal.joy[2].s.x2 = 1.0f;
-               break;
+               gcvLocal.joy[0].s.x2 = 1.0f;
+               continue;
             case DIK_NUMPAD7:
-               gcvLocal.joy[2].t.x = 1.0f;
-               break;
+               gcvLocal.joy[0].t.x = -1.0f;
+               continue;
             case DIK_NUMPAD0:
-               gcvLocal.joy[2].t.x = -1.0f;
-               break;
-            case DIK_ESCAPE:
+               gcvLocal.joy[0].t.x = 1.0f;
+               continue;
+            case DIK_RCONTROL:
                THREAD_LIFE &= ~MAIN_THREAD_ALIVE;
-               break;
+               continue;
             default:
                gcvLocal.misc[3] |= 0x080;
+               continue;
             }
-         } else {   // Key is up
+         } else { // Key is up
             0;
          }
       }
+///--- Old input system ---///
 
       ProcessInputs(gcvLocal);
 
-      // Forcing volatile copy to avoid glitches 
-      LockedCopy(&gcvLocal, &gcv, sizeof(gcvLocal));
+      LockedCopy(&gcvLocal, &gcv, sizeof(gcvLocal)); // Forcing volatile copy to avoid glitches
 
-      Sleep(1);
+      // Record time to process
+      sysData.input.ticTime = inputTimer.GetElapsedTimeScaled();
+      ++sysData.input.ticTotal;
    } while (threadLife & INPUT_THREAD_ALIVE);
 
 //   Try(di8Key->Unacquire());

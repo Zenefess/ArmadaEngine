@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_textures.h               Created: 2022/10/20 *
- *                                Last modified: 2024/05/06 *
+ *                                Last modified: 2024/06/15 *
  *                                                          *
  * Desc: 4 textures per material.                           *
  *                                                          *
@@ -12,23 +12,18 @@
 
 #ifdef DATA_TRACKING
 #include "data tracking.h"
-extern SYSTEM_DATA sysData;
 #endif
-
-#define MAX_TEXTURES 1024
-#define MAX_SRVS     1024
 
 enum TEXTYPE { GUI, TERRAIN, SPRITE };
 
-al32 struct CLASS_TEXTURES {
-
-   ID3D11Device             *dev;
-   ID3D11DeviceContext     **devcon;
-   ID3D11Texture2D          *pTexture[MAX_TEXTURES] {};
-   ID3D11ShaderResourceView *pSRV[MAX_SRVS] {};
-   D3D11_TEXTURE2D_DESC      td;
-   D3DX11_IMAGE_LOAD_INFO    ilo;
-   si32                      index = 0;
+al16 struct CLASS_TEXTURES {
+   ID3D11Device              *dev;
+   ID3D11DeviceContext      **devcon;
+   ID3D11Texture2D          **const pTexture = (ID3D11Texture2D**)malloc64(sizeof(ptr[MAX_TEXTURES]));
+   ID3D11ShaderResourceView **const pSRV     = (ID3D11ShaderResourceView**)malloc64(sizeof(ptr[MAX_SRVs]));
+   D3DX11_IMAGE_LOAD_INFO     ilo;
+   D3D11_TEXTURE2D_DESC       td;
+   si32                       index = 0;
 
    void ConfigData(cDWORD width, cDWORD height, cDWORD depth, cDWORD mipLevels, cDWORD usage, cbool cpuRead, cbool cpuWrite, cbool shaderResource, cbool renderTarget, cbool unorderedAccess) {
       ilo.Width          = width;
@@ -48,7 +43,7 @@ al32 struct CLASS_TEXTURES {
    si32 Load2D(LPCTSTR filename) {
       if(index > MAX_TEXTURES) return -1;
       D3DX11CreateTextureFromFileW(dev, filename, &ilo, NULL, (ID3D11Resource **)&pTexture[index], &hr);
-      if(FAILED(hr)) Try(stTexFromFile, -2);
+      if(FAILED(hr)) Try(stTexFromFile, -2, video);
       pTexture[index]->GetDesc(&td);
 #ifdef DATA_TRACKING
       sysData.storage.filesOpened++;
@@ -70,7 +65,7 @@ al32 struct CLASS_TEXTURES {
       wsprintf(stFilename[2], L"%s%s.mod.dds", stFilepath[type], atlasName);
 
       D3DX11CreateTextureFromFile(dev, stFilename[0], &ilo, NULL, (ID3D11Resource **)&pTexture[index], &hr);
-      if(FAILED(hr)) Try(stTexFromFile, -2);
+      if(FAILED(hr)) Try(stTexFromFile, -2, video);
       pTexture[index]->GetDesc(&td);
 #ifdef DATA_TRACKING
       sysData.storage.filesOpened++;
@@ -79,7 +74,7 @@ al32 struct CLASS_TEXTURES {
 #endif
       dev->CreateShaderResourceView(pTexture[index], NULL, &pSRV[index]);
       D3DX11CreateTextureFromFile(dev, stFilename[1], &ilo, NULL, (ID3D11Resource **)&pTexture[++index], &hr);
-      if(FAILED(hr)) Try(stTexFromFile, -3);
+      if(FAILED(hr)) Try(stTexFromFile, -3, video);
       pTexture[index]->GetDesc(&td);
 #ifdef DATA_TRACKING
       sysData.storage.filesOpened++;
@@ -88,7 +83,7 @@ al32 struct CLASS_TEXTURES {
 #endif
       dev->CreateShaderResourceView(pTexture[index], NULL, &pSRV[index]);
       D3DX11CreateTextureFromFile(dev, stFilename[2], &ilo, NULL, (ID3D11Resource **)&pTexture[++index], &hr);
-      if(FAILED(hr)) Try(stTexFromFile, -4);
+      if(FAILED(hr)) Try(stTexFromFile, -4, video);
       pTexture[index]->GetDesc(&td);
 #ifdef DATA_TRACKING
       sysData.storage.filesOpened++;

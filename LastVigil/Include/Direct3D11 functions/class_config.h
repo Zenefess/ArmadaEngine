@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_config.h                 Created: 2022/10/20 *
- *                                Last modified: 2023/04/24 *
+ *                                Last modified: 2024/06/15 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -8,26 +8,51 @@
  ************************************************************/
 #pragma once
 
-#ifdef DATA_TRACKING
-#include "data tracking.h"
-extern SYSTEM_DATA sysData;
-#endif
+#include "pch.h"
 
-al16 struct CLASS_CONFIG {   // malloc pointers and change to "&" where appropriate
-   al16 ID3DBlob                *pBlob[6][100] {};
-        ID3D11VertexShader      *pVS[100] {};
-        ID3D11GeometryShader    *pGS[101] {};
-        ID3D11PixelShader       *pPS[100] {};
-        ID3D11BlendState        *pBS[10] {};
-        ID3D11SamplerState      *pSS[10] {};
-        ID3D11InputLayout       *pIL[10] {};
-        ID3D11DepthStencilState *pDSS[10] {};
-        ID3D11RasterizerState   *pRS[10] {};
-        ID3D11Device            *dev;
-        ID3D11DeviceContext    **devcon;
-        CLASS_FILEOPS           *files;
-        D3D11_BLEND_DESC         blendDesc = { 0, 0, 0, D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_COLOR_WRITE_ENABLE_ALL };
-//        CHAR                     stShaderModel[3][7] { "vs_5_0", "gs_5_0", "ps_5_0" };
+//#ifdef DATA_TRACKING
+//#include "data tracking.h"
+//extern SYSTEM_DATA sysData;
+//#endif
+
+al32 struct CLASS_CONFIG {   // Rewrite to use files., malloc pointers, and change to "&" where appropriate
+   CLASS_FILEOPS &files;
+
+   ID3D11Device         *dev;
+   ID3D11DeviceContext **devcon;
+
+   // Allocate all blob & shader pointers packed
+   ID3DBlob *(*const pBlob)[CFG_MAX_SHADERS] = (ID3DBlob*(*)[CFG_MAX_SHADERS])zalloc64(sizeof(ptr[CFG_MAX_SHADERS * 9]));
+
+   ID3D11VertexShader      **const pVS  = (ID3D11VertexShader **)pBlob + (CFG_MAX_SHADERS * 6);
+   ID3D11PixelShader       **const pPS  = (ID3D11PixelShader**)pBlob + (CFG_MAX_SHADERS * 7);
+   ID3D11GeometryShader    **const pGS  = (ID3D11GeometryShader**)pBlob + (CFG_MAX_SHADERS * 8);
+   ID3D11BlendState        **const pBS  = (ID3D11BlendState**)zalloc64(sizeof(ptr[CFG_MAX_STATES * 5]));
+   ID3D11SamplerState      **const pSS  = (ID3D11SamplerState**)pBS + CFG_MAX_STATES;
+   ID3D11InputLayout       **const pIL  = (ID3D11InputLayout**)pBS + (CFG_MAX_STATES * 2);
+   ID3D11DepthStencilState **const pDSS = (ID3D11DepthStencilState**)pBS + (CFG_MAX_STATES * 3);
+   ID3D11RasterizerState   **const pRS  = (ID3D11RasterizerState**)pBS + (CFG_MAX_STATES * 4);
+
+//   ID3DBlob                *pBlob[6][100]{};
+//   ID3D11VertexShader      *pVS[100]{};
+//   ID3D11GeometryShader    *pGS[101]{};
+//   ID3D11PixelShader       *pPS[100]{};
+//   ID3D11BlendState        *pBS[10]{};
+//   ID3D11SamplerState      *pSS[10]{};
+//   ID3D11InputLayout       *pIL[10]{};
+//   ID3D11DepthStencilState *pDSS[10]{};
+//   ID3D11RasterizerState   *pRS[10]{};
+
+   ui8   (*shaderIndex)[CFG_MAX_SHADERS]       = (ui8(*)[CFG_MAX_SHADERS])malloc16(sizeof(ui8[6][CFG_MAX_SHADERS]));
+   wchar (*shaderString)[CFG_MAX_SHADERS][256] = (wchar(*)[CFG_MAX_SHADERS][256])malloc16(sizeof(wchar[6][CFG_MAX_SHADERS][256]));
+
+   ui32 shaderBanks[6] = {};
+   ui32 shaderCount    = 0;
+
+   D3D11_BLEND_DESC blendDesc = { 0, 0, 0, D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_COLOR_WRITE_ENABLE_ALL };
+//   CHAR             stShaderModel[3][7] { "vs_5_0", "gs_5_0", "ps_5_0" };
+
+   CLASS_CONFIG(CLASS_FILEOPS &fileOps) : files(fileOps) {};
 
    void LoadAllShaderGroups(void) {
       UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | //D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | //D3DCOMPILE_WARNINGS_ARE_ERRORS |
@@ -37,11 +62,11 @@ al16 struct CLASS_CONFIG {   // malloc pointers and change to "&" where appropri
                    D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
 
-      files->LoadShaderList();
+      files.LoadShaderList(shaderIndex, shaderString, shaderBanks, shaderCount);
       for(ui16 type = 0; type < 6; type++)
-         for(ui16 index = 0; index < files->uiBanks[type]; index++)
-            if(files->stShader[type][index]) {
-               Try(stReadToBlob, D3DReadFileToBlob(files->stShader[type][index], &pBlob[type][index]));
+         for(ui16 index = 0; index < shaderBanks[type]; index++)
+            if(shaderString[type][index]) {
+               Try(stReadToBlob, D3DReadFileToBlob(shaderString[type][index], &pBlob[type][index]), video);
 #ifdef DATA_TRACKING
                sysData.storage.filesOpened++;
                sysData.storage.filesClosed++;
@@ -49,13 +74,13 @@ al16 struct CLASS_CONFIG {   // malloc pointers and change to "&" where appropri
 #endif
                switch(type) {
                case 1:
-                  if(pBlob[type][index]) Try(stCreateVS, dev->CreateVertexShader(pBlob[type][index]->GetBufferPointer(), pBlob[type][index]->GetBufferSize(), NULL, &pVS[index]));
+                  if(pBlob[type][index]) Try(stCreateVS, dev->CreateVertexShader(pBlob[type][index]->GetBufferPointer(), pBlob[type][index]->GetBufferSize(), NULL, &pVS[index]), video);
                   break;
                case 2:
-                  if(pBlob[type][index]) Try(stCreateGS, dev->CreateGeometryShader(pBlob[type][index]->GetBufferPointer(), pBlob[type][index]->GetBufferSize(), NULL, &pGS[index]));
+                  if(pBlob[type][index]) Try(stCreateGS, dev->CreateGeometryShader(pBlob[type][index]->GetBufferPointer(), pBlob[type][index]->GetBufferSize(), NULL, &pGS[index]), video);
                   break;
                case 5:
-                  if(pBlob[type][index]) Try(stCreatePS, dev->CreatePixelShader(pBlob[type][index]->GetBufferPointer(), pBlob[type][index]->GetBufferSize(), NULL, &pPS[index]));
+                  if(pBlob[type][index]) Try(stCreatePS, dev->CreatePixelShader(pBlob[type][index]->GetBufferPointer(), pBlob[type][index]->GetBufferSize(), NULL, &pPS[index]), video);
                   break;
                }
             }
@@ -68,36 +93,34 @@ al16 struct CLASS_CONFIG {   // malloc pointers and change to "&" where appropri
    inline void SetPixelShader(cui8 context, cui8 shader) const { devcon[context]->PSSetShader(pPS[shader], 0, 0); }
 
    inline void SetShaderGroup(cui8 context, cui8 shaders) const {
-      devcon[context]->VSSetShader(pVS[files->uiIndex[1][shaders]], 0, 0);
-      devcon[context]->GSSetShader(pGS[files->uiIndex[2][shaders]], 0, 0);
-      devcon[context]->PSSetShader(pPS[files->uiIndex[5][shaders]], 0, 0);
+      devcon[context]->VSSetShader(pVS[shaderIndex[1][shaders]], 0, 0);
+      devcon[context]->GSSetShader(pGS[shaderIndex[2][shaders]], 0, 0);
+      devcon[context]->PSSetShader(pPS[shaderIndex[5][shaders]], 0, 0);
    }
 
    // Returns profile index if successful
    cui32 CreateVertexFormat(si8 profileIndex, si8 vertexShader, si8 inputFormat) {
       static const D3D11_INPUT_ELEMENT_DESC ied[7][8] = {
          // Map format
-         { {"INDEX", 0, DXGI_FORMAT_R32_UINT, 0, 0, D3D11_INPUT_PER_INSTANCE_DATA, 1},
-            {}, {}, {}, {}, {}, {}, {} },
+         { {"INDEX", 0, DXGI_FORMAT_R32_UINT, 0, 0, D3D11_INPUT_PER_INSTANCE_DATA, 1}, {}, {}, {}, {}, {}, {}, {} },
          // Entity format
-         { {"INDEX", 0, DXGI_FORMAT_R32_UINT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {}, {}, {}, {}, {}, {}, {} },
+         { {"INDEX", 0, DXGI_FORMAT_R32_UINT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0}, {}, {}, {}, {}, {}, {}, {} },
          // GUI entry format
-         { {"INDEX", 0, DXGI_FORMAT_R16_UINT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {}, {}, {}, {}, {}, {}, {} },
+         { {"INDEX", 0, DXGI_FORMAT_R32_UINT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0}, {}, {}, {}, {}, {}, {}, {} },
          // GUI cursor format
          { {"POSITION", 0, DXGI_FORMAT_R32G32B32_SINT, 0, 0, D3D11_INPUT_PER_INSTANCE_DATA, 1},
-            {"COLOUR", 0, DXGI_FORMAT_R32_UINT, 0, 12, D3D11_INPUT_PER_INSTANCE_DATA, 1},
-            {}, {}, {}, {}, {}, {} },
+           {"COLOUR", 0, DXGI_FORMAT_R32_UINT, 0, 12, D3D11_INPUT_PER_INSTANCE_DATA, 1},
+           {}, {}, {}, {}, {}, {} },
          // Entity sprite format
          { {"INDEX", 0, DXGI_FORMAT_R32G32B32A32_UINT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {"INDEX", 1, DXGI_FORMAT_R32G32B32A32_UINT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {"INDEX", 2, DXGI_FORMAT_R32G32B32A32_UINT, 0, 32, D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {"INDEX", 3, DXGI_FORMAT_R32G32B32A32_UINT, 0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {"INDEX", 4, DXGI_FORMAT_R32G32B32A32_UINT, 0, 64, D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {"INDEX", 5, DXGI_FORMAT_R32G32B32A32_UINT, 0, 80, D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {"INDEX", 6, DXGI_FORMAT_R32G32B32A32_UINT, 0, 96, D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {"INDEX", 7, DXGI_FORMAT_R32G32B32A32_UINT, 0, 112, D3D11_INPUT_PER_VERTEX_DATA, 0} },
+           {"INDEX", 1, DXGI_FORMAT_R32G32B32A32_UINT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0},
+           {"INDEX", 2, DXGI_FORMAT_R32G32B32A32_UINT, 0, 32, D3D11_INPUT_PER_VERTEX_DATA, 0},
+           {"INDEX", 3, DXGI_FORMAT_R32G32B32A32_UINT, 0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0},
+           {"INDEX", 4, DXGI_FORMAT_R32G32B32A32_UINT, 0, 64, D3D11_INPUT_PER_VERTEX_DATA, 0},
+           {"INDEX", 5, DXGI_FORMAT_R32G32B32A32_UINT, 0, 80, D3D11_INPUT_PER_VERTEX_DATA, 0},
+           {"INDEX", 6, DXGI_FORMAT_R32G32B32A32_UINT, 0, 96, D3D11_INPUT_PER_VERTEX_DATA, 0},
+           {"INDEX", 7, DXGI_FORMAT_R32G32B32A32_UINT, 0, 112, D3D11_INPUT_PER_VERTEX_DATA, 0} },
+         // Spares
          { {}, {}, {}, {}, {}, {}, {}, {} },
          { {}, {}, {}, {}, {}, {}, {}, {} }
       };
@@ -110,7 +133,7 @@ al16 struct CLASS_CONFIG {   // malloc pointers and change to "&" where appropri
       }
       i = profileIndex;
 
-      Try(stCreateIL, dev->CreateInputLayout(ied[inputFormat], numEntries[inputFormat], pBlob[1][vertexShader]->GetBufferPointer(), pBlob[1][vertexShader]->GetBufferSize(), &pIL[i]));
+      Try(stCreateIL, dev->CreateInputLayout(ied[inputFormat], numEntries[inputFormat], pBlob[1][vertexShader]->GetBufferPointer(), pBlob[1][vertexShader]->GetBufferSize(), &pIL[i]), video);
 
       return i;
    }
@@ -131,7 +154,7 @@ al16 struct CLASS_CONFIG {   // malloc pointers and change to "&" where appropri
       sd.MinLOD = 0.0f;
       sd.MaxLOD = D3D11_FLOAT32_MAX;
       sd.MipLODBias = 0.0f;
-      if(!pSS[iStates]) Try(stCreateSS, dev->CreateSamplerState(&sd, &pSS[iStates]));
+      if(!pSS[iStates]) Try(stCreateSS, dev->CreateSamplerState(&sd, &pSS[iStates]), video);
       return iStates++;
    }
 
@@ -195,7 +218,7 @@ al16 struct CLASS_CONFIG {   // malloc pointers and change to "&" where appropri
       dsd.StencilEnable = stencilEnable;
       dsd.StencilReadMask = stencilReadMask;
       dsd.StencilWriteMask = stencilWriteMask;
-      if(!pDSS[iStates]) Try(stCreateDSV, dev->CreateDepthStencilState(&dsd, &pDSS[iStates]));
+      if(!pDSS[iStates]) Try(stCreateDSV, dev->CreateDepthStencilState(&dsd, &pDSS[iStates]), video);
       return iStates++;
    }
 
@@ -204,7 +227,7 @@ al16 struct CLASS_CONFIG {   // malloc pointers and change to "&" where appropri
    }
 
    void CreateCullingState(void) {
-      D3D11_RASTERIZER_DESC rasterDesc[2] = { { D3D11_FILL_SOLID, D3D11_CULL_NONE, false, 0, 0.0f, 0.0f, true, false, false, false },
+      D3D11_RASTERIZER_DESC rasterDesc[2] = { { D3D11_FILL_SOLID,     D3D11_CULL_NONE, false, 0, 0.0f, 0.0f, true, false, false, false },
                                               { D3D11_FILL_WIREFRAME, D3D11_CULL_NONE, false, 0, 0.0f, 0.0f, true, false, false, false } };
 
       dev->CreateRasterizerState(&rasterDesc[0], &pRS[0]);

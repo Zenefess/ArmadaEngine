@@ -14,17 +14,6 @@
 #include "File operations.h"
 #include "Common functions.h"
 
-#define MAX_CELL_X 1024
-#define MAX_CELL_Y 1024
-#define MAX_CELL_Z 1024
-#define MAX_CELLS  (MAX_CELL_X * MAX_CELL_Y * MAX_CELL_Z)
-
-#define MAX_MAPS   2097152 // 2 * 1,024 * 1,024
-#define MAX_WORLDS 512
-
-#define MAX_TABLES   64
-#define MAX_ELEMENTS (MAX_TABLES * 256)
-
 extern vui128 MAPMAN_THREAD_STATUS;
 
 static void _MM_Cull_Nonvisible_RasteriseLayer(cVEC4Ds32[2]);
@@ -36,7 +25,7 @@ static void _MM_Cull_Unchanged(ptr);
 
 // Map manager
 al32 struct CLASS_MAPMAN {
-   CLASS_FILEOPS files;
+   CLASS_FILEOPS &files;
 
    cwchar stMapsDir[10] = L"map_data\\";
 
@@ -54,12 +43,12 @@ al32 struct CLASS_MAPMAN {
    VEC3Ds32 mapXYZ;             // Current map cell
    si32     totalWorlds;        // Number of worlds
    si32     elemTables;         // Number of element tables
-   ui32     uiBytes = 0;        // Bytes written
+   ui32     uiBytes = 0;
    ui16     uiMapBoundaries;    // Map edge flags: (Per bit... 0:Finite boundaries, 1:Wrap coordinates) 0-4==X axis, 5-9==Y axis, 10-14==Z axis
    ui8      uiPeriodicName = 0;
    ui8      uiElementName  = 0;
 
-   CLASS_MAPMAN(void) {
+   CLASS_MAPMAN(CLASS_FILEOPS &fileOpsClass) : files(fileOpsClass) {
 #ifdef AE_PTR_LIB
       ptrLib[6] = this;
 #endif
@@ -151,10 +140,10 @@ al32 struct CLASS_MAPMAN {
       HANDLE hElementData = CreateFile(files.stTemp, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
 
       // Read & process tagline
-      files.ReadLine(files.stTemp, hElementData);
+      files.ReadLine(hElementData, files.stTemp);
 //--- To do...
       // Read primary data
-      files.ReadLine(stPeriodicName[uiPeriodicName], hElementData);
+      files.ReadLine(hElementData, stPeriodicName[uiPeriodicName]);
       table[index].stName = stPeriodicName[uiPeriodicName++];
       ReadFile(hElementData, &table[index].numElements, sizeof(ui32), (LPDWORD)&uiBytes, NULL);
       // Read element data
@@ -264,7 +253,7 @@ al32 struct CLASS_MAPMAN {
    }
 
    // Allocate RAM for a map's .entityList array
-   inline void CreateAssociationBuffer(MAP_DESC &md) const { md.entityList = (ID64ptr)salloc32((ui64)md.entListDim * (ui64)md.mapCells * sizeof(ID64), max256); }
+   inline void CreateAssociationBuffer(MAP_DESC &md) const { md.entityList = (ID64ptr)salloc((ui64)md.entListDim * (ui64)md.mapCells * sizeof(ID64), 32, max256); }
 
    inline void DestroyAssociationBuffer(csi32 mapIndex, csi32 worldIndex) const { mdealloc((*world[worldIndex].map[mapIndex]).desc.entityList); }
 
@@ -283,17 +272,17 @@ al32 struct CLASS_MAPMAN {
       HANDLE hMapData = CreateFile(files.stTemp, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
 
       // Read & process tagline
-      files.ReadLine(files.stTemp, hMapData);
+      files.ReadLine(hMapData, files.stTemp);
 //--- To do...
       // Read critical map information
-      files.ReadLine(files.stTemp, hMapData);
+      files.ReadLine(hMapData, files.stTemp);
       curMap.desc.stName = (wchptr)malloc32(wcslen(files.stTemp) + 1);
       wcscpy(curMap.desc.stName, files.stTemp);
-      files.ReadLine(files.stTemp, hMapData);
+      files.ReadLine(hMapData, files.stTemp);
       curMap.desc.stInfo = (wchptr)malloc32(wcslen(files.stTemp) + 1);
       wcscpy(curMap.desc.stInfo, files.stTemp);
       // Search periodic table array for match
-      files.ReadLine(files.stTemp, hMapData);
+      files.ReadLine(hMapData, files.stTemp);
       for(i = 0; !wcscmp(files.stTemp, table[i].stName) || i < MAX_TABLES; i++);
       if(i < MAX_TABLES)
          curMap.desc.ptIndex = i;
@@ -448,6 +437,7 @@ al32 struct CLASS_MAPMAN {
       curMap.pCB->setMapChunks(chunkCount.x - 1, chunkCount.y - 1, chunkCount.z - 1);
       curMap.pCB->setFlag(false);
       curMap.pCB->setSpawnOffset(md.zso - 1);
+      curMap.pCB->oobCell = {};
 
       si32 chunkIndex = 0;
       $LoopMT4 for(; chunkIndex < surfaceChOS; chunkIndex++) {

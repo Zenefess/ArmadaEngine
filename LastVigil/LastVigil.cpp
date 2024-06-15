@@ -4,15 +4,10 @@
  *                                                          *
  * Desc: Initial setup, and debug management.               *
  *                                                          *
- *  Copyright (c) David William Bull. All rights reserved.  *
+ * Copyright (c) David William Bull.   All rights reserved. *
  ************************************************************/
 #include "pch.h"
-#include "data tracking.h"
 #include <stdio.h>
-#include "thread flags.h"
-#include "typedefs.h"
-#include "Data structures.h"
-#include "class_timers.h"
 #include "Command queue.h"
 
 #ifdef _DEBUG
@@ -26,22 +21,20 @@ extern void Direct3D11Thread(ptr);
 extern void OpenAL1_1Thread(ptr);
 extern void DirectInput8Thread(ptr);
 
-extern HWND hWnd; // Defined in "Direct3D11 thread.cpp"
-
 #ifdef DATA_TRACKING
-SYSTEM_DATA sysData(1024);
+     SYSTEM_DATA   sysData(1024);
 #endif
-
 //     COMMAND_MANAGER cmd;
-al32 CLASS_TIMER  mainTimer;
-     cptr         ptrLib[16];
-     wchar        stErrorFilename[64];
- vol GLOBALCOORDS gco {};
-     vui64        THREAD_LIFE = 0x0;   // 'Thread active' flags
-     wchptr       stThrdStat;          // Debug output
-     HINSTANCE    hInst;               // Current instance's handle
-     HANDLE       hErrorOutput;        // File handle for error output
-     HRESULT      hr;
+     cptr          ptrLib[16];
+ vol GLOBALCOORDS  gco = {};
+     CLASS_FILEOPS files;
+     CLASS_TIMER   mainTimer;
+     wchar         stErrorFilename[64];
+     vui64         THREAD_LIFE = 0x0;   // 'Thread active' flags
+     wchptr        stThrdStat;          // Debug output
+     HINSTANCE     hInst;               // Current instance's handle
+     HANDLE        hErrorOutput;        // File handle for error output
+     HRESULT       hr;
 
 /*/
  * _tWinMain
@@ -159,4 +152,16 @@ void WriteError(cchptr const text, cbool fatal) {
       Sleep(1000);
    } else
       WriteFile(hErrorOutput, "\n", 1, &dwBytes, NULL);
+}
+
+inline void Try(cchptr stEvent, ui32 uiResult, AE_SUBSYSTEM_ENUM subsystem) {
+   al16 cchptrc ae_subsystem[8] = {
+      "VIDEO:%04X : %s", "AUDIO:%04X : %s", "INPUT:%04X : %s", 0, 0, 0, 0, 0
+   };
+   static char stDescription[64];
+
+   if(uiResult & 0x080000000) {
+      sprintf(stDescription, ae_subsystem[subsystem], uiResult & 0x03FFFFFFF, stEvent);
+      WriteError(stDescription, (uiResult & 0x040000000 ? true : false));
+   }
 }

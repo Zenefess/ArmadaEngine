@@ -153,6 +153,9 @@
     <ClInclude Include="Include\Entity structures.h">
       <Filter>Header Files\Armada Intelligence functions</Filter>
     </ClInclude>
+    <ClInclude Include="project definitions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LastVigil.cpp">
@@ -181,6 +184,9 @@
     </ClCompile>
     <ClCompile Include="Input functions.cpp">
       <Filter>Source Files\Threads</Filter>
+    </ClCompile>
+    <ClCompile Include="GUI editor.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
