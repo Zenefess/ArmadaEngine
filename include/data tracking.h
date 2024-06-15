@@ -1,6 +1,6 @@
 /************************************************************
 * File: Data tracking.h                Created: 2024/03/30 *
-*                                Last modified: 2024/05/06 *
+*                                Last modified: 2024/06/15 *
 *                                                          *
 * Desc:                                                    *
 *                                                          *
@@ -114,3 +114,5 @@ al64 struct SYSTEM_DATA {
       mem.maxAllocations = 0;
    }
 };
+
+extern SYSTEM_DATA sysData;

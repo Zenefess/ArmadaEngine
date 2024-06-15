@@ -20,6 +20,7 @@ extern SYSTEM_DATA sysData;
 
 #define malloc16(byteCount) malloc(byteCount, 16)
 #define malloc32(byteCount) malloc(byteCount, 32)
+#define malloc64(byteCount) malloc(byteCount, 64)
 
 // Allocate RAM at aligned boundary
 inline ptrc malloc(csize_t byteCount, csize_t alignment) {
