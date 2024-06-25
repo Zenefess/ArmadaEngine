@@ -1,6 +1,6 @@
 /************************************************************
  * File: memory management.h            Created: 2008/12/08 *
- *                                Last modified: 2024/06/14 *
+ *                                Last modified: 2024/06/25 *
  *                                                          *
  * Notes: 2024/05/02: Added support for data tracking.      *
  *                                                          *
@@ -12,6 +12,7 @@
 
 #include <corecrt_malloc.h>
 #include "typedefs.h"
+#include "Common functions.h"
 
 #ifdef DATA_TRACKING
 #include "data tracking.h"
@@ -274,10 +275,10 @@ inline cui64 mdealloc_(ptrc pointer, ...) {
 inline void mzero(ptrc addr, cui64 numBytes) {
    ui64 i;
 #ifdef __AVX512__
-   if(numBytes & 0x02F) {
+   if(numBytes & 0x02Fu) {
 #endif
 #ifdef __AVX__
-      if(numBytes & 0x01F) {
+      if(numBytes & 0x01Fu) {
 #endif
          if(numBytes & 0x0F) {
             cui64 count = numBytes >> 3;
@@ -548,12 +549,22 @@ inline void Stream64(cptrc source, ptrc dest, cui64 byteCount) {
 #else
 #ifdef __AVX__
    cui64 j = ui64((byteCount + 31) >> 5);
-   for(ui64 i = 0; i < j; i++) ((ui256ptr)dest)[i] = _mm256_stream_load_si256(&((ui256ptr)source)[i]);
+   for(ui64 i = 0; i < j; i++)
+      ((ui256ptr)dest)[i] = _mm256_stream_load_si256(&((ui256ptr)source)[i]);
 #else
    cui64 j = ui64((byteCount + 15) >> 4);
    for(ui64 i = 0; i < j; i++) ((ui128ptr)dest)[i] = _mm_stream_load_si128(&((ui128ptr)source)[i]);
 #endif
 #endif
+}
+
+// (Non-temporally) Copy byteCount (rounded-up to the nearest 16/32/64) bytes of 128/256/512-bit-aligned data via SIMD instruction.
+// If either source or dest is unaligned, standard copy is used.
+inline void Stream(cptrc source, ptrc dest, cui64 byteCount) {
+        if(((ui64 &)source & 0x0Fu)  || ((ui64 &)dest & 0x0Fu))  Copy(source, dest, byteCount);
+   else if(((ui64 &)source & 0x010u) || ((ui64 &)dest & 0x010u)) Stream16(source, dest, RoundUpToNearest16(byteCount));
+   else if(((ui64 &)source & 0x020u) || ((ui64 &)dest & 0x020u)) Stream32(source, dest, RoundUpToNearest32(byteCount));
+   else                                                          Stream64(source, dest, RoundUpToNearest64(byteCount));
 }
 
 // Interlock copy byteCount (rounded-down to the nearest 8) bytes of data

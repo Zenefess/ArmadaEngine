@@ -1,6 +1,6 @@
 /**********************************************************************
  * File: Fixed-point data types.h                 Created: 2024/05/11 *
- *                                          Last modified: 2024/05/25 *
+ *                                          Last modified: 2024/06/25 *
  *                                                                    *
  * Desc: Provides sizes of 8, 16, 24, and 32 bits. All sizes have     *
  *       support for fixed, normalised, and custom value ranges.      *
@@ -25,7 +25,7 @@
 #include "typedefs.h"
 
 // External _FPDT_DATA_ to be declared in a main .c/.cpp file, required for data types with a user-definable range
-#define fpdtInitCustom al16 _FPDT_DATA_ _fpdt_data_
+#define fpdtInitCustom __declspec(align(16)) __FPDT_DATA__ __fpdt_data__
 
 // For 2-scalar return values
 typedef
@@ -168,28 +168,28 @@ static cfl64 _fpdt_2div2p32_1 = 2.0 / 4294967295.0;
 #ifndef FPDT_NO_CUSTOM
 
 // Data for types with a user-defineable range
-struct _FPDT_DATA_ {
-   fl32 origin8 = -1.0f;
-   fl32 range8 = 1.0f;
-   fl32 maxDivRange8 = 255.0f;
-   fl32 rangeDivMax8 = _fpdt_rcp255f;
-   fl32 origin16 = -1.0f;
-   fl32 range16 = 1.0f;
-   fl32 maxDivRange16 = 65535.0f;
-   fl32 rangeDivMax16 = _fpdt_rcp65535f;
+struct __FPDT_DATA__ {
+   fl64 origin32      = -1.0;
+   fl64 range32       = 1.0;
+   fl64 maxDivRange32 = 4294967295.0;
+   fl64 rangeDivMax32 = _fpdt_rcp2p32_1;
 #ifdef _24BIT_INTEGERS_
-   fl32 origin24 = -1.0f;
-   fl32 range24 = 1.0f;
+   fl32 origin24      = -1.0f;
+   fl32 range24       = 1.0f;
    fl32 maxDivRange24 = 16777215.0f;
    fl32 rangeDivMax24 = _fpdt_rcp2p24_1f;
 #endif
-   fl64 origin32 = -1.0;
-   fl64 range32 = 1.0;
-   fl64 maxDivRange32 = 4294967295.0;
-   fl64 rangeDivMax32 = _fpdt_rcp2p32_1;
+   fl32 origin16      = -1.0f;
+   fl32 range16       = 1.0f;
+   fl32 maxDivRange16 = 65535.0f;
+   fl32 rangeDivMax16 = _fpdt_rcp65535f;
+   fl32 origin8       = -1.0f;
+   fl32 range8        = 1.0f;
+   fl32 maxDivRange8  = 255.0f;
+   fl32 rangeDivMax8  = _fpdt_rcp255f;
 };
 
-extern _FPDT_DATA_ _fpdt_data_;
+extern __FPDT_DATA__ __fpdt_data__;
 
 // Normalised 8-bit : User-defineable decimal range
 struct fp8n {
@@ -197,36 +197,36 @@ struct fp8n {
 
    ui8 data;
 
-   inline cfp8n toFixed(cfl32 &value) const { return (cfp8n &)ui8((value - _fpdt_data_.origin8) * _fpdt_data_.maxDivRange8); }
-   inline cfl32 toFloat(void) const { return fl32(data) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8; };
-   inline cfl32 toFloat(cfp8n &value) const { return fl32(value.data) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8; };
-   inline cui8 toFixedMod(cfp8n &value) const { return (value.data - ui8(_fpdt_data_.origin8 * _fpdt_data_.maxDivRange8)); }
-   inline cui8 toFixedMod(cfl32 &value) const { return ui8(value * _fpdt_data_.maxDivRange8); }
+   inline cfp8n toFixed(cfl32 &value) const { return (cfp8n &)ui8((value - __fpdt_data__.origin8) * __fpdt_data__.maxDivRange8); }
+   inline cfl32 toFloat(void) const { return fl32(data) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8; };
+   inline cfl32 toFloat(cfp8n &value) const { return fl32(value.data) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8; };
+   inline cui8 toFixedMod(cfp8n &value) const { return (value.data - ui8(__fpdt_data__.origin8 * __fpdt_data__.maxDivRange8)); }
+   inline cui8 toFixedMod(cfl32 &value) const { return ui8(value * __fpdt_data__.maxDivRange8); }
 
    fp8n(void) = default;
    fp8n(cfl32 floor, cfl32 ceiling) {
-      _fpdt_data_.origin8      = floor;
-      _fpdt_data_.range8       = ceiling - floor;
-      _fpdt_data_.maxDivRange8 = 255.0f / _fpdt_data_.range8;
-      _fpdt_data_.rangeDivMax8 = _fpdt_data_.range8 / 255.0f;
+      __fpdt_data__.origin8      = floor;
+      __fpdt_data__.range8       = ceiling - floor;
+      __fpdt_data__.maxDivRange8 = 255.0f / __fpdt_data__.range8;
+      __fpdt_data__.rangeDivMax8 = __fpdt_data__.range8 / 255.0f;
    };
    fp8n(cfl32 value, cfl32 floor, cfl32 ceiling) {
-      _fpdt_data_.origin8      = floor;
-      _fpdt_data_.range8       = ceiling - floor;
-      _fpdt_data_.maxDivRange8 = 255.0f / _fpdt_data_.range8;
-      _fpdt_data_.rangeDivMax8 = _fpdt_data_.range8 / 255.0f;
+      __fpdt_data__.origin8      = floor;
+      __fpdt_data__.range8       = ceiling - floor;
+      __fpdt_data__.maxDivRange8 = 255.0f / __fpdt_data__.range8;
+      __fpdt_data__.rangeDivMax8 = __fpdt_data__.range8 / 255.0f;
 
-      data = ui8((value - floor) * _fpdt_data_.maxDivRange8);
+      data = ui8((value - floor) * __fpdt_data__.maxDivRange8);
    };
    fp8n(cui8 value) { data = value; }
-   fp8n(cui16 value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16).data; }
-   fp8n(cui32 value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)).data; }
+   fp8n(cui16 value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16).data; }
+   fp8n(cui32 value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)).data; }
    fp8n(csi32 value) { data = (ui8 &)value; }
    fp8n(cfl32 value) { data = toFixed(value).data; }
-   fp8n(cfl64 value) { data = ui8((value - fl64(_fpdt_data_.origin8)) * (255.0 / fl64(_fpdt_data_.range8))); }
+   fp8n(cfl64 value) { data = ui8((value - fl64(__fpdt_data__.origin8)) * (255.0 / fl64(__fpdt_data__.range8))); }
 
    operator ptr(void) const { return *this; }
-   operator cfl32(void) const { return fl32(data) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8; };
+   operator cfl32(void) const { return fl32(data) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8; };
 
    inline cfp8n &operator&(void) const { return *this; }
    inline cfp8n operator~(void) const { return (cfp8n &)~data; }
@@ -302,28 +302,28 @@ struct fp8nx4 {
 
    union { ui32 data32; fp8n data[4]; ui8 data8[4]; };
 
-   inline cfp8n toFixed(cfl32 &value) const { return (cfp8n &)ui8((value - _fpdt_data_.origin8) * _fpdt_data_.maxDivRange8); }
-   inline cfp8nx4 toFixed4(cfl32x4 &value) const { return (cfp8nx4 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(_mm_sub_ps(value, _mm_set_ps1(_fpdt_data_.origin8)), _mm_set_ps1(_fpdt_data_.maxDivRange8))), _fpdt_shuffle8s); }
+   inline cfp8n toFixed(cfl32 &value) const { return (cfp8n &)ui8((value - __fpdt_data__.origin8) * __fpdt_data__.maxDivRange8); }
+   inline cfp8nx4 toFixed4(cfl32x4 &value) const { return (cfp8nx4 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(_mm_sub_ps(value, _mm_set_ps1(__fpdt_data__.origin8)), _mm_set_ps1(__fpdt_data__.maxDivRange8))), _fpdt_shuffle8s); }
    inline cfl32x4 toFloat4(void) const {
-      return _mm_add_ps(_mm_mul_ps(_mm_cvtepu32_ps(_mm_cvtepu8_epi32(_mm_cvtsi32_si128(data32))), _mm_set_ps1(_fpdt_data_.rangeDivMax8)), _mm_set_ps1(_fpdt_data_.origin8));
+      return _mm_add_ps(_mm_mul_ps(_mm_cvtepu32_ps(_mm_cvtepu8_epi32(_mm_cvtsi32_si128(data32))), _mm_set_ps1(__fpdt_data__.rangeDivMax8)), _mm_set_ps1(__fpdt_data__.origin8));
    };
    inline cfl32x4 toFloat4(cfp8nx4 &value) const {
-      return _mm_add_ps(_mm_mul_ps(_mm_cvtepu32_ps(_mm_cvtepu8_epi32(_mm_cvtsi32_si128(value.data32))), _mm_set_ps1(_fpdt_data_.rangeDivMax8)), _mm_set_ps1(_fpdt_data_.origin8));
+      return _mm_add_ps(_mm_mul_ps(_mm_cvtepu32_ps(_mm_cvtepu8_epi32(_mm_cvtsi32_si128(value.data32))), _mm_set_ps1(__fpdt_data__.rangeDivMax8)), _mm_set_ps1(__fpdt_data__.origin8));
    };
    inline cfp8nx4 toFixed4Mod(cfp8nx4 &value) const {
-      cfp8nx4 temp = (cfp8nx4 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(_mm_set_ps1(_fpdt_data_.origin8), _mm_set_ps1(_fpdt_data_.maxDivRange8))), _fpdt_shuffle8s);
+      cfp8nx4 temp = (cfp8nx4 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(_mm_set_ps1(__fpdt_data__.origin8), _mm_set_ps1(__fpdt_data__.maxDivRange8))), _fpdt_shuffle8s);
       return cfp8nx4{ ui8(data8[0] - temp.data8[0]), ui8(data8[1] - temp.data8[1]), ui8(data8[2] - temp.data8[2]), ui8(data8[3] - temp.data8[3]) };
    }
    inline cfp8nx4 toFixed4Mod(cfl32x4 &value) const {
-      return (cfp8nx4 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _mm_set_ps1(_fpdt_data_.maxDivRange8))), _fpdt_shuffle8s);
+      return (cfp8nx4 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _mm_set_ps1(__fpdt_data__.maxDivRange8))), _fpdt_shuffle8s);
    }
 
    fp8nx4(void) = default;
    fp8nx4(cfl32 floor, cfl32 ceiling) {
-      _fpdt_data_.origin8      = floor;
-      _fpdt_data_.range8       = ceiling - floor;
-      _fpdt_data_.maxDivRange8 = 255.0f / _fpdt_data_.range8;
-      _fpdt_data_.rangeDivMax8 = _fpdt_data_.range8 / 255.0f;
+      __fpdt_data__.origin8      = floor;
+      __fpdt_data__.range8       = ceiling - floor;
+      __fpdt_data__.maxDivRange8 = 255.0f / __fpdt_data__.range8;
+      __fpdt_data__.rangeDivMax8 = __fpdt_data__.range8 / 255.0f;
    };
    fp8nx4(cfp8n value, cui8 index) { data[index] = value.data; }
    fp8nx4(cui8 value, cui8 index) { data8[index] = value; }
@@ -345,22 +345,22 @@ struct fp8nx4 {
    fp8nx4(cui8 value0, cui8 value1, cui8 value2, cui8 value3) { data8[0] = value0; data8[1] = value1; data8[2] = value2; data8[3] = value3; }
    fp8nx4(csi32 value0, csi32 value1, csi32 value2, csi32 value3) { data8[0] = (ui8 &)value0; data8[1] = (ui8 &)value1; data8[2] = (ui8 &)value2; data8[3] = (ui8 &)value3; }
    fp8nx4(cfl32 value, cui8 index, cfl32 floor, cfl32 ceiling) {
-      _fpdt_data_.origin8      = floor;
-      _fpdt_data_.range8       = ceiling - floor;
-      _fpdt_data_.maxDivRange8 = 255.0f / _fpdt_data_.range8;
-      _fpdt_data_.rangeDivMax8 = _fpdt_data_.range8 / 255.0f;
-      data8[index] = ui8((value - floor) * _fpdt_data_.maxDivRange8);
+      __fpdt_data__.origin8      = floor;
+      __fpdt_data__.range8       = ceiling - floor;
+      __fpdt_data__.maxDivRange8 = 255.0f / __fpdt_data__.range8;
+      __fpdt_data__.rangeDivMax8 = __fpdt_data__.range8 / 255.0f;
+      data8[index] = ui8((value - floor) * __fpdt_data__.maxDivRange8);
    };
    fp8nx4(cfl32x4 value, cfl32 floor, cfl32 ceiling) {
-      _fpdt_data_.origin8      = floor;
-      _fpdt_data_.range8       = ceiling - floor;
-      _fpdt_data_.maxDivRange8 = 255.0f / _fpdt_data_.range8;
-      _fpdt_data_.rangeDivMax8 = _fpdt_data_.range8 / 255.0f;
+      __fpdt_data__.origin8      = floor;
+      __fpdt_data__.range8       = ceiling - floor;
+      __fpdt_data__.maxDivRange8 = 255.0f / __fpdt_data__.range8;
+      __fpdt_data__.rangeDivMax8 = __fpdt_data__.range8 / 255.0f;
       data32 = toFixed4(value).data32;
    }
 
    operator ptr(void) const { return *this; }
-   operator cfl32x4(void) const { return _mm_add_ps(_mm_mul_ps(_mm_cvtepu32_ps(_mm_cvtepu8_epi32(_mm_cvtsi32_si128(data32))), _mm_set_ps1(_fpdt_data_.rangeDivMax8)), _mm_set_ps1(_fpdt_data_.origin8)); }
+   operator cfl32x4(void) const { return _mm_add_ps(_mm_mul_ps(_mm_cvtepu32_ps(_mm_cvtepu8_epi32(_mm_cvtsi32_si128(data32))), _mm_set_ps1(__fpdt_data__.rangeDivMax8)), _mm_set_ps1(__fpdt_data__.origin8)); }
 
    inline cfp8nx4 &operator&(void) const { return *this; }
    inline cfp8nx4 operator~(void) const { return (cfp8nx4 &)(data32 ^ 0x0FFFFFFFFu); }
@@ -468,36 +468,36 @@ struct fp16n {
 
    ui16 data;
 
-   inline cfp16n toFixed(cfl32 &value) const { return (cfp16n &)ui16((value - _fpdt_data_.origin16) * _fpdt_data_.maxDivRange16); }
-   inline cfl32 toFloat(void) const { return fl32(data) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16; };
-   inline cfl32 toFloat(cfp16n &value) const { return fl32(value.data) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16; };
-   inline cui16 toFixedMod(cfp16n &value) const { return (value.data - ui16(_fpdt_data_.origin16 * _fpdt_data_.maxDivRange16)); }
-   inline cui16 toFixedMod(cfl32 &value) const { return ui16(value * _fpdt_data_.maxDivRange16); }
+   inline cfp16n toFixed(cfl32 &value) const { return (cfp16n &)ui16((value - __fpdt_data__.origin16) * __fpdt_data__.maxDivRange16); }
+   inline cfl32 toFloat(void) const { return fl32(data) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16; };
+   inline cfl32 toFloat(cfp16n &value) const { return fl32(value.data) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16; };
+   inline cui16 toFixedMod(cfp16n &value) const { return (value.data - ui16(__fpdt_data__.origin16 * __fpdt_data__.maxDivRange16)); }
+   inline cui16 toFixedMod(cfl32 &value) const { return ui16(value * __fpdt_data__.maxDivRange16); }
 
    fp16n(void) {};
    fp16n(cfl32 floor, cfl32 ceiling) {
-      _fpdt_data_.origin16      = floor;
-      _fpdt_data_.range16       = ceiling - floor;
-      _fpdt_data_.maxDivRange16 = 65535.0f / _fpdt_data_.range16;
-      _fpdt_data_.rangeDivMax16 = _fpdt_data_.range16 / 65535.0f;
+      __fpdt_data__.origin16      = floor;
+      __fpdt_data__.range16       = ceiling - floor;
+      __fpdt_data__.maxDivRange16 = 65535.0f / __fpdt_data__.range16;
+      __fpdt_data__.rangeDivMax16 = __fpdt_data__.range16 / 65535.0f;
    };
    fp16n(cfl32 value, cfl32 floor, cfl32 ceiling) {
-      _fpdt_data_.origin16      = floor;
-      _fpdt_data_.range16       = ceiling - floor;
-      _fpdt_data_.maxDivRange16 = 65535.0f / _fpdt_data_.range16;
-      _fpdt_data_.rangeDivMax16 = _fpdt_data_.range16 / 65535.0f;
+      __fpdt_data__.origin16      = floor;
+      __fpdt_data__.range16       = ceiling - floor;
+      __fpdt_data__.maxDivRange16 = 65535.0f / __fpdt_data__.range16;
+      __fpdt_data__.rangeDivMax16 = __fpdt_data__.range16 / 65535.0f;
 
-      data = ui16((value - floor) * _fpdt_data_.maxDivRange16);
+      data = ui16((value - floor) * __fpdt_data__.maxDivRange16);
    };
-   fp16n(cui8 value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8).data; }
+   fp16n(cui8 value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8).data; }
    fp16n(cui16 value) { data = value; }
-   fp16n(cui32 value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)).data; }
+   fp16n(cui32 value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)).data; }
    fp16n(csi32 value) { data = (ui16 &)value; }
    fp16n(cfl32 value) { data = toFixed(value).data; }
-   fp16n(cfl64 value) { data = ui16((value - fl64(_fpdt_data_.origin16)) * (65535.0 / fl64(_fpdt_data_.range16))); }
+   fp16n(cfl64 value) { data = ui16((value - fl64(__fpdt_data__.origin16)) * (65535.0 / fl64(__fpdt_data__.range16))); }
 
    operator ptr(void) const { return *this; }
-   operator cfl32(void) const { return fl32(data) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16; };
+   operator cfl32(void) const { return fl32(data) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16; };
 
    inline cfp16n &operator&(void) const { return *this; }
    inline cfp16n operator~(void) const { return (cfp16n &)~data; }
@@ -582,35 +582,35 @@ struct fp16nx4 {
 
    union { ui64 data64; fp16n data[4]; ui16 data16[4]; };
 
-   inline cfp16n toFixed(cfl32 &value) const { return (cfp16n &)ui16((value - _fpdt_data_.origin16) * _fpdt_data_.maxDivRange16); }
+   inline cfp16n toFixed(cfl32 &value) const { return (cfp16n &)ui16((value - __fpdt_data__.origin16) * __fpdt_data__.maxDivRange16); }
    inline cfp16nx4 toFixed4(cfl32x4 &value) const {
-      return (cfp16nx4 &)_mm_shuffle_epi8(_mm_cvttps_epi32( _mm_mul_ps(_mm_sub_ps(value, _mm_set_ps1(_fpdt_data_.origin16)), _mm_set_ps1(_fpdt_data_.maxDivRange16))), _fpdt_shuffle16s);
+      return (cfp16nx4 &)_mm_shuffle_epi8(_mm_cvttps_epi32( _mm_mul_ps(_mm_sub_ps(value, _mm_set_ps1(__fpdt_data__.origin16)), _mm_set_ps1(__fpdt_data__.maxDivRange16))), _fpdt_shuffle16s);
    }
    inline cfl32x4 toFloat4(void) const {
-      return _mm_add_ps(_mm_mul_ps(_mm_cvtepu32_ps(_mm_cvtepu16_epi32(_mm_cvtsi64_si128(data64))), _mm_set_ps1(_fpdt_data_.rangeDivMax16)), _mm_set_ps1(_fpdt_data_.origin16));
+      return _mm_add_ps(_mm_mul_ps(_mm_cvtepu32_ps(_mm_cvtepu16_epi32(_mm_cvtsi64_si128(data64))), _mm_set_ps1(__fpdt_data__.rangeDivMax16)), _mm_set_ps1(__fpdt_data__.origin16));
    };
    inline cfl32x4 toFloat4(cfp16nx4 &value) const {
-      return _mm_add_ps(_mm_mul_ps(_mm_cvtepu32_ps(_mm_cvtepu16_epi32(_mm_cvtsi64_si128(value.data64))), _mm_set_ps1(_fpdt_data_.rangeDivMax16)), _mm_set_ps1(_fpdt_data_.origin16));
+      return _mm_add_ps(_mm_mul_ps(_mm_cvtepu32_ps(_mm_cvtepu16_epi32(_mm_cvtsi64_si128(value.data64))), _mm_set_ps1(__fpdt_data__.rangeDivMax16)), _mm_set_ps1(__fpdt_data__.origin16));
    };
    inline cfp16nx4 toFixed4Mod(cfp16nx4 &value) const {
-      cfp16nx4 temp = (cfp16nx4 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(_mm_set_ps1(_fpdt_data_.origin16), _mm_set_ps1(_fpdt_data_.maxDivRange16))), _fpdt_shuffle16s);
+      cfp16nx4 temp = (cfp16nx4 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(_mm_set_ps1(__fpdt_data__.origin16), _mm_set_ps1(__fpdt_data__.maxDivRange16))), _fpdt_shuffle16s);
       return cfp16nx4{ ui16(data16[0] - temp.data16[0]), ui16(data16[1] - temp.data16[1]), ui16(data16[2] - temp.data16[2]), ui16(data16[3] - temp.data16[3]) };
    }
    inline cfp16nx4 toFixed4Mod(cfl32x4 &value) const {
-      return (cfp16nx4 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _mm_set_ps1(_fpdt_data_.maxDivRange16))), _fpdt_shuffle16s);
+      return (cfp16nx4 &)_mm_shuffle_epi8(_mm_cvttps_epi32(_mm_mul_ps(value, _mm_set_ps1(__fpdt_data__.maxDivRange16))), _fpdt_shuffle16s);
    }
 
    fp16nx4(void) = default;
    fp16nx4(cfl32 floor, cfl32 ceiling) {
-      _fpdt_data_.origin16      = floor;
-      _fpdt_data_.range16       = ceiling - floor;
-      _fpdt_data_.maxDivRange16 = 65535.0f / _fpdt_data_.range16;
-      _fpdt_data_.rangeDivMax16 = _fpdt_data_.range16 / 65535.0f;
+      __fpdt_data__.origin16      = floor;
+      __fpdt_data__.range16       = ceiling - floor;
+      __fpdt_data__.maxDivRange16 = 65535.0f / __fpdt_data__.range16;
+      __fpdt_data__.rangeDivMax16 = __fpdt_data__.range16 / 65535.0f;
    };
    fp16nx4(cfp16n value, cui8 index) { data[index] = value.data; }
    fp16nx4(cui16 value, cui8 index) { data16[index] = value; }
    fp16nx4(csi32 value, cui8 index) { data16[index] = (ui16 &)value; }
-   fp16nx4(cfl32 value, cui8 index) { data16[index] = ui16((value - _fpdt_data_.origin16) * _fpdt_data_.maxDivRange16); }
+   fp16nx4(cfl32 value, cui8 index) { data16[index] = ui16((value - __fpdt_data__.origin16) * __fpdt_data__.maxDivRange16); }
    fp16nx4(cfp16n (&value)[4]) { data64 = (ui64 &)value[0]; }
    fp16nx4(cui16 (&value)[4]) { data64 = (ui64 &)value[0]; }
    fp16nx4(cfp16n value) { data[0] = data[1] = data[2] = data[3] = value; }
@@ -628,22 +628,22 @@ struct fp16nx4 {
    fp16nx4(cui16 value0, cui16 value1, cui16 value2, cui16 value3) { data16[0] = value0; data16[1] = value1; data16[2] = value2; data16[3] = value3; }
    fp16nx4(csi32 value0, csi32 value1, csi32 value2, csi32 value3) { data16[0] = (ui16 &)value0; data16[1] = (ui16 &)value1; data16[2] = (ui16 &)value2; data16[3] = (ui16 &)value3; }
    fp16nx4(cfl32 value, cui8 index, cfl32 floor, cfl32 ceiling) {
-      _fpdt_data_.origin16      = floor;
-      _fpdt_data_.range16       = ceiling - floor;
-      _fpdt_data_.maxDivRange16 = 65535.0f / _fpdt_data_.range16;
-      _fpdt_data_.rangeDivMax16 = _fpdt_data_.range16 / 65535.0f;
-      data16[index] = ui16((value - floor) * _fpdt_data_.maxDivRange16);
+      __fpdt_data__.origin16      = floor;
+      __fpdt_data__.range16       = ceiling - floor;
+      __fpdt_data__.maxDivRange16 = 65535.0f / __fpdt_data__.range16;
+      __fpdt_data__.rangeDivMax16 = __fpdt_data__.range16 / 65535.0f;
+      data16[index] = ui16((value - floor) * __fpdt_data__.maxDivRange16);
    };
    fp16nx4(cfl32x4 value, cfl32 floor, cfl32 ceiling) {
-      _fpdt_data_.origin16      = floor;
-      _fpdt_data_.range16       = ceiling - floor;
-      _fpdt_data_.maxDivRange16 = 65535.0f / _fpdt_data_.range16;
-      _fpdt_data_.rangeDivMax16 = _fpdt_data_.range16 / 65535.0f;
+      __fpdt_data__.origin16      = floor;
+      __fpdt_data__.range16       = ceiling - floor;
+      __fpdt_data__.maxDivRange16 = 65535.0f / __fpdt_data__.range16;
+      __fpdt_data__.rangeDivMax16 = __fpdt_data__.range16 / 65535.0f;
       data64 = toFixed4(value).data64;
    }
 
    operator ptr(void) const { return *this; }
-   operator cfl32x4(void) const { return _mm_add_ps(_mm_mul_ps(_mm_cvtepu32_ps(_mm_cvtepu16_epi32(_mm_cvtsi64_si128(data64))), _mm_set_ps1(_fpdt_data_.rangeDivMax16)), _mm_set_ps1(_fpdt_data_.origin16)); }
+   operator cfl32x4(void) const { return _mm_add_ps(_mm_mul_ps(_mm_cvtepu32_ps(_mm_cvtepu16_epi32(_mm_cvtsi64_si128(data64))), _mm_set_ps1(__fpdt_data__.rangeDivMax16)), _mm_set_ps1(__fpdt_data__.origin16)); }
 
    inline cfp16nx4 &operator&(void) const { return *this; }
    inline cfp16nx4 operator~(void) const { return (cfp16nx4 &)(data64 ^ 0x0FFFFFFFFFFFFFFFFu); }
@@ -753,36 +753,36 @@ struct fp24n {
 
    ui24 data;
 
-   inline cui24 toFixed(cfl32 &value) const { return ui24((value - _fpdt_data_.origin24) * _fpdt_data_.maxDivRange24); }
-   inline cfl32 toFloat(void) const { return fl32(data) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24; };
-   inline cfl32 toFloat(cfp24n &value) const { return fl32(value.data) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24; };
-   inline cui24 toFixedMod(cfp24n &value) const { return (value.data - ui24(_fpdt_data_.origin24 * _fpdt_data_.maxDivRange24)); }
-   inline cui24 toFixedMod(cfl32 &value) const { return ui24(value * _fpdt_data_.maxDivRange24); }
+   inline cui24 toFixed(cfl32 &value) const { return ui24((value - __fpdt_data__.origin24) * __fpdt_data__.maxDivRange24); }
+   inline cfl32 toFloat(void) const { return fl32(data) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24; };
+   inline cfl32 toFloat(cfp24n &value) const { return fl32(value.data) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24; };
+   inline cui24 toFixedMod(cfp24n &value) const { return (value.data - ui24(__fpdt_data__.origin24 * __fpdt_data__.maxDivRange24)); }
+   inline cui24 toFixedMod(cfl32 &value) const { return ui24(value * __fpdt_data__.maxDivRange24); }
 
    fp24n(void) = default;
    fp24n(cfl32 floor, cfl32 ceiling) {
-      _fpdt_data_.origin24      = floor;
-      _fpdt_data_.range24       = ceiling - floor;
-      _fpdt_data_.maxDivRange24 = 16777215.0f / _fpdt_data_.range24;
-      _fpdt_data_.rangeDivMax24 = _fpdt_data_.range24 / 16777215.0f;
+      __fpdt_data__.origin24      = floor;
+      __fpdt_data__.range24       = ceiling - floor;
+      __fpdt_data__.maxDivRange24 = 16777215.0f / __fpdt_data__.range24;
+      __fpdt_data__.rangeDivMax24 = __fpdt_data__.range24 / 16777215.0f;
    };
    fp24n(cfl32 value, cfl32 floor, cfl32 ceiling) {
-      _fpdt_data_.origin24      = floor;
-      _fpdt_data_.range24       = ceiling - floor;
-      _fpdt_data_.maxDivRange24 = 16777215.0f / _fpdt_data_.range24;
-      _fpdt_data_.rangeDivMax24 = _fpdt_data_.range24 / 16777215.0f;
+      __fpdt_data__.origin24      = floor;
+      __fpdt_data__.range24       = ceiling - floor;
+      __fpdt_data__.maxDivRange24 = 16777215.0f / __fpdt_data__.range24;
+      __fpdt_data__.rangeDivMax24 = __fpdt_data__.range24 / 16777215.0f;
 
-      data = ui24((value - floor) * _fpdt_data_.maxDivRange24);
+      data = ui24((value - floor) * __fpdt_data__.maxDivRange24);
    };
-   fp24n(cui8 value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   fp24n(cui16 value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+   fp24n(cui8 value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   fp24n(cui16 value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
    fp24n(cui24 value) { data = value; }
-   fp24n(cui32 value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   fp24n(cui32 value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
    fp24n(csi32 value) { data = (ui24 &)value; }
    fp24n(cfl32 value) { data = toFixed(value); }
 
    operator ptr(void) const { return *this; }
-   operator cfl32(void) const { return fl32(data) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24; };
+   operator cfl32(void) const { return fl32(data) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24; };
 
    inline cfp24n &operator&(void) const { return *this; }
    inline cfp24n operator~(void) const { return (cfp24n &)~data; }
@@ -869,38 +869,38 @@ struct fp32n {
 
    ui32 data;
 
-   inline cui32 toFixed(cfl64 &value) const { return ui32((value - _fpdt_data_.origin32) * _fpdt_data_.maxDivRange32); }
-   inline cfl64 toFloat(void) const { return fl64(data) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32; };
-   inline cfl64 toFloat(cfp32n &value) const { return fl64(value.data) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32; };
-   inline cui32 toFixedMod(cfp32n &value) const { return (value.data - ui32(_fpdt_data_.origin32 * _fpdt_data_.maxDivRange32)); }
-   inline cui32 toFixedMod(cfl64 &value) const { return ui32(value * _fpdt_data_.maxDivRange32); }
+   inline cui32 toFixed(cfl64 &value) const { return ui32((value - __fpdt_data__.origin32) * __fpdt_data__.maxDivRange32); }
+   inline cfl64 toFloat(void) const { return fl64(data) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32; };
+   inline cfl64 toFloat(cfp32n &value) const { return fl64(value.data) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32; };
+   inline cui32 toFixedMod(cfp32n &value) const { return (value.data - ui32(__fpdt_data__.origin32 * __fpdt_data__.maxDivRange32)); }
+   inline cui32 toFixedMod(cfl64 &value) const { return ui32(value * __fpdt_data__.maxDivRange32); }
 
    fp32n(void) = default;
    fp32n(cfl64 floor, cfl64 ceiling) {
-      _fpdt_data_.origin32      = floor;
-      _fpdt_data_.range32       = ceiling - floor;
-      _fpdt_data_.maxDivRange32 = 4294967296.0 / _fpdt_data_.range32;
-      _fpdt_data_.rangeDivMax32 = _fpdt_data_.range32 / 4294967296.0;
+      __fpdt_data__.origin32      = floor;
+      __fpdt_data__.range32       = ceiling - floor;
+      __fpdt_data__.maxDivRange32 = 4294967296.0 / __fpdt_data__.range32;
+      __fpdt_data__.rangeDivMax32 = __fpdt_data__.range32 / 4294967296.0;
    };
    fp32n(cfl64 value, cfl64 floor, cfl64 ceiling) {
-      _fpdt_data_.origin32      = floor;
-      _fpdt_data_.range32       = ceiling - floor;
-      _fpdt_data_.maxDivRange32 = 4294967296.0 / _fpdt_data_.range32;
-      _fpdt_data_.rangeDivMax32 = _fpdt_data_.range32 / 4294967296.0;
+      __fpdt_data__.origin32      = floor;
+      __fpdt_data__.range32       = ceiling - floor;
+      __fpdt_data__.maxDivRange32 = 4294967296.0 / __fpdt_data__.range32;
+      __fpdt_data__.rangeDivMax32 = __fpdt_data__.range32 / 4294967296.0;
 
-      data = ui32((value - floor) * _fpdt_data_.maxDivRange32);
+      data = ui32((value - floor) * __fpdt_data__.maxDivRange32);
    };
-   fp32n(cui8 value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   fp32n(cui16 value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+   fp32n(cui8 value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   fp32n(cui16 value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   fp32n(cui24 value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   fp32n(cui24 value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
    fp32n(cui32 value) { data = value; }
    fp32n(csi32 value) { data = (ui32 &)value; }
    fp32n(cfl64 value) { data = toFixed(value); }
 
    operator ptr(void) const { return *this; }
-   operator cfl64(void) const { return fl64(data) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32; };
+   operator cfl64(void) const { return fl64(data) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32; };
 
    inline cfp32n &operator&(void) const { return *this; }
    inline cfp32n operator~(void) const { return (cfp32n &)~data; }
@@ -992,12 +992,14 @@ struct f0p8 {
    inline cfl32 toFloat(cf0p8 &value) const { return fl32(value.data) * _fpdt_rcp256f; }
 
    f0p8(void) = default;
-   f0p8(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   f0p8(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   f0p8(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   f0p8(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   f0p8(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   f0p8(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   f0p8(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   f0p8(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    f0p8(cui8 value) { data = value; }
    f0p8(csi32 value) { data = (ui8 &)value; }
    f0p8(csi64 value) { data = (ui8 &)value; }
@@ -1094,12 +1096,14 @@ struct f1p7 {
    inline cfl32 toFloat(cf1p7 &value) const { return fl32(value.data) * _fpdt_rcp128f; }
 
    f1p7(void) = default;
-   f1p7(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   f1p7(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   f1p7(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   f1p7(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   f1p7(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   f1p7(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   f1p7(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   f1p7(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    f1p7(cui8 value) { data = value; }
    f1p7(csi32 value) { data = (ui8 &)value; }
    f1p7(csi64 value) { data = (ui8 &)value; }
@@ -1196,12 +1200,14 @@ struct f4p4 {
    inline cfl32 toFloat(cf4p4 &value) const { return fl32(value.data) * _fpdt_rcp16f; }
 
    f4p4(void) = default;
-   f4p4(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   f4p4(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   f4p4(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   f4p4(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   f4p4(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   f4p4(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   f4p4(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   f4p4(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    f4p4(cui8 value) { data = value; }
    f4p4(csi32 value) { data = (ui8 &)value; }
    f4p4(csi64 value) { data = (ui8 &)value; }
@@ -1298,12 +1304,14 @@ struct fp8n0_1 {
    inline cfl32 toFloat(cfp8n0_1 &value) const { return fl32(value.data) * _fpdt_rcp255f; }
 
    fp8n0_1(void) = default;
-   fp8n0_1(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   fp8n0_1(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   fp8n0_1(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   fp8n0_1(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   fp8n0_1(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   fp8n0_1(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   fp8n0_1(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   fp8n0_1(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    fp8n0_1(cui8 value) { data = value; }
    fp8n0_1(csi32 value) { data = (ui8 &)value; }
    fp8n0_1(csi64 value) { data = (ui8 &)value; }
@@ -1447,12 +1455,14 @@ struct f0p16 {
    inline cfl32 toFloat(cf0p16 &value) const { return fl32(value.data) * _fpdt_rcp65536f; }
 
    f0p16(void) = default;
-   f0p16(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   f0p16(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   f0p16(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   f0p16(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   f0p16(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   f0p16(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   f0p16(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   f0p16(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    f0p16(cui16 value) { data = value; }
    f0p16(csi32 value) { data = (ui16 &)value; }
    f0p16(csi64 value) { data = (ui16 &)value; }
@@ -1549,12 +1559,14 @@ struct fs1p14 {
    inline cfl32 toFloat(cfs1p14 &value) const { return fl32(value.data) * _fpdt_rcp16384f - 2.0f; }
 
    fs1p14(void) = default;
-   fs1p14(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   fs1p14(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   fs1p14(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   fs1p14(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   fs1p14(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   fs1p14(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   fs1p14(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   fs1p14(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    fs1p14(cui16 value) { data = value; }
    fs1p14(csi32 value) { data = (ui16 &)value; }
    fs1p14(csi64 value) { data = (ui16 &)value; }
@@ -1651,12 +1663,14 @@ struct f1p15 {
    inline cfl32 toFloat(cf1p15 &value) const { return fl32(value.data) * _fpdt_rcp32768f; }
 
    f1p15(void) = default;
-   f1p15(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   f1p15(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   f1p15(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   f1p15(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   f1p15(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   f1p15(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   f1p15(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   f1p15(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    f1p15(cui16 value) { data = value; }
    f1p15(csi32 value) { data = (ui16 &)value; }
    f1p15(csi64 value) { data = (ui16 &)value; }
@@ -1753,12 +1767,14 @@ struct f6p10 {
    inline cfl32 toFloat(cf6p10 &value) const { return fl32(value.data) * _fpdt_rcp1024f; }
 
    f6p10(void) = default;
-   f6p10(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   f6p10(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   f6p10(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   f6p10(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   f6p10(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   f6p10(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   f6p10(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   f6p10(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    f6p10(cui16 value) { data = value; }
    f6p10(csi32 value) { data = (ui16 &)value; }
    f6p10(csi64 value) { data = (ui16 &)value; }
@@ -1855,12 +1871,14 @@ struct fs7p8 {
    inline cfl32 toFloat(cfs7p8 &value) const { return fl32(value.data) * _fpdt_rcp256f - 128.0f; }
 
    fs7p8(void) = default;
-   fs7p8(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   fs7p8(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   fs7p8(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   fs7p8(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   fs7p8(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   fs7p8(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   fs7p8(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   fs7p8(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    fs7p8(cui16 value) { data = value; }
    fs7p8(csi32 value) { data = (ui16 &)value; }
    fs7p8(csi64 value) { data = (ui16 &)value; }
@@ -1957,12 +1975,14 @@ struct f7p9 {
    inline cfl32 toFloat(cf7p9 &value) const { return fl32(value.data) * _fpdt_rcp512f; }
 
    f7p9(void) = default;
-   f7p9(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   f7p9(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   f7p9(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   f7p9(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   f7p9(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   f7p9(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   f7p9(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   f7p9(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    f7p9(cui16 value) { data = value; }
    f7p9(csi32 value) { data = (ui16 &)value; }
    f7p9(csi64 value) { data = (ui16 &)value; }
@@ -2059,12 +2079,14 @@ struct f8p8 {
    inline cfl32 toFloat(cf8p8 &value) const { return fl32(value.data) * _fpdt_rcp256f; }
 
    f8p8(void) = default;
-   f8p8(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   f8p8(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   f8p8(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   f8p8(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   f8p8(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   f8p8(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   f8p8(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   f8p8(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    f8p8(cui16 value) { data = value; }
    f8p8(csi32 value) { data = (ui16 &)value; }
    f8p8(csi64 value) { data = (ui16 &)value; }
@@ -2161,12 +2183,14 @@ struct fp16n0_1 {
    inline cfl32 toFloat(cfp16n0_1 &value) const { return fl32(value.data) * _fpdt_rcp65535f; }
 
    fp16n0_1(void) = default;
-   fp16n0_1(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   fp16n0_1(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   fp16n0_1(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   fp16n0_1(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   fp16n0_1(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   fp16n0_1(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   fp16n0_1(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   fp16n0_1(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    fp16n0_1(cui16 value) { data = value; }
    fp16n0_1(csi32 value) { data = (ui16 &)value; }
    fp16n0_1(csi64 value) { data = (ui16 &)value; }
@@ -2263,12 +2287,14 @@ struct fp16n0_2 {
    inline cfl32 toFloat(cfp16n0_2 &value) const { return fl32(value.data) * _fpdt_2div65535f; }
 
    fp16n0_2(void) = default;
-   fp16n0_2(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   fp16n0_2(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   fp16n0_2(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   fp16n0_2(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   fp16n0_2(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   fp16n0_2(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   fp16n0_2(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   fp16n0_2(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    fp16n0_2(cui16 value) { data = value; }
    fp16n0_2(csi32 value) { data = (ui16 &)value; }
    fp16n0_2(csi64 value) { data = (ui16 &)value; }
@@ -2365,12 +2391,14 @@ struct fp16n0_3 {
    inline cfl32 toFloat(cfp16n0_3 &value) const { return fl32(value.data) * _fpdt_3div65535f; }
 
    fp16n0_3(void) = default;
-   fp16n0_3(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   fp16n0_3(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   fp16n0_3(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   fp16n0_3(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   fp16n0_3(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   fp16n0_3(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   fp16n0_3(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   fp16n0_3(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    fp16n0_3(cui16 value) { data = value; }
    fp16n0_3(csi32 value) { data = (ui16 &)value; }
    fp16n0_3(csi64 value) { data = (ui16 &)value; }
@@ -2467,12 +2495,14 @@ struct fp16n0_128 {
    inline cfl32 toFloat(cfp16n0_128 &value) const { return fl32(value.data) * _fpdt_128div65535f; }
 
    fp16n0_128(void) = default;
-   fp16n0_128(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   fp16n0_128(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   fp16n0_128(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   fp16n0_128(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   fp16n0_128(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   fp16n0_128(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   fp16n0_128(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   fp16n0_128(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    fp16n0_128(cui16 value) { data = value; }
    fp16n0_128(csi32 value) { data = (ui16 &)value; }
    fp16n0_128(csi64 value) { data = (ui16 &)value; }
@@ -2569,12 +2599,14 @@ struct fp16n_1_1 {
    inline cfl32 toFloat(cfp16n_1_1 &value) const { return fl32(value.data) * _fpdt_2div65535f - 1.0f; }
 
    fp16n_1_1(void) = default;
-   fp16n_1_1(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   fp16n_1_1(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   fp16n_1_1(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   fp16n_1_1(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   fp16n_1_1(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   fp16n_1_1(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   fp16n_1_1(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   fp16n_1_1(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    fp16n_1_1(cui16 value) { data = value; }
    fp16n_1_1(csi32 value) { data = (ui16 &)value; }
    fp16n_1_1(csi64 value) { data = (ui16 &)value; }
@@ -2671,12 +2703,14 @@ struct fp16n_128_128 {
    inline cfl32 toFloat(cfp16n_128_128 &value) const { return fl32(value.data) * _fpdt_256div65535f; }
 
    fp16n_128_128(void) = default;
-   fp16n_128_128(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   fp16n_128_128(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   fp16n_128_128(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   fp16n_128_128(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   fp16n_128_128(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   fp16n_128_128(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   fp16n_128_128(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+   fp16n_128_128(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    fp16n_128_128(cui16 value) { data = value; }
    fp16n_128_128(csi32 value) { data = (ui16 &)value; }
    fp16n_128_128(csi64 value) { data = (ui16 &)value; }
@@ -3270,10 +3304,12 @@ struct f0p24 {
    inline cfl32 toFloat(cf0p24 &value) const { return fl32(value.data) * _fpdt_rcp2p24f; }
 
    f0p24(void) = default;
-   f0p24(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   f0p24(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
-   f0p24(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
-   f0p24(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+#ifndef FPDT_NO_CUSTOM
+   f0p24(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   f0p24(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
+   f0p24(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
+   f0p24(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    f0p24(cui24 value) { data = value; }
    f0p24(csi32 value) { data = (ui24 &)value; }
    f0p24(csi64 value) { data = (ui24 &)value; }
@@ -3370,10 +3406,12 @@ struct f8p16 {
    inline cfl32 toFloat(cf8p16 &value) const { return fl32(value.data) * _fpdt_rcp65536f; }
 
    f8p16(void) = default;
-   f8p16(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   f8p16(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
-   f8p16(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
-   f8p16(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+#ifndef FPDT_NO_CUSTOM
+   f8p16(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   f8p16(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
+   f8p16(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
+   f8p16(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    f8p16(cui24 value) { data = value; }
    f8p16(csi32 value) { data = (ui24 &)value; }
    f8p16(csi64 value) { data = (ui24 &)value; }
@@ -3470,10 +3508,12 @@ struct f12p12 {
    inline cfl32 toFloat(cf12p12 &value) const { return fl32(value.data) * _fpdt_rcp4096f; }
 
    f12p12(void) = default;
-   f12p12(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   f12p12(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
-   f12p12(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
-   f12p12(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+#ifndef FPDT_NO_CUSTOM
+   f12p12(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   f12p12(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
+   f12p12(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
+   f12p12(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    f12p12(cui24 value) { data = value; }
    f12p12(csi32 value) { data = (ui24 &)value; }
    f12p12(csi64 value) { data = (ui24 &)value; }
@@ -3570,10 +3610,12 @@ struct f16p8 {
    inline cfl32 toFloat(cf16p8 &value) const { return fl32(value.data) * _fpdt_rcp256f; }
 
    f16p8(void) = default;
-   f16p8(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   f16p8(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
-   f16p8(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
-   f16p8(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+#ifndef FPDT_NO_CUSTOM
+   f16p8(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   f16p8(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
+   f16p8(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
+   f16p8(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    f16p8(cui24 value) { data = value; }
    f16p8(csi32 value) { data = (ui24 &)value; }
    f16p8(csi64 value) { data = (ui24 &)value; }
@@ -3670,10 +3712,12 @@ struct fp24n0_1 {
    inline cfl32 toFloat(cfp24n0_1 &value) const { return fl32(value.data) * _fpdt_rcp2p24_1f; }
 
    fp24n0_1(void) = default;
-   fp24n0_1(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   fp24n0_1(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
-   fp24n0_1(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
-   fp24n0_1(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+#ifndef FPDT_NO_CUSTOM
+   fp24n0_1(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   fp24n0_1(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
+   fp24n0_1(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
+   fp24n0_1(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    fp24n0_1(cui24 value) { data = value; }
    fp24n0_1(csi32 value) { data = (ui24 &)value; }
    fp24n0_1(csi64 value) { data = (ui24 &)value; }
@@ -3770,10 +3814,12 @@ struct fp24n_1_1 {
    inline cfl32 toFloat(cfp24n_1_1 &value) const { return fl32(value.data) * _fpdt_2div2p24_1f - 1.0f; }
 
    fp24n_1_1(void) = default;
-   fp24n_1_1(const fp8n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   fp24n_1_1(const fp16n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
-   fp24n_1_1(const fp24n value) { data = toFixed(fl32(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
-   fp24n_1_1(const fp32n value) { data = toFixed(fl32(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32)); }
+#ifndef FPDT_NO_CUSTOM
+   fp24n_1_1(const fp8n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   fp24n_1_1(const fp16n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
+   fp24n_1_1(const fp24n value) { data = toFixed(fl32(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
+   fp24n_1_1(const fp32n value) { data = toFixed(fl32(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32)); }
+#endif
    fp24n_1_1(cui24 value) { data = value; }
    fp24n_1_1(csi32 value) { data = (ui32 &)value; }
    fp24n_1_1(csi64 value) { data = (ui32 &)value; }
@@ -3872,12 +3918,14 @@ struct f0p32 {
    inline cfl64 toFloat(cf0p32 &value) const { return fl64(value.data) * _fpdt_rcp2p32; }
 
    f0p32(void) = default;
-   f0p32(const fp8n value) { data = toFixed(fl64(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   f0p32(const fp16n value) { data = toFixed(fl64(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   f0p32(const fp8n value) { data = toFixed(fl64(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   f0p32(const fp16n value) { data = toFixed(fl64(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   f0p32(const fp24n value) { data = toFixed(fl64(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   f0p32(const fp24n value) { data = toFixed(fl64(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   f0p32(const fp32n value) { data = toFixed(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32); }
+   f0p32(const fp32n value) { data = toFixed(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32); }
+#endif
    f0p32(cui32 value) { data = value; }
    f0p32(csi32 value) { data = (ui32 &)value; }
    f0p32(csi64 value) { data = (ui32 &)value; }
@@ -3974,12 +4022,14 @@ struct f16p16 {
    inline cfl64 toFloat(cf16p16 &value) const { return fl64(value.data) * _fpdt_rcp65536; }
 
    f16p16(void) = default;
-   f16p16(const fp8n value) { data = toFixed(fl64(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   f16p16(const fp16n value) { data = toFixed(fl64(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   f16p16(const fp8n value) { data = toFixed(fl64(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   f16p16(const fp16n value) { data = toFixed(fl64(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   f16p16(const fp24n value) { data = toFixed(fl64(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   f16p16(const fp24n value) { data = toFixed(fl64(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   f16p16(const fp32n value) { data = toFixed(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32); }
+   f16p16(const fp32n value) { data = toFixed(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32); }
+#endif
    f16p16(cui32 value) { data = value; }
    f16p16(csi32 value) { data = (ui32 &)value; }
    f16p16(csi64 value) { data = (ui32 &)value; }
@@ -4076,12 +4126,14 @@ struct fp32n0_1 {
    inline cfl64 toFloat(cfp32n0_1 &value) const { return fl64(value.data) * _fpdt_rcp2p32_1; }
 
    fp32n0_1(void) = default;
-   fp32n0_1(const fp8n value) { data = toFixed(fl64(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   fp32n0_1(const fp16n value) { data = toFixed(fl64(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   fp32n0_1(const fp8n value) { data = toFixed(fl64(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   fp32n0_1(const fp16n value) { data = toFixed(fl64(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   fp32n0_1(const fp24n value) { data = toFixed(fl64(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   fp32n0_1(const fp24n value) { data = toFixed(fl64(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   fp32n0_1(const fp32n value) { data = toFixed(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32); }
+   fp32n0_1(const fp32n value) { data = toFixed(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32); }
+#endif
    fp32n0_1(cui32 value) { data = value; }
    fp32n0_1(csi32 value) { data = (ui32 &)value; }
    fp32n0_1(csi64 value) { data = (ui32 &)value; }
@@ -4178,12 +4230,14 @@ struct fp32n_1_1 {
    inline cfl64 toFloat(cfp32n_1_1 &value) const { return fl64(value.data) * _fpdt_2div2p32_1; }
 
    fp32n_1_1(void) = default;
-   fp32n_1_1(const fp8n value) { data = toFixed(fl64(value) * _fpdt_data_.rangeDivMax8 + _fpdt_data_.origin8); }
-   fp32n_1_1(const fp16n value) { data = toFixed(fl64(value) * _fpdt_data_.rangeDivMax16 + _fpdt_data_.origin16); }
+#ifndef FPDT_NO_CUSTOM
+   fp32n_1_1(const fp8n value) { data = toFixed(fl64(value) * __fpdt_data__.rangeDivMax8 + __fpdt_data__.origin8); }
+   fp32n_1_1(const fp16n value) { data = toFixed(fl64(value) * __fpdt_data__.rangeDivMax16 + __fpdt_data__.origin16); }
 #ifdef _24BIT_INTEGERS_
-   fp32n_1_1(const fp24n value) { data = toFixed(fl64(value) * _fpdt_data_.rangeDivMax24 + _fpdt_data_.origin24); }
+   fp32n_1_1(const fp24n value) { data = toFixed(fl64(value) * __fpdt_data__.rangeDivMax24 + __fpdt_data__.origin24); }
 #endif
-   fp32n_1_1(const fp32n value) { data = toFixed(fl64(value) * _fpdt_data_.rangeDivMax32 + _fpdt_data_.origin32); }
+   fp32n_1_1(const fp32n value) { data = toFixed(fl64(value) * __fpdt_data__.rangeDivMax32 + __fpdt_data__.origin32); }
+#endif
    fp32n_1_1(cui32 value) { data = value; }
    fp32n_1_1(csi32 value) { data = (ui32 &)value; }
    fp32n_1_1(csi64 value) { data = (ui32 &)value; }

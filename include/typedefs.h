@@ -1,6 +1,6 @@
 /****************************************************************
  * File: typedefs.h                         Created:   Jul.2007 *
- *                                    Last modified: 2024/06/12 *
+ *                                    Last modified: 2024/06/17 *
  *                                                              *
  * Desc: Shorthand type defines & composites, and static        *
  *       constant values of common data-type sizes.             *
@@ -102,6 +102,7 @@ typedef const          __m512d cfl64x8;
 typedef const          char    cchar;
 typedef const          wchar_t cwchar;
 typedef const          HANDLE  cHANDLE;
+typedef const          HWND    cHWND;
 
 // Volatile types
 typedef vol          bool    vbool;
@@ -136,6 +137,7 @@ typedef vol          __m512d vfl64x8;
 typedef vol             char vchar;
 typedef vol          wchar_t vwchar;
 typedef vol          HANDLE  vHANDLE;
+typedef vol          HWND    vHWND;
 
 // Void pointer types
 typedef void       *               ptr;       // Pointer
@@ -476,7 +478,10 @@ typedef vol          wchar_t ** const vwstptrc;
 
 // Function pointer types
 typedef void (*func)(void);
-typedef void (*funcptr)(const void * const);
+typedef void (*funcptr)(const void *const);
+typedef void (*funcptr2)(const void *const, const void *const);
+typedef void (*funcptr3)(const void *const, const void *const, const void *const);
+typedef void (*funcptr4)(const void *const, const void *const, const void *const, const void *const);
 
 // Pointer arrays
 struct PTR2 { ptr p0; ptr p1; };
