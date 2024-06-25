@@ -35,9 +35,9 @@ Reinitialise_:
 
    // Initialisation
    ALdev = alcOpenDevice(NULL);
-   if(!ALdev) Try(stOpenDev, -2, audio);
+   if(!ALdev) Try(stOpenDev, -2, ss_audio);
    ALdevcon = alcCreateContext(ALdev, NULL);
-   if(!ALdevcon) Try(stCreateCon, -3, audio);
+   if(!ALdevcon) Try(stCreateCon, -3, ss_audio);
    bool bOK = alcMakeContextCurrent(ALdevcon);
 
    if(alIsExtensionPresent("EAX2.0")) uiMaxEAX = 2;

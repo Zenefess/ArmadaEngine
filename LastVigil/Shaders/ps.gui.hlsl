@@ -1,6 +1,6 @@
 /************************************************************
  * File: ps.gui.hlsl                    Created: 2023/04/14 *
- * Type: Pixel shader             Last modified: 2023/04/14 *
+ * Type: Pixel shader             Last modified: 2024/06/24 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -22,7 +22,8 @@ struct GOut { // 44 bytes (2 vectors + 3 scalars)
 float4 main(in const GOut input) : SV_Target {
    const float4 sample = Sample1of2GUI(uint2(input.ai_type & 0x07F, 2), input.tc) * input.col;
 
-   //clip(sample.a - 0.011f); // Alpha test
+//   clip(sample.a - 0.011f); // Alpha test
+//   return (sample.w > 0.01f ? sample : float4(1.0f, 0.0f, 1.0f, 0.25f)); // Debug
 
    return sample;
 }

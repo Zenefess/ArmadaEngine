@@ -1,6 +1,6 @@
 /************************************************************
  * File: GUI functions.cpp              Created: 2023/06/13 *
- *                                Last modified: 2024/06/07 *
+ *                                Last modified: 2024/06/24 *
  *                                                          *
  * Desc: User interface functions for in-game menus and     *
  *       developer environment.                             *
@@ -19,16 +19,28 @@
 #include "class_timers.h"
 #include "Direct3D11 thread.h"
 #include "Direct3D11 functions.h"
+#include "Armada Intelligence/class_gui.h"
 #include "Armada Intelligence/class_mapmanager.h"
 #include "colours.h"
 
-extern TEXTBUFFER textBufferInfo; // Buffer information for character input
+extern TEXTBUFFER *activeTextBuffer;
 
+void __OnHover_Default(cptrc indices) {
+   cGUI_INDICES &data = (GUI_INDICES &)indices;
+
+}
+
+void __OffHover_Default(cptrc indices) {
+   cGUI_INDICES &data = (GUI_INDICES &)indices;
+
+}
+
+// Set activated button state
 void __Activate0_0_Default_Button(cptrc indices) {
-   const GUI_INDICES &data = (GUI_INDICES &)indices;
+   cGUI_INDICES &data = (GUI_INDICES &)indices;
 
-   GUI_ELEMENT &element    = (*(const CLASS_GUI *)ptrLib[4]).element[data.element];
-   GUI_EL_DGS (&vertex)[2] = (GUI_EL_DGS (&)[2])(*(const CLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
+   GUI_ELEMENT &element    = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
+   GUI_EL_DGS (&vertex)[2] = (GUI_EL_DGS (&)[2])(*(cCLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
 
    if(!(element.stateBits & 0x04)) {
       element.bitField ^= 0x0480;
@@ -37,11 +49,12 @@ void __Activate0_0_Default_Button(cptrc indices) {
    }
 }
 
+// Set deactivated button state
 void __Activate0_1_Default_Button(cptrc indices) {
-   const GUI_INDICES &data = (GUI_INDICES &)indices;
+   cGUI_INDICES &data = (GUI_INDICES &)indices;
 
-   GUI_ELEMENT &element    = (*(const CLASS_GUI *)ptrLib[4]).element[data.element];
-   GUI_EL_DGS (&vertex)[2] = (GUI_EL_DGS (&)[2])(*(const CLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
+   GUI_ELEMENT &element    = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
+   GUI_EL_DGS (&vertex)[2] = (GUI_EL_DGS (&)[2])(*(cCLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
 
    if(element.stateBits & 0x04) {
       element.bitField ^= 0x0480;
@@ -50,42 +63,45 @@ void __Activate0_1_Default_Button(cptrc indices) {
    }
 }
 
+// Show flipped button state
 void __Activate0_0_Default_Toggle(cptrc indices) {
-   const GUI_INDICES &data = (GUI_INDICES &)indices;
+   cGUI_INDICES &data = (GUI_INDICES &)indices;
 
-   GUI_ELEMENT &element    = (*(const CLASS_GUI *)ptrLib[4]).element[data.element];
-   GUI_EL_DGS (&vertex)[2] = (GUI_EL_DGS (&)[2])(*(const CLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
+   GUI_ELEMENT &element    = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
+   GUI_EL_DGS (&vertex)[2] = (GUI_EL_DGS (&)[2])(*(cCLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
 
    if(!(element.stateBits & 0x04)) {
-      element.bitField ^= 0x0400;
+      element.bitField ^= 0x0480;
       vertex[0].align ^= 0x080;
       vertex[1].align ^= 0x080;
    }
 }
 
+// Flip button state
 void __Activate0_1_Default_Toggle(cptrc indices) {
-   const GUI_INDICES &data = (GUI_INDICES &)indices;
+   cGUI_INDICES &data = (GUI_INDICES &)indices;
 
-   GUI_ELEMENT &element = (*(const CLASS_GUI *)ptrLib[4]).element[data.element];
+   GUI_ELEMENT &element = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
 
    if(element.stateBits & 0x04)
       element.bitField ^= 0x0480;
 }
 
+// Move scalar relative to pointer
 void __Activate0_0_Default_Scalar(cptrc indices) {
-   const GUI_INDICES &data = (GUI_INDICES &)indices;
+   cGUI_INDICES &data = (GUI_INDICES &)indices;
 
-   GUI_ELEMENT &element    = (*(const CLASS_GUI *)ptrLib[4]).element[data.element];
-   GUI_EL_DGS (&vertex)[2] = (GUI_EL_DGS (&)[2])(*(const CLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
+   GUI_ELEMENT &element    = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
+   GUI_EL_DGS (&vertex)[2] = (GUI_EL_DGS (&)[2])(*(cCLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
 
    if(!(element.stateBits & 0x04)) {
       element.stateBits |= 0x04;
-      element.si32Var[0] = gcv.curCoords.x;
+      element.scalarPos = gcv.curCoords.x;
    } else {
       csi32 curCoord   = gcv.curCoords.x;
-      cfl32 difference = fl32(curCoord - element.si32Var[0]) / ScrRes.dims[ScrRes.state].dim[0];
+      cfl32 difference = fl32(curCoord - element.scalarPos) / ScrRes.dims[ScrRes.state].dim[0];
 
-      element.si32Var[0] = curCoord;
+      element.scalarPos = curCoord;
 
       vertex[1].viewPos.x += difference * element.viewScale.x * ScrRes.dims[ScrRes.state].aspectI;
 
@@ -96,20 +112,22 @@ void __Activate0_0_Default_Scalar(cptrc indices) {
    }
 }
 
+// Stop moving scalar relative to pointer
 void __Activate0_1_Default_Scalar(cptrc indices) {
-   const GUI_INDICES &data = (GUI_INDICES &)indices;
+   cGUI_INDICES &data = (GUI_INDICES &)indices;
 
-   GUI_ELEMENT &element = (*(const CLASS_GUI *)ptrLib[4]).element[data.element];
+   GUI_ELEMENT &element = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
 
    if(element.stateBits & 0x04)
       element.stateBits &= 0x0FB;
 }
 
+// Set scalar to pointer position
 void __Activate1_0_Default_Scalar(cptrc indices) {
-   const GUI_INDICES &data = (GUI_INDICES &)indices;
+   cGUI_INDICES &data = (GUI_INDICES &)indices;
 
-   GUI_ELEMENT &element    = (*(const CLASS_GUI *)ptrLib[4]).element[data.element];
-   GUI_EL_DGS (&vertex)[2] = (GUI_EL_DGS (&)[2])(*(const CLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
+   GUI_ELEMENT &element    = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
+   GUI_EL_DGS (&vertex)[2] = (GUI_EL_DGS (&)[2])(*(cCLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
 
    if(!(element.stateBits & 0x08))
       element.stateBits |= 0x08;
@@ -125,69 +143,79 @@ void __Activate1_0_Default_Scalar(cptrc indices) {
    }
 }
 
+// Stop setting scalar to pointer position
 void __Activate1_1_Default_Scalar(cptrc indices) {
-   const GUI_INDICES &data = (GUI_INDICES &)indices;
+   cGUI_INDICES &data = (GUI_INDICES &)indices;
 
-   GUI_ELEMENT &element = (*(const CLASS_GUI *)ptrLib[4]).element[data.element];
+   GUI_ELEMENT &element = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
 
    if(element.stateBits & 0x08)
       element.stateBits &= 0x0F7;
 }
 
+// If not active, set element to receive input
 void __Activate0_0_Default_Input(cptrc indices) {
-   const GUI_INDICES &data = (GUI_INDICES &)indices;
+   #define vertex2 ((*(cCLASS_GUI *)ptrLib[4]).element_dgs[((GUI_INDICES &)indices).vertex + 2])
 
-   GUI_ELEMENT (&element)[3] = (GUI_ELEMENT (&)[3])(*(const CLASS_GUI *)ptrLib[4]).element[data.element];
-   GUI_EL_DGS  (&vertex)[3]  = (GUI_EL_DGS (&)[3])(*(const CLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
+   GUI_ELEMENT(&element)[3] = (GUI_ELEMENT(&)[3])(*(cCLASS_GUI *)ptrLib[4]).element[((GUI_INDICES &)indices).element];
+   TEXTBUFFER  &textBuffer  = *element->input;
 
-   if(!(textBufferInfo.source.bitField & 0x010))
+   if(!(textBuffer.source.bitField & 0x010))
       if(element[0].stateBits & 0x04) {
-         if(!(textBufferInfo.source.bitField & 0x08))
-            textBufferInfo.source.bitField |= 0x013;
+         if(!(textBuffer.source.bitField & 0x08)) {
+            //element[2].charCount = textBufferInfo.source.byteOffset >> (element[2].bitField & 0x0800 ? 1 : 0);
+            textBuffer.source.bitField |= 0x013;
+         }
       } else {
          element[0].stateBits |= 0x04;
          //element[1].stateBits |= 0x040;
 
-         textBufferInfo.source.pCH = &(*(const CLASS_GUI *)ptrLib[4]).textBuffer[(vertex[2].textArrayOS & 0x03FFFFFF) << 4];
-         textBufferInfo.source.byteCount = element[2].vertexCount[1] << 5;
-         textBufferInfo.source.byteOffset = element[2].charCount << (element[2].bitField & 0x0800 ? 1 : 0);
-         textBufferInfo.source.bitField |= 0x09;
+         textBuffer.source.pCH        =  &(*(cCLASS_GUI *)ptrLib[4]).textBuffer[(vertex2.charBankOS & 0x03FFFFFF) << 4];
+         textBuffer.source.byteCount  =  element[2].vertexCount[1] << 5;
+         textBuffer.source.byteOffset =  element[2].charCount << (element[2].bitField & 0x0800 ? 1 : 0);
+         textBuffer.source.bitField   |= 0x09;
       }
+
+   #undef vertex2
 }
 
+// If active, confirm change
 void __Activate0_1_Default_Input(cptrc indices) {
-   if((*(const CLASS_GUI *)ptrLib[4]).element[((const GUI_INDICES &)indices).element].stateBits & 0x04)
-      textBufferInfo.source.bitField &= 0x0F7;
+   if((*(cCLASS_GUI *)ptrLib[4]).element[((cGUI_INDICES &)indices).element].stateBits & 0x04)
+      (*(cCLASS_GUI *)ptrLib[4]).element[((cGUI_INDICES &)indices).element].input->source.bitField &= 0x0F7;
    else
-      textBufferInfo.source.bitField &= 0x0EF;
+      (*(cCLASS_GUI *)ptrLib[4]).element[((cGUI_INDICES &)indices).element].input->source.bitField &= 0x0EF;
 }
 
+// If active, cancel change
 void __Activate1_0_Default_Input(cptrc indices) {
-   if((*(const CLASS_GUI *)ptrLib[4]).element[((const GUI_INDICES &)indices).element].stateBits & 0x04)
-      textBufferInfo.source.bitField = 0x05;
+   if((*(cCLASS_GUI *)ptrLib[4]).element[((cGUI_INDICES &)indices).element].stateBits & 0x04)
+      (*(cCLASS_GUI *)ptrLib[4]).element[((cGUI_INDICES &)indices).element].input->source.bitField = 0x05;
 }
 
+// Reprocess string
 void __Passive_Default_Input(cptrc indices) {
-   const CLASS_GUI   &gui = *(const CLASS_GUI *)ptrLib[4];
-   const GUI_INDICES &data = (GUI_INDICES &)indices;
-   csi32 indexVert = data.vertex + 2;
-
-   GUI_ELEMENT (&element)[3] = (GUI_ELEMENT (&)[3])(*(const CLASS_GUI *)ptrLib[4]).element[data.element];
-   GUI_EL_DGS *const vertex  = &gui.element_dgs[indexVert];
-
-   chptrc  pCH    = textBufferInfo.source.pCH;
-   cui32  &pIMMos = gui.alphabet[vertex[0].alphabetIndex].pIMMos;
+   GUI_ELEMENT (&element)[3] = (GUI_ELEMENT (&)[3])(*(cCLASS_GUI *)ptrLib[4]).element[((GUI_INDICES &)indices).element];
 
    if(element[0].stateBits & 0x04) {
-      fl32 accum  = 0.0f;
-      ui32 i      = 0;
+      cCLASS_GUI &gui        = *(cCLASS_GUI *)ptrLib[4];
+      TEXTBUFFER &textBuffer = *element->input;
+
+      csi32 indexVert = ((GUI_INDICES &)indices).vertex + 2;
+
+      GUI_EL_DGS *const vertex = &gui.element_dgs[indexVert];
+
+      chptrc pCH    = textBuffer.source.pCH;
+      cui32  pIMMos = gui.alphabet[vertex[0].alphabetIndex].pIMMos;
+      fl32   accum  = 0.0f;
+      ui32   i      = 0;
 
       // Recalculate vertex count
       cui16 oldVertCount = max(0, element[2].charCount - 1) >> 5;
-      cui16 newVertCount = max(0, textBufferInfo.source.byteOffset - 1) >> (element[2].bitField & 0x0800 ? 1 : 0) >> 5;
+      cui16 newVertCount = min(element[2].vertexCount[1] - 1, max(0, textBuffer.source.byteOffset - 1) >> (element[2].bitField & 0x0800 ? 1 : 0) >> 5);
 
       element[2].vertexCount[0] = newVertCount + 1;
-      element[2].charCount = textBufferInfo.source.byteOffset >> (element[2].bitField & 0x0800 ? 1 : 0);
+      element[2].charCount      = textBuffer.source.byteOffset >> (element[2].bitField & 0x0800 ? 1 : 0);
 
       if(newVertCount < oldVertCount) {
 #ifdef __AVX__
@@ -196,14 +224,23 @@ void __Passive_Default_Input(cptrc indices) {
          vertex[oldVertCount].coords.xmm[0] = _mm_setzero_ps();
          vertex[oldVertCount].coords.xmm[1] = _mm_setzero_ps();
 #endif
+         vertex[oldVertCount].charBankOS = vertex[oldVertCount].charBankOS & 0x03FFFFFFu;
          vertex[oldVertCount].align |= 0x080;
-      } else if(newVertCount > oldVertCount) {
-         vertex[newVertCount].origin[0] = (*(const CLASS_GUI *)ptrLib[4])._CalculateOrigin(indexVert, indexVert + newVertCount, vertex[0].alphabetIndex);
-         vertex[newVertCount].origin[1] = { 16384.0f, 16384.0f };
-         vertex[oldVertCount].coords.xmm[1] = _mm_set_ps1(16384.0f);
-         vertex[newVertCount].align &= 0x07F;
+      } else {
+         cui32 vertexCharCount = ((((element[2].charCount - 1) & 31) + 1) << 26);
+            if(newVertCount > oldVertCount) {
+            vertex[oldVertCount].charBankOS    = (vertex[oldVertCount].charBankOS & 0x03FFFFFFu) | 0x080000000u;
+            vertex[newVertCount].origin[0]     = (*(cCLASS_GUI *)ptrLib[4]).CalculateTextOrigin(indexVert, indexVert + newVertCount, vertex[0].alphabetIndex);
+            vertex[newVertCount].origin[1]     = { 16384.0f, 16384.0f };
+            vertex[newVertCount].coords.xmm[1] = _mm_set_ps1(16384.0f);
+            vertex[newVertCount].charBankOS    = (vertex[newVertCount].charBankOS & 0x03FFFFFFu) | vertexCharCount;
+            vertex[newVertCount].align        &= 0x07F;
+         } else
+            vertex[oldVertCount].charBankOS = (vertex[oldVertCount].charBankOS & 0x03FFFFFFu) | vertexCharCount;
       }
 
+      // Focus element's input buffer
+      activeTextBuffer = element->input;
       // Make cursor visible and adjust position
       vertex[-1].align &= 0x07F;
 
@@ -227,24 +264,58 @@ void __Passive_Default_Input(cptrc indices) {
          vertex[-1].viewPos.x = 1.0f;
 
       // Is the 'confirm' or 'cancel' flag set?
-      if(textBufferInfo.source.bitField & 0x06) {
-         textBufferInfo.source.bitField = 0x010;
+      if(textBuffer.source.bitField & 0x06) {
+         textBuffer.source.bitField = 0x010;
          element[0].stateBits &= 0x0FB;
          //element[1].stateBits &= 0x0BF;
          vertex[-1].align |= 0x080;
+
+         activeTextBuffer = 0;
       }
    }
 }
 
-void __OnHover_Default(cptrc indices) {
-   const GUI_INDICES &data = (GUI_INDICES &)indices;
+// Highlight .textEntry according to pointer position
+void __Passive_Default_Array(cptrc indices) {
+   cGUI_INDICES &data = (GUI_INDICES &)indices;
+
+   GUI_ELEMENT &element     = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
+   GUI_EL_DGS *const vertex = (GUI_EL_DGS *const)&(*(cCLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
+
 
 }
 
-void __OffHover_Default(cptrc indices) {
-   const GUI_INDICES &data = (GUI_INDICES &)indices;
+// Set active .textEntry if element not busy
+void __Activate0_0_Default_Array(cptrc indices) {
+   cGUI_INDICES &data = (GUI_INDICES &)indices;
+
+   GUI_ELEMENT &element     = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
+   GUI_EL_DGS *const vertex = (GUI_EL_DGS *const)&(*(cCLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
+
 
 }
+
+// Set element to not busy
+void __Activate0_1_Default_Array(cptrc indices) {
+   cGUI_INDICES &data = (GUI_INDICES &)indices;
+
+   GUI_ELEMENT &element     = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
+   GUI_EL_DGS *const vertex = (GUI_EL_DGS *const)&(*(cCLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
+
+
+}
+
+// Scroll list
+void __Activate1_0_Default_Array(cptrc indices) {
+   cGUI_INDICES &data = (GUI_INDICES &)indices;
+
+   GUI_ELEMENT &element     = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
+   GUI_EL_DGS *const vertex = (GUI_EL_DGS *const)&(*(cCLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
+
+
+}
+
+
 
 /*
  *  User interfaces menus
@@ -270,7 +341,6 @@ void MainMenu(cptrc argList) {
    } &index = (const INPUT_INDICES &)argList;
 
    CLASS_GUI &gui = *(CLASS_GUI *)ptrLib[4];
-   GUI_DESC  &gd  = *(GUI_DESC *)ptrLib[15];
 
    ui32 interfaceMain;
 
@@ -303,7 +373,8 @@ void MainMenu(cptrc argList) {
       gui.AddElementToInterface(buttonOptions, interfaceMain);
       gui.AddElementToInterface(buttonEditors, interfaceMain);
       gui.AddElementToInterface(buttonExit, interfaceMain);
-      gd.defaultInterface = interfaceMain;
+
+      (*(GUI_DESC *)ptrLib[15]).defaultInterface = interfaceMain;
 
       firstRun = false;
    }
@@ -316,7 +387,7 @@ void MainMenu(cptrc argList) {
  */
 
 void GUI_Editor(cptrc argList) {
-   const CLASS_GUI &gui = *(const CLASS_GUI *)ptrLib[4];
+   cCLASS_GUI &gui = *(cCLASS_GUI *)ptrLib[4];
 
 }
 
@@ -325,31 +396,31 @@ void GUI_Editor(cptrc argList) {
  */
 
 void PauseMenu(cptrc argList) {          // 5th
-   const CLASS_GUI &gui = *(const CLASS_GUI *)ptrLib[4];
+   cCLASS_GUI &gui = *(cCLASS_GUI *)ptrLib[4];
 }
 
 void AudioMenu(cptrc argList) {          // 4th
-   const CLASS_GUI &gui = *(const CLASS_GUI *)ptrLib[4];
+   cCLASS_GUI &gui = *(cCLASS_GUI *)ptrLib[4];
 }
 
 void VideoMenu(cptrc argList) {          // 2nd
-   const CLASS_GUI &gui = *(const CLASS_GUI *)ptrLib[4];
+   cCLASS_GUI &gui = *(cCLASS_GUI *)ptrLib[4];
 }
 
 void ControlsMenu(cptrc argList) {       // 1st
-   const CLASS_GUI &gui = *(const CLASS_GUI *)ptrLib[4];
+   cCLASS_GUI &gui = *(cCLASS_GUI *)ptrLib[4];
 
 
 }
 
 void GameplayMenu(cptrc argList) {       // 7th
-   const CLASS_GUI &gui = *(const CLASS_GUI *)ptrLib[4];
+   cCLASS_GUI &gui = *(cCLASS_GUI *)ptrLib[4];
 }
 
 void OptionsMenu(cptrc argList) {        // 6th
-   const CLASS_GUI &gui = *(const CLASS_GUI *)ptrLib[4];
+   cCLASS_GUI &gui = *(cCLASS_GUI *)ptrLib[4];
 }
 
 void DeveloperInterface(cptrc argList) { // 3rd
-   const CLASS_GUI &gui = *(const CLASS_GUI *)ptrLib[4];
+   cCLASS_GUI &gui = *(cCLASS_GUI *)ptrLib[4];
 }

@@ -36,7 +36,7 @@ al16 struct CLASS_LIGHTS {
       bd.MiscFlags = 0;
       bd.StructureByteStride = sizeof(CB_LIGHT);
       srd.pSysMem = n;
-      Try(stCreateBuf, dev->CreateBuffer(&bd, &srd, &pCB), video);
+      Try(stCreateBuf, dev->CreateBuffer(&bd, &srd, &pCB), ss_video);
       devcon[context]->PSSetConstantBuffers(cBufSlot, 1, (ID3D11Buffer *const *)&pCB);
 
       return totalLights;
@@ -45,7 +45,7 @@ al16 struct CLASS_LIGHTS {
    inline void SetColour(cui16 light, cVEC3Df colour) { n[light].col = colour; }
 
    inline void UploadAll(cui8 context) {
-      Try(stMap, devcon[context]->Map(pCB, 0, D3D11_MAP_WRITE_DISCARD, NULL, &ms), video);
+      Try(stMap, devcon[context]->Map(pCB, 0, D3D11_MAP_WRITE_DISCARD, NULL, &ms), ss_video);
       Stream32(n, ms.pData, sizeof(CB_LIGHT) * totalLights);
       devcon[context]->Unmap(pCB, 0);
    }

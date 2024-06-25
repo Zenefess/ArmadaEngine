@@ -10,11 +10,18 @@
 #include "common.hlsli"
 #include "ps.full register access.hlsli"
 
-struct LIGHT { // 32 bytes (2 vectors)
+struct _LIGHT { // 32 bytes (2 vectors)
    float3 position;
    float  range;
    uint2  col_hl;   // 0-47==RGB: s7p8, 48-55==Highlight size : 0p8-1, 56-63==Highlight intensity : 4p4-1
    uint2  RES;
+};
+
+struct LIGHT { // 32 bytes (2 vectors)
+   float3 position;
+   float  range;
+   float3 colour;
+   uint   hls_hli; // 0~15==Highlight size : 1p15, 16~31==Highlight intensity : 6p10
 };
 
 cbuffer cbLight { // 8,192 bytes (512 vectors)
@@ -58,13 +65,11 @@ float4 main(in const GOut g) : SV_Target {
    // Sample textures
    const float2 fTexNUV  = fTexSamp[1].xy - 0.5f;
    const float2 fTexNorm = fTexNUV.xy * fScalar.x;
-   const float4 fTexORPE = fTexSamp[2];
-   const float4 fTexMask = float4(1.0f - fTexORPE.rg, fTexORPE.ba);
+   const float4 fTexMask = float4(1.0f - fTexSamp[2].rg, fTexSamp[2].ba);
    // Unpack sin & cos of rotations for normal map
    const float2x2 fSinCos = float2x2(f16tof32(g.rot & 0x0FFFF), f16tof32(g.rot >> 16));
    // Calculate normal
-   const float2 fNormXY  = fTexNorm;   // RotateVector(fTexNorm, fSinCos._13_23);
-   const float3 fNormXYZ = normalize(float3(fNormXY.xy, -sqrt(1.0f - (fNormXY.x * fNormXY.x) - (fNormXY.y * fNormXY.y))));
+   const float3 fNormXYZ = normalize(float3(fTexNorm.xy, -sqrt(1.0f - (fTexNorm.x * fTexNorm.x) - (fTexNorm.y * fTexNorm.y))));
    const float2 fNormXZ  = RotateVector(fNormXYZ.xz, fSinCos._12_22);
    const float3 fNormal  = float3(fNormXZ.x, RotateVector(fNormXYZ.yz, fSinCos._11_21));
    // Calculate texel modifiers
@@ -72,23 +77,8 @@ float4 main(in const GOut g) : SV_Target {
    const float  fEmission = (fTexMask.w * 2.0f - 1.0039215686274509803921568627451f) * fScalar.w + fGEV;
    // Calculate light
    float3 fLight = 0.0f, fHighlight = 0.0f;
-   [unroll]
-/*   for(uint i = 0; i < 32; i++) { // (i < 48): No stutter    (i < 64): Minor stuter    (i < 128): stutter    ??? Shader code exceeeding cache ??? Partially unroll
-      // Unpack colour variable
-      const float3 fColour = float3(uint3(l[i].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF) * rcp256 - 128.0f;
-      // Unpack highlight variables
-      const float2 fHL     = float2(uint2((l[i].col_hl.y >> uint2(16, 24)) & 0x0FF) + uint2(257, 1)) * float2(rcp512, rcp16);
-      // Process each light
-      const float  range   = l[i].range;
-      const float3 vToL    = l[i].position - g.position;
-      const float  distToL = length(vToL);
-      const float  att     = min(1.0f, (distToL / range + (distToL / (range * range))) * 0.5f);
-      const float3 ang     = saturate(dot(vToL / distToL, fNormal));
-      const float3 lum     = (1.0f - att) * ang;
-      const float3 occ     = (1.0f - ang) * fTexMask.x * lum;
-      fLight     += max(0.0f, (lum - occ) * fColour);
-      fHighlight += max(0.0f, (fTexMask.y - (1.0f - fHL.x)) * lum * fColour * fHL.y);*/
-   for(uint i = 0; i < 32; i += 4) { // (i < 32): No stutter    (i < 40): Minor stuter    (i < 64): stutter    ??? Shader code exceeeding cache ??? Partially unroll
+   [unroll] for(uint i = 0; i < 32; i += 4) { // (i < 32): No stutter    (i < 40): Minor stuter    (i < 64): stutter    ??? Shader code exceeeding cache ??? Partially unroll
+/*
       // Unpack colour variable
       const float4x3 fColour = float4x3(uint4x3(uint3(l[i].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF, uint3(l[i + 1].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF,
                                                 uint3(l[i + 2].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF, uint3(l[i + 3].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF)) * rcp256 - 128.0f;
@@ -115,6 +105,31 @@ float4 main(in const GOut g) : SV_Target {
       fLight     += l4x3[0] + l4x3[1] + l4x3[2] + l4x3[3];
       fHighlight += max(0.0f, (fTexMask.y - (1.0f - fHL[0].x)) * lum[0] * fColour[0] * fHL[0].y) + max(0.0f, (fTexMask.y - (1.0f - fHL[0].z)) * lum[1] * fColour[1] * fHL[0].w) +
                     max(0.0f, (fTexMask.y - (1.0f - fHL[1].x)) * lum[2] * fColour[2] * fHL[1].y) + max(0.0f, (fTexMask.y - (1.0f - fHL[1].z)) * lum[3] * fColour[3] * fHL[1].w);
+*/
+      const uint3 lOS = i + uint3(1u, 2u, 3u);
+      // Unpack highlight variables
+      const float2x4 fHL     = float2x4(uint2x4((l[i].hls_hli >> uint2(0, 16u)) & 0x0FFFFu,     (l[lOS.x].hls_hli >> uint2(0, 16u)) & 0x0FFFFu,
+                                                (l[lOS.y].hls_hli >> uint2(0, 16u)) & 0x0FFFFu, (l[lOS.z].hls_hli >> uint2(0, 16u)) & 0x0FFFFu)
+                                      + uint2x4(32768u, 0, 32768u, 0, 32768u, 0, 32768u, 0))
+                             * float2x4(rcp65536, rcp4096, rcp65536, rcp4096, rcp65536, rcp4096, rcp65536, rcp4096);
+      // Process each light
+      const float4   range   = float4(l[i].range, l[lOS.x].range, l[lOS.y].range, l[lOS.z].range);
+      const float4x3 vToL    = float4x3(l[i].position, l[lOS.x].position, l[lOS.y].position, l[lOS.z].position) - float4x3(g.position, g.position, g.position, g.position);
+      const float4   distToL = float4(length(vToL[0]), length(vToL[1]), length(vToL[2]), length(vToL[3]));
+
+      const float4 range2 = range * range;
+      const float4 att    = min(1.0f, float4(distToL / range + (distToL / (range2))) * 0.5f);
+
+      const float4x3 ang = saturate(float4x3(dot(vToL[0] / distToL[0], fNormal.xyz).xxx, dot(vToL[1] / distToL[1], fNormal.xyz).xxx,
+                                             dot(vToL[2] / distToL[2], fNormal.xyz).xxx, dot(vToL[3] / distToL[3], fNormal.xyz).xxx));
+
+      const float4x3 lum  = (1.0f - float4x3(att[0].xxx, att[1].xxx, att[2].xxx, att[3].xxx)) * ang;
+      const float4x3 occ  = (1.0f - ang) * float4x3(fTexMask.xxx, fTexMask.xxx, fTexMask.xxx, fTexMask.xxx) * lum;
+      const float4x3 l4x3 = max(0.0f, (lum - occ) * float4x3(l[i].colour, l[lOS.x].colour, l[lOS.y].colour, l[lOS.z].colour));
+      
+      fLight     += l4x3[0] + l4x3[1] + l4x3[2] + l4x3[3];
+      fHighlight += max(0.0f, (fTexMask.y - (1.0f - fHL[0].x)) * lum[0] * l[i].colour * fHL[0].y) + max(0.0f, (fTexMask.y - (1.0f - fHL[0].z)) * lum[1] * l[lOS.x].colour * fHL[0].w) +
+                    max(0.0f, (fTexMask.y - (1.0f - fHL[1].x)) * lum[2] * l[lOS.y].colour * fHL[1].y) + max(0.0f, (fTexMask.y - (1.0f - fHL[1].z)) * lum[3] * l[lOS.z].colour * fHL[1].w);
    }
 
    return fPaint * float4(fLight + fEmission + (fHighlight * fScalar.y), 1.0f);

@@ -1,6 +1,6 @@
 /************************************************************
  * File: LastVigil.cpp                  Created: 2022/10/08 *
- *                           Code last modified: 2023/04/26 *
+ *                           Code last modified: 2024/06/25 *
  *                                                          *
  * Desc: Initial setup, and debug management.               *
  *                                                          *
@@ -44,6 +44,8 @@ extern void DirectInput8Thread(ptr);
 int __cdecl wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPTSTR lpCmdLine, _In_ int nCmdShow) {
    al16 HANDLE hThread[5] {};
         ui64   threadLife;
+
+   fpdtInitCustom;
 
    hPrevInstance;
    hInst = hInstance;   // Store instance handle globally
@@ -138,25 +140,29 @@ int __cdecl wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
    else return 0;
 }
 
-void WriteError(cchptr const text, cbool fatal) {
+void WriteError(cchptrc text, cbool fatal) {
    static char  stTimeStamp[32] {};
    static DWORD dwBytes = 0;
 
-   cui32 uiTimeSecs = cui32(mainTimer.siStartTics / mainTimer.siFrequency);
-   sprintf(stTimeStamp, "%08lX : ", uiTimeSecs);
+   //cui32 uiTimeSecs = cui32(mainTimer.siStartTics / mainTimer.siFrequency);
+
+   sprintf(stTimeStamp, "%.3f : ", double(mainTimer.siStartTics) / double(mainTimer.siFrequency));
+
    WriteFile(hErrorOutput, stTimeStamp, DWORD(strlen(stTimeStamp)), &dwBytes, NULL);
    WriteFile(hErrorOutput, text, DWORD(strlen(text)), &dwBytes, NULL);
+
    if(fatal) {
       WriteFile(hErrorOutput, "   *** FATAL ERROR ***\n", 24, &dwBytes, NULL);
+
       THREAD_LIFE |= MAIN_THREAD_DIED;
       Sleep(1000);
    } else
       WriteFile(hErrorOutput, "\n", 1, &dwBytes, NULL);
 }
 
-inline void Try(cchptr stEvent, ui32 uiResult, AE_SUBSYSTEM_ENUM subsystem) {
+inline void Try(cchptrc stEvent, cui32 uiResult, cAE_SUBSYSTEM subsystem) {
    al16 cchptrc ae_subsystem[8] = {
-      "VIDEO:%04X : %s", "AUDIO:%04X : %s", "INPUT:%04X : %s", 0, 0, 0, 0, 0
+      "VIDEO:%04X : %s", "AUDIO:%04X : %s", "INPUT:%04X : %s", "GUI:%04X : %s", 0, 0, 0, 0
    };
    static char stDescription[64];
 

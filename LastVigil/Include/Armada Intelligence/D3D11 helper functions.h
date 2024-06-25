@@ -22,23 +22,19 @@ al16 struct HELPFUNC_MAP {
    CLASS_GPU    &gpu;
    CLASS_MAPMAN &man;
 
-   ui32ptr (*visBuf)[3];  // [MAX_WORLDS][3]
-   ui32ptr  *modBuf;      // [MAX_WORLDS]
-   si32    (*gpuBuf)[5];  // [MAX_WORLDS][5]
-   si32    (*vertBuf)[3]; // [MAX_WORLDS][3]
+   ui32ptr   (*visBuf)[3];  // [MAX_WORLDS][3]
+   ui32ptrptr  modBuf;      // [MAX_WORLDS]
+   si32      (*gpuBuf)[5];  // [MAX_WORLDS][5]
+   si32      (*vertBuf)[3]; // [MAX_WORLDS][3]
 
    ui8      levelsOfDetail = 0;
    SSE4Du32 mapManThreadData {};
 
    HELPFUNC_MAP(CLASS_GPU &gpuClass, CLASS_MAPMAN &mapMan) : gpu(gpuClass), man(mapMan) {
-//      gpuBuf  = (si32 (*)[5])zalloc32(sizeof(si32[5]) * MAX_WORLDS); // Correct allocations? ptrs not correct?
-//      vertBuf = (si32 (*)[3])zalloc32(sizeof(si32[3]) * MAX_WORLDS);
-//      visBuf  = (ui32ptr (*)[3])zalloc32(sizeof(ui32 (*)[3]) * MAX_WORLDS);
-//      modBuf  = (ui32ptr *)zalloc32(sizeof(ui32ptr) * MAX_WORLDS);
-      visBuf  = (ui32ptr (*)[3])zalloc32(sizeof(ui32[MAX_WORLDS][3]));
-      modBuf  = (ui32ptr *)zalloc32(sizeof(ui32ptr[MAX_WORLDS]));
-      gpuBuf  = (si32 (*)[5])zalloc32(sizeof(si32[MAX_WORLDS][5]));
-      vertBuf = (si32 (*)[3])zalloc32(sizeof(si32[MAX_WORLDS][3]));
+      visBuf  = (ui32ptr (*)[3])zalloc64(sizeof(ui32[MAX_WORLDS][3]));
+      modBuf  = (ui32ptrptr)zalloc64(sizeof(ui32ptr[MAX_WORLDS]));
+      gpuBuf  = (si32 (*)[5])zalloc64(sizeof(si32[MAX_WORLDS][5]));
+      vertBuf = (si32 (*)[3])zalloc64(sizeof(si32[MAX_WORLDS][3]));
    }
 
    ~HELPFUNC_MAP(void) { mfree(modBuf, visBuf, vertBuf, gpuBuf); }
@@ -85,8 +81,8 @@ al16 struct HELPFUNC_MAP {
       mapManThreadData = man.WaitForCulling(0);
 
       // Upload modified cell data
-      CELL_DGSptr cellGeoData = (CELL_DGS *)gpu.buf.LockStructuredBeforeUpdate(0, gpuBuf[worldIndex][3]);
-      CELL_DPSptr cellPixData = (CELL_DPS *)gpu.buf.LockStructuredBeforeUpdate(0, gpuBuf[worldIndex][4]);
+      CELL_DGSptr cellGeoData = (CELL_DGSptr)gpu.buf.LockStructuredBeforeUpdate(0, gpuBuf[worldIndex][3]);
+      CELL_DPSptr cellPixData = (CELL_DPSptr)gpu.buf.LockStructuredBeforeUpdate(0, gpuBuf[worldIndex][4]);
       
       cui64 chunkDGS = sizeof(CELL_DGS) * map.desc.chunkCells;
       cui64 chunkDPS = sizeof(CELL_DPS) * map.desc.chunkCells;
@@ -101,7 +97,6 @@ al16 struct HELPFUNC_MAP {
       gpu.buf.UnlockStructuredAfterUpdate(0, gpuBuf[worldIndex][4]);
 
       // Render map
-      gpu.devcon[0]->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
       gpu.cfg.SetBlendState(0, 0);
       gpu.cfg.SetDepthStencilState(0, 3, 0);
       gpu.cfg.SetVertexFormat(0, 0);
@@ -109,9 +104,8 @@ al16 struct HELPFUNC_MAP {
       gpu.buf.SetPSR(0, gpuBuf[worldIndex][4], 0, 1);
 
       for(i = 0; i <= levelsOfDetail; i++) {
-         gpu.buf.SetVertex(0, vertBuf[worldIndex][i], 0);
-//         gpu.buf.UpdateVertex(0, visBuf[worldIndex][i], vertBuf[worldIndex][i], 1);
-         gpu.buf.UpdateVertex(0, vertBuf[worldIndex][i], mapManThreadData._ui32[i], visBuf[worldIndex][i]);
+         gpu.buf.SetVertex(0, vertBuf[worldIndex][i], 0, D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+         gpu.buf.UpdateVertex(0, visBuf[worldIndex][i], vertBuf[worldIndex][i], RoundUpToNearest4(mapManThreadData._ui32[i]));
          gpu.cfg.SetShaderGroup(0, i);
          gpu.devcon[0]->DrawInstanced(map.desc.chunkCells, mapManThreadData._ui32[i], 0, 0); // For use with ?s.map.cells.hlsl
 //         gpu.devcon[0]->DrawInstanced(map.desc.chunkCells >> 3, mapManThreadData._ui32[i], 0, 0); // For use with ?s.map.cells.x8.hlsl
@@ -130,19 +124,19 @@ al16 struct HELPFUNC_ENT {
    CLASS_GPU    &gpu;
    CLASS_ENTMAN &man;
 
-   ui32ptr (*visBuf)[3];
-   ui32ptr  *modBuf;
-   si32    (*gpuBuf)[4];
-   si32    (*vertBuf)[3];
+   ui32ptr   (*visBuf)[3];
+   ui32ptrptr  modBuf;
+   si32      (*gpuBuf)[4];
+   si32      (*vertBuf)[3];
 
    SSE4Du32 entManThreadData {};
    ui8      levelsOfDetail = 0;
 
    HELPFUNC_ENT(CLASS_GPU &gpuClass, CLASS_ENTMAN &entMan) : gpu(gpuClass), man(entMan) {
-      gpuBuf  = (si32 (*)[4])zalloc32(sizeof(si32[4]) * MAX_ENTITY_GROUPS);
-      vertBuf = (si32 (*)[3])zalloc32(sizeof(si32[3]) * MAX_ENTITY_GROUPS);
-      visBuf  = (ui32ptr (*)[3])zalloc32(sizeof(ui32 (*)[3]) * MAX_ENTITY_GROUPS);
-      modBuf  = (ui32ptrptr)zalloc32(sizeof(ui32ptr) * MAX_ENTITY_GROUPS);
+      visBuf  = (ui32ptr (*)[3])zalloc64(sizeof(ui32[MAX_ENTITY_GROUPS][3]));
+      modBuf  = (ui32ptrptr)zalloc64(sizeof(ui32ptr[MAX_ENTITY_GROUPS]));
+      gpuBuf  = (si32 (*)[4])zalloc64(sizeof(si32[MAX_ENTITY_GROUPS][4]));
+      vertBuf = (si32 (*)[3])zalloc64(sizeof(si32[MAX_ENTITY_GROUPS][3]));
    }
 
    ~HELPFUNC_ENT() { mfree(modBuf, visBuf, vertBuf, gpuBuf); }
@@ -193,7 +187,6 @@ al16 struct HELPFUNC_ENT {
       gpu.buf.UnlockStructuredAfterUpdate(0, gpuBuf[groupIndex][3]);
 
       // Render entities
-      gpu.devcon[0]->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
       gpu.cfg.SetBlendState(0, 0);
       gpu.cfg.SetDepthStencilState(0, 3, 0);
       gpu.cfg.SetVertexFormat(0, 1);
@@ -202,9 +195,8 @@ al16 struct HELPFUNC_ENT {
 
       for(i = 0; i <= levelsOfDetail; i++) {
          cui32 vertCount = entManThreadData._ui32[i] >> 5;
-         gpu.buf.SetVertex(0, vertBuf[groupIndex][i], 0);
-//         gpu.buf.UpdateVertex(0, visBuf[groupIndex][i], vertBuf[groupIndex][i], 1);
-         gpu.buf.UpdateVertex(0, vertBuf[groupIndex][i], vertCount, visBuf[groupIndex][i]);
+         gpu.buf.SetVertex(0, vertBuf[groupIndex][i], 0, D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+         gpu.buf.UpdateVertex(0, visBuf[groupIndex][i], vertBuf[groupIndex][i], RoundUpToNearest4(vertCount));
          gpu.cfg.SetShaderGroup(0, i + 3);
          gpu.devcon[0]->Draw(vertCount, 0);
          sysData.gpu.total.drawCalls++;

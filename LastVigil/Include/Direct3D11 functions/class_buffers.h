@@ -57,7 +57,7 @@ al16 struct CLASS_BUFFERS {
 
       for (si32 xx = 0; xx < count; xx++) {
          srd.pSysMem = (ui8 *)source + ui64(stride * numVerts * xx);
-         Try(stCreateBuf, dev->CreateBuffer(&bd[0][index + xx], &srd, &pBuffer[0][index + xx]), video);
+         Try(stCreateBuf, dev->CreateBuffer(&bd[0][index + xx], &srd, &pBuffer[0][index + xx]), ss_video);
          bufferCount[0]++;
       }
       return index;   // Index of first buffer allocated
@@ -75,7 +75,7 @@ al16 struct CLASS_BUFFERS {
 
       for (si32 xx = 0; xx < count; xx++) {
          srd.pSysMem = (ui8 *)source + ui64(stride * xx);
-         Try(stCreateBuf, dev->CreateBuffer(&bd[1][index + xx], &srd, &pBuffer[1][index + xx]), video);
+         Try(stCreateBuf, dev->CreateBuffer(&bd[1][index + xx], &srd, &pBuffer[1][index + xx]), ss_video);
          bufferCount[1]++;
       }
 
@@ -94,7 +94,7 @@ al16 struct CLASS_BUFFERS {
 
       for (si32 xx = 0; xx < count; xx++) {
          srd.pSysMem = (ui8 *)source + ui64(stride * xx);
-         Try(stCreateBuf, dev->CreateBuffer(&bd[2][index + xx], &srd, &pBuffer[2][index + xx]), video);
+         Try(stCreateBuf, dev->CreateBuffer(&bd[2][index + xx], &srd, &pBuffer[2][index + xx]), ss_video);
          bufferCount[2]++;
       }
       if(stage & STAGE_VERTEX)
@@ -119,7 +119,7 @@ al16 struct CLASS_BUFFERS {
       bd[3][index].StructureByteStride = stride;
 
       srd.pSysMem = (ui8 *)source;
-      Try(stCreateBuf, dev->CreateBuffer(&bd[3][index], &srd, &pBuffer[3][index]), video);
+      Try(stCreateBuf, dev->CreateBuffer(&bd[3][index], &srd, &pBuffer[3][index]), ss_video);
       bufferCount[3]++;
 
       srvd[0].Format = DXGI_FORMAT_UNKNOWN;
@@ -143,7 +143,7 @@ al16 struct CLASS_BUFFERS {
       bd[3][index].StructureByteStride = stride;
 
       srd.pSysMem = (ui8 *)source;
-      Try(stCreateBuf, dev->CreateBuffer(&bd[3][index], &srd, &pBuffer[3][index]), video);
+      Try(stCreateBuf, dev->CreateBuffer(&bd[3][index], &srd, &pBuffer[3][index]), ss_video);
       bufferCount[3]++;
 
       uavd[0].Format = DXGI_FORMAT_UNKNOWN;
@@ -163,77 +163,81 @@ al16 struct CLASS_BUFFERS {
    }
 
    // Update [count] vertices of vertex buffer [index] with data from [source]
-   inline void UpdateVertex(cui8 context, si16 index, ui32 count, cptr source) {
-      Try(stMap, devcon[context]->Map(pBuffer[0][index], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), video);
-      memcpy(ms.pData, (ui8 *)source, bd[0][index].StructureByteStride * count);
+   inline void UpdateVertex(cui8 context, cptrc source, csi16 index, cui32 count) {
+      Try(stMap, devcon[context]->Map(pBuffer[0][index], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), ss_video);
+
+      Stream(source, ms.pData, bd[0][index].StructureByteStride * count);
+
       devcon[context]->Unmap(pBuffer[0][index], NULL);
    }
 
-   // Starting at vertex buffer [index] update [numBuffers] buffers with data from [source]
-   inline void UpdateVertex(cui8 context, cptr source, si16 index, si16 numBuffers) {
+   inline void UpdateIndex(cui8 context, cptrc source, csi16 index, si16 numBuffers) {
       do {
          numBuffers--;
-         Try(stMap, devcon[context]->Map(pBuffer[0][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), video);
-         memcpy(ms.pData, (ui8 *)source + bd[0][index].ByteWidth * numBuffers, bd[0][index].ByteWidth);
-         devcon[context]->Unmap(pBuffer[0][index + numBuffers], NULL);
-      } while (numBuffers);
-   }
-
-   inline void UpdateIndex(cui8 context, cptr source, si16 index, si16 numBuffers) {
-      do {
-         numBuffers--;
-         Try(stMap, devcon[context]->Map(pBuffer[1][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), video);
+         Try(stMap, devcon[context]->Map(pBuffer[1][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), ss_video);
          memcpy(ms.pData, (ui8 *)source + bd[1][index].ByteWidth * numBuffers, bd[1][index].ByteWidth);
          devcon[context]->Unmap(pBuffer[1][index + numBuffers], NULL);
       } while (numBuffers);
    }
 
-   inline void UpdateConstant(cui8 context, cptr source, si16 index, si16 numBuffers) {
+   inline void UpdateConstant(cui8 context, cptrc source, csi16 index, si16 numBuffers) {
       do {
          numBuffers--;
-         Try(stMap, devcon[context]->Map(pBuffer[2][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), video);
+         Try(stMap, devcon[context]->Map(pBuffer[2][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), ss_video);
          //memcpy(ms.pData, (ui8 *)source + bd[2][index].ByteWidth * numBuffers, bd[2][index].ByteWidth);
          Stream16((ui8 *)source + bd[2][index].ByteWidth * numBuffers, ms.pData, bd[2][index].ByteWidth);
          devcon[context]->Unmap(pBuffer[2][index + numBuffers], NULL);
       } while (numBuffers);
    }
 
-   inline void UpdateStructured(cui8 context, cptr source, si16 index, si16 numBuffers) {
+   inline void UpdateStructured(cui8 context, cptrc source, csi16 index, si16 numBuffers) {
       do {
          numBuffers--;
-         Try(stMap, devcon[context]->Map(pBuffer[3][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), video);
+         Try(stMap, devcon[context]->Map(pBuffer[3][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), ss_video);
          //memcpy(ms.pData, (ui8 *)source + bd[3][index].ByteWidth * numBuffers, bd[3][index].ByteWidth);
          Stream16((ui8 *)source + bd[3][index].ByteWidth * numBuffers, ms.pData, bd[3][index].ByteWidth);
          devcon[context]->Unmap(pBuffer[3][index + numBuffers], NULL);
       } while (numBuffers);
    }
 
-   inline ptr LockStructuredBeforeUpdate(cui8 context, csi16 index) {
-      Try(stMap, devcon[context]->Map(pBuffer[3][index], NULL, D3D11_MAP_WRITE_NO_OVERWRITE, NULL, &ms), video);
+   inline void UpdateStructuredSubresource(cui8 context, cptrc source, csi16 index, cui32 byteCount) {
+      const D3D11_BOX boxData = { 0, 0, 0, byteCount, 1, 1};
+      devcon[context]->UpdateSubresource(pBuffer[3][index], 0, &boxData, source, 0, 0);
+   }
+
+   inline ptrc LockStructuredBeforeUpdate(cui8 context, csi16 index) {
+      Try(stMap, devcon[context]->Map(pBuffer[3][index], NULL, D3D11_MAP_WRITE_NO_OVERWRITE, NULL, &ms), ss_video);
 
       return ms.pData;
    }
 
    inline void UnlockStructuredAfterUpdate(cui8 context, csi16 index) const { devcon[context]->Unmap(pBuffer[3][index], NULL); }
 
-   inline void SetVertex(cui8 context, si16 index, ui8 slot) const { devcon[context]->IASetVertexBuffers(slot, 1, &pBuffer[0][index], &uiStrides[0][index], &uiOffsets[0][index]); }
-
-   inline void SetVertexGroup(cui8 context, si16 index, si16 count, ui8 firstSlot) const { devcon[context]->IASetVertexBuffers(firstSlot, count, &pBuffer[0][index], &uiStrides[0][index], &uiOffsets[0][index]); }
-
-   inline void SetVertexStagger(cui8 context, ui32 stride, ui32 offset, si16 index, si16 count) {
-      for(ui16 xx = 256; xx < count + 256; xx++) { uiStrides[0][xx] = stride; uiOffsets[0][xx] = offset; }
-      devcon[context]->IASetVertexBuffers(index, count, &pBuffer[0][index], &uiStrides[0][256], &uiOffsets[0][256]);
+   inline void SetVertex(cui8 context, csi16 index, cui8 slot, cui32 vertexFormat) const {
+      devcon[context]->IASetVertexBuffers(slot, 1, &pBuffer[0][index], &uiStrides[0][index], &uiOffsets[0][index]);
+      devcon[0]->IASetPrimitiveTopology((D3D11_PRIMITIVE_TOPOLOGY &)vertexFormat);
    }
 
-   inline void SetIndex(cui8 context, si16 index, ui8 slot) const { devcon[context]->IASetIndexBuffer(pBuffer[1][index], DXGI_FORMAT_R16_UINT, 0); }
+   inline void SetVertexGroup(cui8 context, csi16 index, csi16 count, cui8 firstSlot, cui32 vertexFormat) const {
+      devcon[context]->IASetVertexBuffers(firstSlot, count, &pBuffer[0][index], &uiStrides[0][index], &uiOffsets[0][index]);
+      devcon[0]->IASetPrimitiveTopology((D3D11_PRIMITIVE_TOPOLOGY &)vertexFormat);
+   }
 
-   inline void SetVSR(cui8 context, ui16 index, ui16 slot, ui16 count) const { devcon[context]->VSSetShaderResources(slot, count, &pSRV[index]); }
+   inline void SetVertexStagger(cui8 context, cui32 stride, cui32 offset, csi16 index, csi16 count, csi32 vertexFormat) {
+      for(ui16 xx = 256; xx < count + 256; xx++) { uiStrides[0][xx] = stride; uiOffsets[0][xx] = offset; }
+      devcon[context]->IASetVertexBuffers(index, count, &pBuffer[0][index], &uiStrides[0][256], &uiOffsets[0][256]);
+      devcon[0]->IASetPrimitiveTopology((D3D11_PRIMITIVE_TOPOLOGY &)vertexFormat);
+   }
 
-   inline void SetGSR(cui8 context, ui16 index, ui16 slot, ui16 count) const { devcon[context]->GSSetShaderResources(slot, count, &pSRV[index]); }
+   inline void SetIndex(cui8 context, csi16 index, cui8 slot) const { devcon[context]->IASetIndexBuffer(pBuffer[1][index], DXGI_FORMAT_R16_UINT, 0); }
 
-   inline void SetPSR(cui8 context, ui16 index, ui16 slot, ui16 count) const { devcon[context]->PSSetShaderResources(slot, count, &pSRV[index]); }
+   inline void SetVSR(cui8 context, cui16 index, cui16 slot, cui16 count) const { devcon[context]->VSSetShaderResources(slot, count, &pSRV[index]); }
 
-   inline void SetUAV(cui8 context, ui16 index, ui16 slot, ui16 count) const {
+   inline void SetGSR(cui8 context, cui16 index, cui16 slot, cui16 count) const { devcon[context]->GSSetShaderResources(slot, count, &pSRV[index]); }
+
+   inline void SetPSR(cui8 context, cui16 index, cui16 slot, cui16 count) const { devcon[context]->PSSetShaderResources(slot, count, &pSRV[index]); }
+
+   inline void SetUAV(cui8 context, cui16 index, cui16 slot, cui16 count) const {
       const UINT appendConsume = 0x0FFFFFFFF;
       devcon[context]->OMSetRenderTargetsAndUnorderedAccessViews(0x0FFFFFFFF, NULL, NULL, slot, count, &pUAV[index], &appendConsume);
    }

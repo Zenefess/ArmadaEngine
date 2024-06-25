@@ -1,6 +1,6 @@
 /************************************************************
  * File: DirectInput8 thread.cpp        Created: 2022/11/01 *
- *                                Last modified: 2024/06/15 *
+ *                                Last modified: 2024/06/24 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -19,9 +19,9 @@ BOOL CALLBACK GamepadEnumeration(const DIDEVICEINSTANCE *inst, ptrc con) {
 
    if FAILED(result) return DIENUM_CONTINUE;
    else {
-      Try(stSetPadFormat, di8Pad[padCount]->SetDataFormat(&dfGamepadAE), input);
-      Try(stSetPadCoop, di8Pad[padCount]->SetCooperativeLevel(NULL, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE), input);
-      //      Try(stSetPadCoop, di8Pad[gamepadCount]->SetCooperativeLevel(NULL, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE), input);
+      Try(stSetPadFormat, di8Pad[padCount]->SetDataFormat(&dfGamepadAE), ss_input);
+      Try(stSetPadCoop, di8Pad[padCount]->SetCooperativeLevel(NULL, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE), ss_input);
+      //      Try(stSetPadCoop, di8Pad[gamepadCount]->SetCooperativeLevel(NULL, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE), ss_input);
       padCount++;
    }
 
@@ -69,7 +69,7 @@ inline static HRESULT PollKeyboard(void) {
       if((hr == DIERR_INPUTLOST) || (hr == DIERR_NOTACQUIRED))
          di8Key->Acquire();
       else
-         Try(stGetKeyDevState, -2, input);
+         Try(stGetKeyDevState, -2, ss_input);
 
    return hr;
 }
@@ -79,7 +79,7 @@ inline static HRESULT PollMouse(void) {
 
    if(FAILED(hr)) do hr = di8Mse->Acquire(); while(hr == DIERR_INPUTLOST);
 
-   Try(stPollMouse, di8Mse->GetDeviceState(sizeof(DIMOUSESTATE38), &mseState[0]), input);
+   Try(stPollMouse, di8Mse->GetDeviceState(sizeof(DIMOUSESTATE38), &mseState[0]), ss_input);
 
    // Process axes
    GetCursorPos((LPPOINT)gcvLocal.curCoord);
@@ -102,7 +102,7 @@ inline static HRESULT PollGamepads(void) {
 
       if(FAILED(hr)) do hr = di8Pad[hindex]->Acquire(); while(hr == DIERR_INPUTLOST);
 
-      Try(stPollGamepad, di8Pad[hindex]->GetDeviceState(sizeof(DIJOYSTATEAE), &padState[0][vindex]), input);
+      Try(stPollGamepad, di8Pad[hindex]->GetDeviceState(sizeof(DIJOYSTATEAE), &padState[0][vindex]), ss_input);
 
       csi256 axes    = _mm256_sub_epi32(padState[0][vindex].ymm[0], padOS[vindex]);
       csi256 zone[2] = { _mm256_set1_epi32(padDeadZone.vec2D[vindex].x), _mm256_set1_epi32(padDeadZone.vec2D[vindex].y) };
@@ -167,7 +167,7 @@ inline static HRESULT PollGamepad(cui32 gamepadIndex) {
    if(FAILED(hr))
       do hr = di8Pad[gamepadIndex]->Acquire(); while(hr == DIERR_INPUTLOST);
 
-   Try(stPollGamepad, di8Pad[gamepadIndex]->GetDeviceState(sizeof(DIJOYSTATEAE), &padState[0][gamepadIndex]), input);
+   Try(stPollGamepad, di8Pad[gamepadIndex]->GetDeviceState(sizeof(DIJOYSTATEAE), &padState[0][gamepadIndex]), ss_input);
 
 #ifdef __AVX__
    csi256 axes    = _mm256_sub_epi32(padState[0][gamepadIndex].ymm[0], padOS[gamepadIndex]);
@@ -297,23 +297,24 @@ inline static cchar DikToAscii(cui8 dikValue, cbool shift) {
 }
 
 // Returns number of characters [buffer] has been incremented by
-inline static csi8 ModifyCharBuffer(TEXTBUFFER &textBuffer) {
-   ui64  (&keysI)[4] = (ui64 (&)[4])gcvLocal.imm;
-   ui64  (&keysR)[4] = (ui64 (&)[4])gcvLocal.rel;
-   cui64 byteOffset  = ui64(textBuffer.source.byteOffset) + 15u;
+inline static csi16 ModifyCharBuffer(void) {
+   ui64      (&keysI)[4]  = gcvLocal.imm.k64;
+   ui64      (&keysR)[4]  = gcvLocal.rel.k64;
+   TEXTBUFFER &textBuffer = *activeTextBuffer;
+   cui64       byteOffset = RoundUpToNearest16(ui64(textBuffer.source.byteOffset));
 
    if(!(textBuffer.temp.bitField & 0x01)) {
       textBuffer.temp.bitField |= 0x01;
       // Copy contents of source buffer to temporary buffer
-      Stream32(textBuffer.source.p, textBuffer.temp.p, byteOffset);
+      Stream16(textBuffer.source.p, textBuffer.temp.p, byteOffset);
       textBuffer.temp.byteOffset = textBuffer.source.byteOffset;
       textBuffer.temp.byteCount  = textBuffer.source.byteCount;
    }
 
-   // Is the 'cancel' flag set?
-   if(textBuffer.source.bitField & 0x04) {
+   // Are the 'active' and 'cancel' flags set?
+   if((textBuffer.source.bitField & 0x05) == 0x05) {
       // Restore contents of source buffer
-      Copy32(textBuffer.temp.p, textBuffer.source.p, ui64(textBuffer.temp.byteOffset) + 15u);
+      Stream16(textBuffer.temp.p, textBuffer.source.p, RoundUpToNearest16(ui64(textBuffer.temp.byteOffset)));
       textBuffer.source.byteOffset = textBuffer.temp.byteOffset;
       textBuffer.source.byteCount  = textBuffer.temp.byteCount;
       textBuffer.temp.byteOffset = 0;
@@ -347,7 +348,7 @@ inline static csi8 ModifyCharBuffer(TEXTBUFFER &textBuffer) {
 
    // Are the 'active' and 'confirm' flags set?
    if((textBuffer.source.bitField & 0x03) == 0x03) {
-      csi8 bytesWritten = textBuffer.temp.byteOffset - textBuffer.source.byteOffset;
+      csi16 bytesWritten = textBuffer.source.byteOffset - textBuffer.temp.byteOffset;
       // Is the 'clear' flag set?
       if(textBuffer.source.bitField & 0x08) {
 //         for(ui16 i = 0; i < byteLimit; i++)
@@ -356,6 +357,9 @@ inline static csi8 ModifyCharBuffer(TEXTBUFFER &textBuffer) {
          textBuffer.temp.byteOffset = 0;
          textBuffer.temp.byteCount  = 0;
       }
+      Stream16(textBuffer.source.p, textBuffer.temp.p, RoundUpToNearest16(ui64(textBuffer.source.byteOffset))); // Redundant; figure out why it's needed.
+      textBuffer.temp.byteOffset = textBuffer.source.byteOffset;
+      textBuffer.temp.byteCount  = textBuffer.source.byteCount;
       textBuffer.source.bitField = 0x02; // Deactivate
 
       return bytesWritten;
@@ -377,17 +381,19 @@ inline static csi8 ModifyCharBuffer(TEXTBUFFER &textBuffer) {
                keysR[i] &= ~curBit;
 
                // Add character to buffer if space available
-               if(textBuffer.source.byteOffset < textBuffer.source.byteCount)
+               if(textBuffer.source.byteOffset < textBuffer.source.byteCount) {
                   textBuffer.source.pCH[textBuffer.source.byteOffset++] = result;
+               }
             }
          }
       }
 
    // Add null character to buffer if space available
-   if(textBuffer.source.byteOffset + 1 < textBuffer.source.byteCount)
+   if(textBuffer.source.byteOffset <= textBuffer.source.byteCount)
       textBuffer.source.pCH[textBuffer.source.byteOffset + 1] = 0;
 
-   return si8(textBuffer.source.byteOffset - byteOffset);
+//   return si8(textBuffer.source.byteOffset - byteOffset);
+   return si16(textBuffer.source.byteOffset - textBuffer.temp.byteOffset);
 }
 
 void DirectInput8Thread(ptr ArgList) {
@@ -406,27 +412,27 @@ Reinitialise_:
 
    Sleep(1000);
 
-   Try(stDI8Create, DirectInput8Create(hInst, DIRECTINPUT_VERSION, IID_IDirectInput8, (ptrptr)&di8, NULL), input);
+   Try(stDI8Create, DirectInput8Create(hInst, DIRECTINPUT_VERSION, IID_IDirectInput8, (ptrptr)&di8, NULL), ss_input);
    // Obtain keyboard
-   Try(stCreateDev, di8->CreateDevice(GUID_SysKeyboard, &di8Key, NULL), input);
-   Try(stSetKeyFormat, di8Key->SetDataFormat(&c_dfDIKeyboard), input);
-//   Try(stSetKeyCoop, di8Key->SetCooperativeLevel(hWnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE), input);
-   Try(stSetKeyCoop, di8Key->SetCooperativeLevel(hWnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE), input);
-   Try(stKeyAcquire, di8Key->Acquire(), input);
+   Try(stCreateDev, di8->CreateDevice(GUID_SysKeyboard, &di8Key, NULL), ss_input);
+   Try(stSetKeyFormat, di8Key->SetDataFormat(&c_dfDIKeyboard), ss_input);
+//   Try(stSetKeyCoop, di8Key->SetCooperativeLevel(hWnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE), ss_input);
+   Try(stSetKeyCoop, di8Key->SetCooperativeLevel(hWnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE), ss_input);
+   Try(stKeyAcquire, di8Key->Acquire(), ss_input);
    // Obtain mouse
-   Try(stCreateDev, di8->CreateDevice(GUID_SysMouse, &di8Mse, NULL), input);
-   Try(stSetMseFormat, di8Mse->SetDataFormat(&dfMouse38), input);
+   Try(stCreateDev, di8->CreateDevice(GUID_SysMouse, &di8Mse, NULL), ss_input);
+   Try(stSetMseFormat, di8Mse->SetDataFormat(&dfMouse38), ss_input);
    dpw.diph.dwHeaderSize = sizeof(dpw.diph);
    dpw.diph.dwHow = DIPH_DEVICE;
    dpw.diph.dwObj = NULL;
    dpw.diph.dwSize = sizeof(dpw);
    dpw.dwData = DIPROPAXISMODE_REL;
-   Try(stSetMseProperty, di8Mse->SetProperty(DIPROP_AXISMODE, &dpw.diph), input);
-//   Try(stSetMseCoop, di8Mse->SetCooperativeLevel(hWnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE), input);
-   Try(stSetMseCoop, di8Mse->SetCooperativeLevel(hWnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE), input);
+   Try(stSetMseProperty, di8Mse->SetProperty(DIPROP_AXISMODE, &dpw.diph), ss_input);
+//   Try(stSetMseCoop, di8Mse->SetCooperativeLevel(hWnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE), ss_input);
+   Try(stSetMseCoop, di8Mse->SetCooperativeLevel(hWnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE), ss_input);
    PollMouse();
    // Obtain gamepads
-   Try(stEnumGamepads, di8->EnumDevices(DI8DEVCLASS_GAMECTRL, GamepadEnumeration, NULL, DIEDFL_ATTACHEDONLY), input);
+   Try(stEnumGamepads, di8->EnumDevices(DI8DEVCLASS_GAMECTRL, GamepadEnumeration, NULL, DIEDFL_ATTACHEDONLY), ss_input);
 
    inputTimer.Init();
    inputTimer.Reset(1.0);
@@ -565,7 +571,7 @@ Reinitialise_:
             }
 
       // Send standard characters to text input buffer
-      if(textBufferInfo.source.bitField & 0x01) ModifyCharBuffer(textBufferInfo);
+      if(activeTextBuffer) ModifyCharBuffer();
 
       // Populate global input registers
       (ui64 &)inputsImmediate = 0x0;

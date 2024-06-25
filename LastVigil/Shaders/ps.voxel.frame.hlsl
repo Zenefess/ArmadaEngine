@@ -1,6 +1,6 @@
 /************************************************************
  * File: ps.voxel.frame.hlsl            Created: 2023/01/16 *
- *                                Last modified: 2024/06/11 *
+ *                                Last modified: 2024/06/20 *
  *                                                          *
  * Notes:                                                   *
  *                                                          *
@@ -23,7 +23,7 @@ float4 main(in const VOut v) : SV_Target {
    const float2 fVRamp  = abs(v.tex * 2.0f - 1.0f);
    const float2 fTexel  = max(0.0f, fVRamp * 2.0f - v.sec);
    const float  fIntens = max(fTexel.x, fTexel.y);
-   const vector vOutput = vector(vTint.rgb, RandomiseAlpha(vTint.a * min(1.0f, fIntens), v.tex.x));
+   const vector vOutput = vector(vTint.rgb, RandomiseAlpha(vTint.a * min(1.0f, fIntens), v.sec * v.tex.x + v.tex.y));
 
    clip(vOutput.a - 0.001f);
    return vOutput;

@@ -1,6 +1,6 @@
 /************************************************************
  * File: File operations.h              Created: 2022/11/06 *
- *                                Last modified: 2024/06/15 *
+ *                                Last modified: 2024/06/21 *
  *                                                          *
  * Notes: 2024/05/06: Added support for data tracking       *
  *                                                          *
@@ -21,21 +21,25 @@ extern vui64       THREAD_LIFE;
 extern HANDLE      hErrorOutput;
 extern CLASS_TIMER mainTimer;
 
-enum AE_SUBSYSTEM_ENUM : ui8 { video, audio, input };
+enum AE_SUBSYSTEM : ui8 { ss_video, ss_audio, ss_input, ss_gui };
 
-extern inline void Try(cchptr stEvent, ui32 uiResult, AE_SUBSYSTEM_ENUM subsystem);
+typedef const AE_SUBSYSTEM cAE_SUBSYSTEM;
 
-al16 struct CLASS_FILEOPS {
-   wchptrc pathWorking         = (wchptr)malloc16(sizeof(wchar[512]));
-   wchptrc stTemp              = (wchptr)malloc16(sizeof(wchar[4096]));
-   ui32    uiBytes             = 0;
-   DWORD   bytesProcessed      = 0;
-   cchar   stLoadShaders[24]   = "Invalid shader.cfg file";
+extern inline void Try(cchptrc stEvent, cui32 uiResult, cAE_SUBSYSTEM subsystem);
+
+al32 struct CLASS_FILEOPS {
+   cchar   stLoadShaders[32] = "Invalid shader list.cfg file";
+   wchptrc pathWorking       = (wchptr)malloc16(sizeof(wchar[512]));
+   wchptrc stTemp            = (wchptr)malloc16(sizeof(wchar[4096]));
+   ui32    uiBytes           = 0;
+   DWORD   bytesProcessed    = 0;
 
    inline cHANDLE OpenFileForReading(cwchptrc filename, cwchptrc folder) const {
+      csize_t folderLength = wcslen(folder);
+
       wcscpy(stTemp, folder);
-      wcscpy(stTemp + wcslen(folder), L"\\");
-      wcscpy(stTemp + wcslen(folder) + 1, filename);
+      wcscpy(stTemp + folderLength, L"\\");
+      wcscpy(stTemp + folderLength + 1, filename);
       cHANDLE hFile = CreateFile(stTemp, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, 0);
       if(!hFile) return hFile;
 #ifdef DATA_TRACKING
@@ -45,9 +49,11 @@ al16 struct CLASS_FILEOPS {
    }
 
    inline cHANDLE OpenFileForWriting(cwchptrc filename, cwchptrc folder) const {
+      csize_t folderLength = wcslen(folder);
+
       wcscpy(stTemp, folder);
-      wcscpy(stTemp + wcslen(folder), L"\\");
-      wcscpy(stTemp + wcslen(folder) + 1, filename);
+      wcscpy(stTemp + folderLength, L"\\");
+      wcscpy(stTemp + folderLength + 1, filename);
       cHANDLE hFile = CreateFile(stTemp, GENERIC_WRITE, FILE_SHARE_WRITE, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
       if(!hFile) return hFile;
 #ifdef DATA_TRACKING
@@ -133,7 +139,7 @@ al16 struct CLASS_FILEOPS {
 #ifdef DATA_TRACKING
       sysData.storage.bytesRead += uiBytes;
 #endif
-      if(wcsncmp(stTemp, L"Stages: ", 8)) Try(stLoadShaders, -1, video);
+      if(wcsncmp(stTemp, L"Stages: ", 8)) Try(stLoadShaders, -1, ss_video);
       // Read line
       while(uiBytes = ReadLine(hShaderGroups, stTemp)) {
 #ifdef DATA_TRACKING

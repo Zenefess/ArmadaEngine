@@ -1,6 +1,6 @@
 /************************************************************
  * File: DirectInput8 thread.h          Created: 2022/11/01 *
- *                                Last modified: 2024/06/15 *
+ *                                Last modified: 2024/06/18 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -133,29 +133,29 @@ DIOBJECTDATAFORMAT ofGamepadAE[] = {
    { 0, (DWORD)FIELD_OFFSET(DIJOYSTATEAE, button[31]), 0x080FFFF0C, 0 }
 };
 
-DIDATAFORMAT dfMouse38   = { 32, 24, 2, 28, 11, ofMouse38};
-DIDATAFORMAT dfGamepadAE = { 32, 24, 1, 96, 44, ofGamepadAE};
-
 // Thread status strings
 al16   cwchptr stRawInput = L"DirectInput 8";
 extern cwchptr stBusy;
 extern cwchptr stError;
 extern cwchptr stInit;
 
-vol GLOBALCTRLVARS  gcv;
-    GLOBALCTRLVARS  gcvLocal {};
-    TEXTBUFFER      textBufferInfo(1024, false); // Buffer information for character input
+vol GLOBALCTRLVARS gcv;
+    GLOBALCTRLVARS gcvLocal = {};
 
-al16 IDirectInput8       *di8;
-     IDirectInputDevice8 *di8Key, *di8Mse, *di8Pad[8];
-al64 char                 keyState[2][256];
-     DIJOYSTATEAE         padState[2][8];
-     DIMOUSESTATE48       mseState[2];
-     VEC4Du16             inputsImmediate;
-     si32                &mouseWheelTilt = mseState[0].w;
-     ui8                  padOrder[8] = { 1, 0, 2, 3, 4, 5, 6, 7 };
-     ui32                 padCount = 0;
-     fl32                 mouseScale = 0.0003025f;
+TEXTBUFFER *activeTextBuffer = 0; // Text buffer to be processed by ModifyCharBuffer(void)
+
+DIDATAFORMAT dfMouse38   = { 32, 24, 2, 28, 11, ofMouse38};
+DIDATAFORMAT dfGamepadAE = { 32, 24, 1, 96, 44, ofGamepadAE};
+
+IDirectInput8       *di8;
+IDirectInputDevice8 *di8Key;
+IDirectInputDevice8 *di8Mse;
+IDirectInputDevice8 *di8Pad[8];
+
+VEC4Du16       inputsImmediate;
+al64 char      keyState[2][256];
+DIJOYSTATEAE   padState[2][8];
+DIMOUSESTATE48 mseState[2];
 
 #ifdef __AVX__
 fl32x8 padScale[8] = { { .m256_f32 = { 1.0f / 31233.0f, 1.0f / 31233.0f, 1.0f / 31233.0f, 1.0f / 31233.0f, 1.0f / 32255.0f, 1.0f / 32255.0f, 1.0f / 32767.0f, 1.0f / 32767.0f } },
@@ -197,3 +197,8 @@ si128 padOS[8][2] = { { { .m128i_i32 = { 31743, 31743, 32767, 32767 } }, { { .m1
 
 AVX16Ds32 padDeadZone = { ._si32 = { -1535, 1535, -1535, 1535, -1535, 1535, -1535, 1535, -3, 3, -3, 3, -3, 3, -3, 3 } };
 AVX8Df32  padShaping  = { ._fl   = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f } };
+
+ui8   padOrder[8]    = { 1, 0, 2, 3, 4, 5, 6, 7 };
+ui32  padCount       = 0;
+fl32  mouseScale     = 0.0003025f;
+si32 &mouseWheelTilt = mseState[0].w;

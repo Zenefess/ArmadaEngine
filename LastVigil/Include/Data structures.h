@@ -1,10 +1,10 @@
 /************************************************************
  * File: Data structures.h              Created: 2022/10/20 *
- *                                Last modified: 2024/06/15 *
+ *                                Last modified: 2024/06/25 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
- *  Copyright (c) David William Bull. All rights reserved.  *
+ * Copyright (c) David William Bull.   All rights reserved. *
  ************************************************************/
 #pragma once
 
@@ -14,6 +14,9 @@
 
 #include "typedefs.h"
 #include "Vector structures.h"
+
+enum AE_PRIMITIVES : ui8 { ae_undefined, ae_pointlist, ae_linelist, ae_linestrip, ae_trianglelist, ae_trianglestrip };
+enum AE_WINDOW_STATE : ui8 { ae_windowed, ae_borderless, ae_fullscreen };
 
 al4 union ID32 {
    struct {
@@ -46,27 +49,6 @@ al8 union ID64c {
    };
    cui64 id;
 };
-
-typedef const ID32          cID32;
-typedef const ID64          cID64;
-typedef const ID32c         cID32c;
-typedef const ID64c         cID64c;
-typedef       ID32  *       ID32ptr;
-typedef       ID64  *       ID64ptr;
-typedef       ID32c *       ID32cptr;
-typedef       ID64c *       ID64cptr;
-typedef const ID32  *       cID32ptr;
-typedef const ID64  *       cID64ptr;
-typedef const ID32c *       cID32cptr;
-typedef const ID64c *       cID64cptr;
-typedef       ID32  * const ID32ptrc;
-typedef       ID64  * const ID64ptrc;
-typedef       ID32c * const ID32cptrc;
-typedef       ID64c * const ID64cptrc;
-typedef const ID32  * const cID32ptrc;
-typedef const ID64  * const cID64ptrc;
-typedef const ID32c * const cID32cptrc;
-typedef const ID64c * const cID64cptrc;
 
 al8 union UNIPTR {
    ptr        p;
@@ -207,16 +189,9 @@ al32 struct TEXTBUFFER {
    // wideChars == Allocate 2 bytes per character
    TEXTBUFFER(cui16 maxCharCount, cbool wideChars) {
       cui32 byteCount = temp.byteMax = maxCharCount << (wideChars ? 1 : 0);
-      ptrc  pointer   = _aligned_malloc(byteCount, 16);
+      ptrc  pointer   = malloc16(byteCount);
 
-      if(pointer) {
-#ifdef DATA_TRACKING
-         sysData.mem.byteCount[sysData.mem.allocations]  = byteCount;
-         sysData.mem.location[sysData.mem.allocations++] = pointer;
-         sysData.mem.allocated += byteCount;
-#endif
-         temp.p = pointer;
-      }
+      if(pointer) temp.p = pointer;
    }
 
    ~TEXTBUFFER(void) {
@@ -240,6 +215,21 @@ al32 struct TEXTBUFFER {
 #endif
       _aligned_free(temp.p);
    }
+};
+
+al16 struct FUNCTION {
+   union {
+      ptr      ptr;    // Raw pointer to function
+      func     func;   // Function with no arguments
+      funcptr  func1a; // Function with 1 argument
+      funcptr2 func2a; // Function with 2 arguments
+      funcptr3 func3a; // Function with 3 arguments
+      funcptr4 func4a; // Function with 4 arguments
+   };
+   union {
+      cchptr cLabel; // Display name of function (constant string)
+      chptr  label;  // Display name of function
+   };
 };
 
 // Global control variables
@@ -340,12 +330,16 @@ struct RESDATA { // 36 bytes
          float w; // Width
          float h; // Height
       };
+      struct {
+         float width;
+         float height;
+      };
    };
    float aspect;  // Aspect ratio (height / width)
    float aspectI; // Inverted aspect ratio (width / height)
    float gamma;   // Gamma ramp scalar
-   UINT  fmtBB;   // Back buffer format
-   UINT  fmtDB;   // Depth buffer format
+   ui32  fmtBB;   // Back buffer format
+   ui32  fmtDB;   // Depth buffer format
    si16  msaa;    // (Multi)sample count
    si16  msaaQ;   // Multisample quality
    si16  buffers; // Number of back buffers in swap chain
@@ -366,3 +360,30 @@ al16 struct RESOLUTION { // 128 bytes
    si8      state;        // 0 == Windowed | 1 == Borderless | 2 = Fullscreen
    ui8      RES[11];
 };
+
+typedef const ID32          cID32;
+typedef const ID64          cID64;
+typedef const ID32c         cID32c;
+typedef const ID64c         cID64c;
+typedef       ID32  *       ID32ptr;
+typedef       ID64  *       ID64ptr;
+typedef       ID32c *       ID32cptr;
+typedef       ID64c *       ID64cptr;
+typedef const ID32  *       cID32ptr;
+typedef const ID64  *       cID64ptr;
+typedef const ID32c *       cID32cptr;
+typedef const ID64c *       cID64cptr;
+typedef       ID32  * const ID32ptrc;
+typedef       ID64  * const ID64ptrc;
+typedef       ID32c * const ID32cptrc;
+typedef       ID64c * const ID64cptrc;
+typedef const ID32  * const cID32ptrc;
+typedef const ID64  * const cID64ptrc;
+typedef const ID32c * const cID32cptrc;
+typedef const ID64c * const cID64cptrc;
+
+typedef const AE_WINDOW_STATE cAE_WINDOW_STATE;
+typedef const RESDATA         cRESDATA;
+typedef const RESOLUTION      cRESOLUTION;
+
+typedef vol GLOBALCOORDS vGLOBALCOORDS;

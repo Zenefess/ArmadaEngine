@@ -13,6 +13,7 @@
 #include "class_timers.h"
 #include "Direct3D11 thread.h"
 #include "Direct3D11 functions.h"
+#include "Armada Intelligence/class_gui.h"
 #include "Armada Intelligence/class_mapmanager.h"
 #include "Armada Intelligence/class_entitymanager.h"
 #include "Armada Intelligence/Input functions.h"
@@ -23,6 +24,7 @@ void ProcessInputs(INPUT_PROC_DATA &ipd, GLOBALCTRLVARS &ctrlVars) {
    static ui8  funcCount;
 
    CLASS_GPU &gpu = *(CLASS_GPU *)ptrLib[1];
+   CLASS_GUI &gui = *(CLASS_GUI *)ptrLib[4];
    MAP_DESC  &md  = *(MAP_DESC *)ptrLib[14];
 
    imLast = ipd.input.global;
@@ -41,7 +43,7 @@ void ProcessInputs(INPUT_PROC_DATA &ipd, GLOBALCTRLVARS &ctrlVars) {
             ipd.function[funcCount](NULL);
 
    // Execute relevant GUI functions
-   md.mcrv.activeElements = gpu.gui.ProcessInputs(ipd, ctrlVars, (*(GUI_DESC *)ptrLib[15]).interfaceIndex);
+   md.mcrv.activeElements = gui.ProcessInputs(ipd, ctrlVars, (*(GUI_DESC *)ptrLib[15]).interfaceIndex);
 
    // Process world space inputs
    for(imLast = (imCount += ipd.input.ui) + ipd.input.world; imCount < imLast; imCount++)
@@ -53,6 +55,7 @@ void ProcessInputs(INPUT_PROC_DATA &ipd, GLOBALCTRLVARS &ctrlVars) {
 /// !!! For testing purposes !!!
 void ProcessInputs(GLOBALCTRLVARS &ctrlVars) {
    CLASS_GPU    &gpu    = *(CLASS_GPU *)ptrLib[1]; // Replace with separate cam. and gui. references?
+   CLASS_GUI    &gui    = *(CLASS_GUI *)ptrLib[4];
    CLASS_MAPMAN &mapMan = *(CLASS_MAPMAN *)ptrLib[6];
    MAP_DESC     &md     = *(MAP_DESC *)ptrLib[14];
 
@@ -64,7 +67,7 @@ void ProcessInputs(GLOBALCTRLVARS &ctrlVars) {
 
    si32 siChunk = 0;
 
-   siActiveLayer = gpu.gui.ProcessInputs(ctrlVars, (*(GUI_DESC *)ptrLib[15]).interfaceIndex); // If cursor is over GUI element, process
+   siActiveLayer = gui.ProcessInputs(ctrlVars, (*(GUI_DESC *)ptrLib[15]).interfaceIndex); // If cursor is over GUI element, process
    if(siActiveLayer.m128i_i32[0] < 0) {
       // Locate cell under cursor
       md.mcrv.activeCell.z = siWheel;

@@ -74,7 +74,7 @@ float4 main(in const GOut g) : SV_Target {
    // Calculate light
    float3 fLight = 0.0f, fHighlight = 0.0f;
    [unroll]
-   for(uint i = 0; i < 48; i++) {
+   for(uint i = 0; i < 32; i++) {
       // Unpack colour variable
       const float3 fColour = float3(uint3(l[i].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF) * rcp256 - 128.0f;
       // Unpack highlight variables

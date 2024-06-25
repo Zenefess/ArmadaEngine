@@ -43,7 +43,7 @@ al16 struct CLASS_TEXTURES {
    si32 Load2D(LPCTSTR filename) {
       if(index > MAX_TEXTURES) return -1;
       D3DX11CreateTextureFromFileW(dev, filename, &ilo, NULL, (ID3D11Resource **)&pTexture[index], &hr);
-      if(FAILED(hr)) Try(stTexFromFile, -2, video);
+      if(FAILED(hr)) Try(stTexFromFile, -2, ss_video);
       pTexture[index]->GetDesc(&td);
 #ifdef DATA_TRACKING
       sysData.storage.filesOpened++;
@@ -65,7 +65,7 @@ al16 struct CLASS_TEXTURES {
       wsprintf(stFilename[2], L"%s%s.mod.dds", stFilepath[type], atlasName);
 
       D3DX11CreateTextureFromFile(dev, stFilename[0], &ilo, NULL, (ID3D11Resource **)&pTexture[index], &hr);
-      if(FAILED(hr)) Try(stTexFromFile, -2, video);
+      if(FAILED(hr)) Try(stTexFromFile, -2, ss_video);
       pTexture[index]->GetDesc(&td);
 #ifdef DATA_TRACKING
       sysData.storage.filesOpened++;
@@ -74,7 +74,7 @@ al16 struct CLASS_TEXTURES {
 #endif
       dev->CreateShaderResourceView(pTexture[index], NULL, &pSRV[index]);
       D3DX11CreateTextureFromFile(dev, stFilename[1], &ilo, NULL, (ID3D11Resource **)&pTexture[++index], &hr);
-      if(FAILED(hr)) Try(stTexFromFile, -3, video);
+      if(FAILED(hr)) Try(stTexFromFile, -3, ss_video);
       pTexture[index]->GetDesc(&td);
 #ifdef DATA_TRACKING
       sysData.storage.filesOpened++;
@@ -83,7 +83,7 @@ al16 struct CLASS_TEXTURES {
 #endif
       dev->CreateShaderResourceView(pTexture[index], NULL, &pSRV[index]);
       D3DX11CreateTextureFromFile(dev, stFilename[2], &ilo, NULL, (ID3D11Resource **)&pTexture[++index], &hr);
-      if(FAILED(hr)) Try(stTexFromFile, -4, video);
+      if(FAILED(hr)) Try(stTexFromFile, -4, ss_video);
       pTexture[index]->GetDesc(&td);
 #ifdef DATA_TRACKING
       sysData.storage.filesOpened++;

@@ -87,9 +87,6 @@
     <ClInclude Include="Include\Direct3D11 functions\class_cameras.h">
       <Filter>Header Files\Direct3D11 functions</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Direct3D11 functions\class_gui.h">
-      <Filter>Header Files\Direct3D11 functions</Filter>
-    </ClInclude>
     <ClInclude Include="Include\class_timers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -101,9 +98,6 @@
     </ClInclude>
     <ClInclude Include="Include\Command queue.h">
       <Filter>Header Files\Threads</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Direct3D11 functions\class_render.h">
-      <Filter>Header Files\Direct3D11 functions</Filter>
     </ClInclude>
     <ClInclude Include="Include\File operations.h">
       <Filter>Header Files</Filter>
@@ -154,6 +148,12 @@
       <Filter>Header Files\Armada Intelligence functions</Filter>
     </ClInclude>
     <ClInclude Include="project definitions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Armada Intelligence\class_gui.h">
+      <Filter>Header Files\Armada Intelligence functions</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\class_render.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -215,10 +215,12 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\include\DirectInput8 keyboard scan codes.h" />
     <ClInclude Include="Include\Armada Intelligence\class_entitymanager.h" />
+    <ClInclude Include="Include\Armada Intelligence\class_gui.h" />
     <ClInclude Include="Include\Armada Intelligence\class_mapmanager.h" />
     <ClInclude Include="Include\Armada Intelligence\D3D11 helper functions.h" />
     <ClInclude Include="Include\Armada Intelligence\GUI functions.h" />
     <ClInclude Include="Include\Armada Intelligence\Input functions.h" />
+    <ClInclude Include="Include\class_render.h" />
     <ClInclude Include="Include\class_timers.h" />
     <ClInclude Include="Include\Command queue.h" />
     <ClInclude Include="Include\Common functions.h" />
@@ -229,10 +231,8 @@
     <ClInclude Include="Include\Direct3D11 functions\class_buffers.h" />
     <ClInclude Include="Include\Direct3D11 functions\class_config.h" />
     <ClInclude Include="Include\Direct3D11 functions\class_lights.h" />
-    <ClInclude Include="Include\Direct3D11 functions\class_render.h" />
     <ClInclude Include="Include\Direct3D11 functions\class_textures.h" />
     <ClInclude Include="Include\Direct3D11 functions\class_cameras.h" />
-    <ClInclude Include="Include\Direct3D11 functions\class_gui.h" />
     <ClInclude Include="Include\Direct3D11 thread.h" />
     <ClInclude Include="Include\D3D11 type defines.h" />
     <ClInclude Include="Include\File operations.h" />

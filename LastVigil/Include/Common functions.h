@@ -1,6 +1,6 @@
 /************************************************************
  * File: Common functions.h             Created: 2023/02/02 *
- *                                    Last mod.: 2024/06/08 *
+ *                                    Last mod.: 2024/06/25 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -10,29 +10,26 @@
 
 #include "typedefs.h"
 #include "Vector structures.h"
-#include "Memory management.h"
-#include "Fixed-point data types.h"
-#include "Data structures.h"
 
 #define _COMMON_FUNCTIONS_
 
-static cfl32 rcp1p5f   = 2.0f / 3.0f;
-static cfl32 rcp3f     = 1.0f / 3.0f;
-static cfl32 rcp6f     = 1.0f / 6.0f;
-static cfl32 rcp32767f = 1.0f / 32767.0f;
-static cfl32 rcp32768f = 1.0f / 32768.0f;
-static cfl32 rcp65535f = 1.0f / 65535.0f;
-static cfl32 rcp65536f = 1.0f / 65536.0f;
+constexpr fl32 rcp1p5f   = 2.0f / 3.0f;
+constexpr fl32 rcp3f     = 1.0f / 3.0f;
+constexpr fl32 rcp6f     = 1.0f / 6.0f;
+constexpr fl32 rcp32767f = 1.0f / 32767.0f;
+constexpr fl32 rcp32768f = 1.0f / 32768.0f;
+constexpr fl32 rcp65535f = 1.0f / 65535.0f;
+constexpr fl32 rcp65536f = 1.0f / 65536.0f;
 
-static cfl64 rcp1p5d   = 2.0 / 3.0;
-static cfl64 rcp3d     = 1.0 / 3.0;
-static cfl64 rcp6d     = 1.0 / 6.0;
-static cfl64 rcp32767d = 1.0 / 32767.0;
-static cfl64 rcp32768d = 1.0 / 32768.0;
-static cfl64 rcp65535d = 1.0 / 65535.0;
-static cfl64 rcp65536d = 1.0 / 65536.0;
+constexpr fl64 rcp1p5d   = 2.0 / 3.0;
+constexpr fl64 rcp3d     = 1.0 / 3.0;
+constexpr fl64 rcp6d     = 1.0 / 6.0;
+constexpr fl64 rcp32767d = 1.0 / 32767.0;
+constexpr fl64 rcp32768d = 1.0 / 32768.0;
+constexpr fl64 rcp65535d = 1.0 / 65535.0;
+constexpr fl64 rcp65536d = 1.0 / 65536.0;
 
-static cVEC3Df null3Df = { 0.0f, 0.0f, 0.0f };
+constexpr VEC3Df null3Df = { 0.0f, 0.0f, 0.0f };
 
 static cfl32x4 null128f     = _mm_setzero_ps();
 static cfl32x4 ones32x4f    = _mm_set_ps1(1.0f);
@@ -239,15 +236,19 @@ inline cbool AllTrue(cui512 &source, cui512 &compare) {
 
 #endif
 
-inline constexpr csi32 RoundUpToNearest16(csi32 input) { return (input + 15)    & 0x0FFFFFFF0; }
-inline constexpr cui32 RoundUpToNearest16(cui32 input) { return (input + 15u)   & 0x0FFFFFFF0u; }
-inline constexpr csi64 RoundUpToNearest16(csi64 input) { return (input + 15ll)  & 0x0FFFFFFFFFFFFFFF0; }
-inline constexpr cui64 RoundUpToNearest16(cui64 input) { return (input + 15ull) & 0x0FFFFFFFFFFFFFFF0u; }
-inline constexpr csi32 RoundUpToNearest32(csi32 input) { return (input + 31)    & 0x0FFFFFFE0; }
-inline constexpr cui32 RoundUpToNearest32(cui32 input) { return (input + 31u)   & 0x0FFFFFFE0u; }
-inline constexpr csi64 RoundUpToNearest32(csi64 input) { return (input + 31ll)  & 0x0FFFFFFFFFFFFFFE0; }
-inline constexpr cui64 RoundUpToNearest32(cui64 input) { return (input + 31ull) & 0x0FFFFFFFFFFFFFFE0u; }
-inline constexpr csi32 RoundUpToNearest64(csi32 input) { return (input + 63)    & 0x0FFFFFFC0; }
-inline constexpr cui32 RoundUpToNearest64(cui32 input) { return (input + 63u)   & 0x0FFFFFFC0u; }
-inline constexpr csi64 RoundUpToNearest64(csi64 input) { return (input + 63ll)  & 0x0FFFFFFFFFFFFFFC0; }
-inline constexpr cui64 RoundUpToNearest64(cui64 input) { return (input + 63ull) & 0x0FFFFFFFFFFFFFFC0u; }
+inline csi32 RoundUpToNearest4(csi32 input)  { return (input + 3)     & 0x0FFFFFFFC; }
+inline cui32 RoundUpToNearest4(cui32 input)  { return (input + 3u)    & 0x0FFFFFFFCu; }
+inline csi64 RoundUpToNearest4(csi64 input)  { return (input + 3ll)   & 0x0FFFFFFFFFFFFFFFC; }
+inline cui64 RoundUpToNearest4(cui64 input)  { return (input + 3ull)  & 0x0FFFFFFFFFFFFFFFCu; }
+inline csi32 RoundUpToNearest16(csi32 input) { return (input + 15)    & 0x0FFFFFFF0; }
+inline cui32 RoundUpToNearest16(cui32 input) { return (input + 15u)   & 0x0FFFFFFF0u; }
+inline csi64 RoundUpToNearest16(csi64 input) { return (input + 15ll)  & 0x0FFFFFFFFFFFFFFF0; }
+inline cui64 RoundUpToNearest16(cui64 input) { return (input + 15ull) & 0x0FFFFFFFFFFFFFFF0u; }
+inline csi32 RoundUpToNearest32(csi32 input) { return (input + 31)    & 0x0FFFFFFE0; }
+inline cui32 RoundUpToNearest32(cui32 input) { return (input + 31u)   & 0x0FFFFFFE0u; }
+inline csi64 RoundUpToNearest32(csi64 input) { return (input + 31ll)  & 0x0FFFFFFFFFFFFFFE0; }
+inline cui64 RoundUpToNearest32(cui64 input) { return (input + 31ull) & 0x0FFFFFFFFFFFFFFE0u; }
+inline csi32 RoundUpToNearest64(csi32 input) { return (input + 63)    & 0x0FFFFFFC0; }
+inline cui32 RoundUpToNearest64(cui32 input) { return (input + 63u)   & 0x0FFFFFFC0u; }
+inline csi64 RoundUpToNearest64(csi64 input) { return (input + 63ll)  & 0x0FFFFFFFFFFFFFFC0; }
+inline cui64 RoundUpToNearest64(cui64 input) { return (input + 63ull) & 0x0FFFFFFFFFFFFFFC0u; }

@@ -66,7 +66,7 @@ al32 struct CLASS_CONFIG {   // Rewrite to use files., malloc pointers, and chan
       for(ui16 type = 0; type < 6; type++)
          for(ui16 index = 0; index < shaderBanks[type]; index++)
             if(shaderString[type][index]) {
-               Try(stReadToBlob, D3DReadFileToBlob(shaderString[type][index], &pBlob[type][index]), video);
+               Try(stReadToBlob, D3DReadFileToBlob(shaderString[type][index], &pBlob[type][index]), ss_video);
 #ifdef DATA_TRACKING
                sysData.storage.filesOpened++;
                sysData.storage.filesClosed++;
@@ -74,13 +74,13 @@ al32 struct CLASS_CONFIG {   // Rewrite to use files., malloc pointers, and chan
 #endif
                switch(type) {
                case 1:
-                  if(pBlob[type][index]) Try(stCreateVS, dev->CreateVertexShader(pBlob[type][index]->GetBufferPointer(), pBlob[type][index]->GetBufferSize(), NULL, &pVS[index]), video);
+                  if(pBlob[type][index]) Try(stCreateVS, dev->CreateVertexShader(pBlob[type][index]->GetBufferPointer(), pBlob[type][index]->GetBufferSize(), NULL, &pVS[index]), ss_video);
                   break;
                case 2:
-                  if(pBlob[type][index]) Try(stCreateGS, dev->CreateGeometryShader(pBlob[type][index]->GetBufferPointer(), pBlob[type][index]->GetBufferSize(), NULL, &pGS[index]), video);
+                  if(pBlob[type][index]) Try(stCreateGS, dev->CreateGeometryShader(pBlob[type][index]->GetBufferPointer(), pBlob[type][index]->GetBufferSize(), NULL, &pGS[index]), ss_video);
                   break;
                case 5:
-                  if(pBlob[type][index]) Try(stCreatePS, dev->CreatePixelShader(pBlob[type][index]->GetBufferPointer(), pBlob[type][index]->GetBufferSize(), NULL, &pPS[index]), video);
+                  if(pBlob[type][index]) Try(stCreatePS, dev->CreatePixelShader(pBlob[type][index]->GetBufferPointer(), pBlob[type][index]->GetBufferSize(), NULL, &pPS[index]), ss_video);
                   break;
                }
             }
@@ -133,7 +133,7 @@ al32 struct CLASS_CONFIG {   // Rewrite to use files., malloc pointers, and chan
       }
       i = profileIndex;
 
-      Try(stCreateIL, dev->CreateInputLayout(ied[inputFormat], numEntries[inputFormat], pBlob[1][vertexShader]->GetBufferPointer(), pBlob[1][vertexShader]->GetBufferSize(), &pIL[i]), video);
+      Try(stCreateIL, dev->CreateInputLayout(ied[inputFormat], numEntries[inputFormat], pBlob[1][vertexShader]->GetBufferPointer(), pBlob[1][vertexShader]->GetBufferSize(), &pIL[i]), ss_video);
 
       return i;
    }
@@ -154,7 +154,7 @@ al32 struct CLASS_CONFIG {   // Rewrite to use files., malloc pointers, and chan
       sd.MinLOD = 0.0f;
       sd.MaxLOD = D3D11_FLOAT32_MAX;
       sd.MipLODBias = 0.0f;
-      if(!pSS[iStates]) Try(stCreateSS, dev->CreateSamplerState(&sd, &pSS[iStates]), video);
+      if(!pSS[iStates]) Try(stCreateSS, dev->CreateSamplerState(&sd, &pSS[iStates]), ss_video);
       return iStates++;
    }
 
@@ -218,7 +218,7 @@ al32 struct CLASS_CONFIG {   // Rewrite to use files., malloc pointers, and chan
       dsd.StencilEnable = stencilEnable;
       dsd.StencilReadMask = stencilReadMask;
       dsd.StencilWriteMask = stencilWriteMask;
-      if(!pDSS[iStates]) Try(stCreateDSV, dev->CreateDepthStencilState(&dsd, &pDSS[iStates]), video);
+      if(!pDSS[iStates]) Try(stCreateDSV, dev->CreateDepthStencilState(&dsd, &pDSS[iStates]), ss_video);
       return iStates++;
    }
 
@@ -226,14 +226,19 @@ al32 struct CLASS_CONFIG {   // Rewrite to use files., malloc pointers, and chan
       devcon[context]->OMSetDepthStencilState(pDSS[state], stencilRef);
    }
 
-   void CreateCullingState(void) {
-      D3D11_RASTERIZER_DESC rasterDesc[2] = { { D3D11_FILL_SOLID,     D3D11_CULL_NONE, false, 0, 0.0f, 0.0f, true, false, false, false },
-                                              { D3D11_FILL_WIREFRAME, D3D11_CULL_NONE, false, 0, 0.0f, 0.0f, true, false, false, false } };
+   void CreateCullingState(void) const {
+      D3D11_RASTERIZER_DESC rasterDesc[4] = { { D3D11_FILL_SOLID,     D3D11_CULL_NONE, false, 0, 0.0f, 0.0f, true, false, false, false },
+                                              { D3D11_FILL_WIREFRAME, D3D11_CULL_NONE, false, 0, 0.0f, 0.0f, true, false, false, false },
+                                              { D3D11_FILL_SOLID,     D3D11_CULL_BACK, false, 0, 0.0f, 0.0f, true, false, false, false },
+                                              { D3D11_FILL_WIREFRAME, D3D11_CULL_BACK, false, 0, 0.0f, 0.0f, true, false, false, false } };
 
       dev->CreateRasterizerState(&rasterDesc[0], &pRS[0]);
       dev->CreateRasterizerState(&rasterDesc[1], &pRS[1]);
+      dev->CreateRasterizerState(&rasterDesc[2], &pRS[2]);
+      dev->CreateRasterizerState(&rasterDesc[3], &pRS[3]);
    }
 
+   // state: 0==Solid not culled, 1==Wireframe not culled, 2==Solid back culled, 3==Wireframe back culled
    inline void SetCullingState(cui8 context, cui8 state) const { devcon[context]->RSSetState(pRS[state]); }
 
    void UnloadShaderData(void) const {
