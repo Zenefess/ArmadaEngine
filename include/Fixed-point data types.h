@@ -19,8 +19,6 @@
  **********************************************************************/
 #pragma once
 
-///// !!! Add #idefs for custom types within types !!! /////
-
 #include <immintrin.h>
 #include "typedefs.h"
 
