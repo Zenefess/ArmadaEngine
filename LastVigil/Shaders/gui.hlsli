@@ -1,6 +1,6 @@
 /************************************************************
  * File: gui.hlsli                      Created: 2024/05/25 *
- * Type: Header file              Last modified: 2024/05/25 *
+ * Type: Header file              Last modified: 2024/05/26 *
  *                                                          *
  * Notes:                                                   *
  *                                                          *
@@ -9,7 +9,7 @@
 
 #include "common.hlsli"
  
-cbuffer CB_VIEW : register(b0) { // 160 bytes (10 vectors)
+cbuffer CB_VIEW : register(b1) { // 160 bytes (10 vectors)
    const matrix projection;   // Perspective transformation
    const matrix orthographic; // Orthographic transformation
    const float2 guiScale;     // Final X & Y scaling factors for GUI
@@ -25,7 +25,7 @@ struct CHAR_IMM { // 16 bytes (1 vector)
 
 struct GUI_EL_DYN { // 96 bytes (6 vectors)
    float4 coords[2]; // Text:    View coordinates per 8 characters
-                     // Element: View position, bounding space for children, x2 texture coordinates
+                     // Element: View position, bounding space for children, 2 texture coordinates
    uint4  tint[2];   // Text:    RGBA values per 8 characters
                      // Element: TL/BL/TR/BR RGBA values : p16n0.0~3.0
    float2 size;      // Both:    Scaling factors
@@ -42,12 +42,8 @@ struct GUI_EL_DYN { // 96 bytes (6 vectors)
 };                   // 24==Rotate, 25==Translate, 26&27==Scale X&Y, 28==Truncate, 29==Compress, 30==Process control characters, 31==Wide chars
 
 struct GOut { // 44 bytes (2 vectors + 3 scalars)
-   float4 pos     : SV_Position;
-   float4 col     : COLOR;
-   float2 tc      : TEXCOORD;
-   uint   ai_type : ATLAS;       // 0~6==Atlas index, 7~10==Type, 11~31==???
+   float4 pos   : SV_Position;
+   float4 col   : COLOR;
+   float2 tc    : TEXCOORD;
+   uint2  ai    : ATLAS;       // X: 0~7==Atlas index, 8~31==???, Y: 0~15==Border size, 16~31==Window transparency : 2 float16s
 };
-
-StructuredBuffer   <CHAR_IMM>   alphabet : register(t0); // Character geometry
-StructuredBuffer   <uint4>      char16   : register(t1); // Text pool
-RWStructuredBuffer <GUI_EL_DYN> element  : register(u1); // Element data

@@ -29,7 +29,7 @@ cbuffer MAPDIMS_ICB : register(b2) { // 32 bytes (2 vectors)
    const uint  oobDens;
 }
 */
-cbuffer MAPDIMS_ICB : register(b2) {
+cbuffer MAPDIMS_ICB : register(b3) {
    // Map dimensions: X, Y, Z cell counts - 1     --- 30 bits -- [..][..][..][30]
    // Chunk dimensions: X, Y, Z cell counts - 1   --- 18 bits -- [..][..][16][32]
    // Map Cells: Total cells per map - 1          --- 30 bits -- [..][14][32][..] --- No longer used

@@ -10,7 +10,7 @@
 
 #define DIRECTINPUT_VERSION  0x0800
 
-#include "pch.h"
+#include "master header.h"
 #include "typedefs.h"
 #include "Data structures.h"
 #include "class_timers.h"

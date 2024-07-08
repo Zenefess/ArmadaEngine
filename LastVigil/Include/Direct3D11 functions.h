@@ -1,6 +1,6 @@
 /************************************************************
  * File: Direct3D11 functions.h         Created: 2022/10/20 *
- *                                Last modified: 2024/06/17 *
+ *                                Last modified: 2024/07/02 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -24,69 +24,68 @@
 #include "D3D11SDKLayers.h"
 #endif
 
+ //   cui32 flags = (NDEBUG ? NULL : D3D11_CREATE_DEVICE_DEBUG);
+constexpr cui32 flags = (NDEBUG ? D3D11_CREATE_DEVICE_SINGLETHREADED : D3D11_CREATE_DEVICE_SINGLETHREADED | D3D11_CREATE_DEVICE_DEBUG);// | D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS);
+
 inline  void     MessagePump(void);
 LRESULT CALLBACK RndrWndProc(HWND, UINT, WPARAM, LPARAM);
 
 al64 struct CLASS_GPU {
    CLASS_FILEOPS &files;
 
-   ID3D11Device  *dev;
-   IDXGIDevice4  *dxgiDev;
-   IDXGIAdapter3 *dxgiAdapter;
+   ID3D11Device *dev; IDXGIDevice4 *dxgiDev; IDXGIAdapter3 *dxgiAdapter;
 
    CLASS_CONFIG   cfg = files;
    CLASS_BUFFERS  buf;
-   CLASS_CAM      cam = buf;
-   CLASS_LIGHTS   lit;
    CLASS_TEXTURES tex;
 
-   IDXGIFactory5   *factory;
-   IDXGISwapChain2 *swapchain;
+   al16 struct _D3D_DATA_BLOCK_ {
+      ui32 msaaQlevel[32];
+      DXGI_SWAP_CHAIN_DESC1           scd1;
+      DXGI_SWAP_CHAIN_FULLSCREEN_DESC scfd;
+      DXGI_FORMAT    bbFormat;
+      D3D11_VIEWPORT viewport;
+      union { D3D_FEATURE_LEVEL d3DFL[4]; struct { D3D_FEATURE_LEVEL x, y, z, w; } vecD3DFL; };
+      D3D11_DEPTH_STENCIL_VIEW_DESC dsvd;
+      DXGI_MODE_DESC       md;
+      D3D11_TEXTURE2D_DESC td;
+   } &data = *(_D3D_DATA_BLOCK_ *)zalloc16(sizeof(_D3D_DATA_BLOCK_));
+
+   si8 curWinState;
+
+   // 7 bytes spare
+
+   IDXGIFactory5 *factory;
+
+   CLASS_RENDER ren = { cfg, buf, tex };
+   CLASS_CAM    cam = buf;
+   CLASS_LIGHTS lit;
 
    ID3D11DeviceContext *devcon[4];
 
-   CLASS_RENDER ren = { cfg, buf, tex };
+private:
+///--- Add booleans for selectively enabling each sub-class? ---///
+   inline void _CLASS_GPU_INIT(void) {
+      data.vecD3DFL    = { (D3D_FEATURE_LEVEL)0, D3D_FEATURE_LEVEL_12_1, D3D_FEATURE_LEVEL_12_0, D3D_FEATURE_LEVEL_11_1 };
+      data.bbFormat    = DXGI_FORMAT_R16G16B16A16_FLOAT;
+      curWinState = -1;
 
-   ID3D11Texture2D        *pBackBuffer[2];
-   ID3D11Texture2D        *pDepthBuffer[2];
-   ID3D11RenderTargetView *rtvBackBuffer[2];
-   ID3D11DepthStencilView *pDSV;
-
-   DXGI_SWAP_CHAIN_DESC1           scd1 {};
-   DXGI_SWAP_CHAIN_FULLSCREEN_DESC scfd {};
-   DXGI_MODE_DESC                  md {};
-   D3D11_DEPTH_STENCIL_VIEW_DESC   dsvd {};
-   D3D11_VIEWPORT                  viewport {};
-   D3D11_TEXTURE2D_DESC            td {};
-   D3D_FEATURE_LEVEL               d3dFL[5] { (D3D_FEATURE_LEVEL)NULL, D3D_FEATURE_LEVEL_12_1, D3D_FEATURE_LEVEL_12_0, D3D_FEATURE_LEVEL_11_1 };
-   DXGI_FORMAT                     bbFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
-
-//   cui32 flags = (NDEBUG ? NULL : D3D11_CREATE_DEVICE_DEBUG);
-   cui32 flags = (NDEBUG ? D3D11_CREATE_DEVICE_SINGLETHREADED : D3D11_CREATE_DEVICE_SINGLETHREADED | D3D11_CREATE_DEVICE_DEBUG);// | D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS);
-
-   ui32  msaaQlevel[33]     = {};
-   ui32  uiMSAA             = 1;
-   si8   currentWindowState = -1;
-
-///--- Add booleans for selectively enabling each sub-class ---///
-   CLASS_GPU(CLASS_FILEOPS &fileOps) : files(fileOps) {
-      Try(stCreateDev, D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, flags, &d3dFL[1], 3, D3D11_SDK_VERSION, &dev, &d3dFL[0], &devcon[0]), ss_video);
+      Try(stCreateDev, D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, flags, &data.d3DFL[1], 3, D3D11_SDK_VERSION, &dev, &data.d3DFL[0], &devcon[0]), ss_video);
       Try(stQueryInt, dev->QueryInterface(__uuidof(IDXGIDevice4), (void **)&dxgiDev), ss_video);
       Try(stDevGetPar, dxgiDev->GetParent(__uuidof(IDXGIAdapter3), (void **)&dxgiAdapter), ss_video);
       Try(stAdaGetPar, dxgiAdapter->GetParent(__uuidof(IDXGIFactory4), (void **)&factory), ss_video);
 
 //      dxgiDev->SetGPUThreadPriority(7);
 
-#ifdef AE_PTR_LIB
-      ptrLib[0] = &files;
-      ptrLib[1] = this;
-#endif
       cfg.dev = buf.dev = cam.dev = lit.dev = tex.dev = ren.dev = dev;
       cfg.devcon = buf.devcon = cam.devcon = lit.devcon = tex.devcon = ren.devcon = devcon;
       ren.bufVertex = buf.CreateVertex(&ren.vCube, sizeof(ren.vCube), 1, 1);
       GetCurrentDirectoryW(512, files.pathWorking);
       mset(cfg.shaderIndex, sizeof(ui8[6][CFG_MAX_SHADERS]), ui8(CFG_MAX_SHADERS - 1));   // Default all indices to unused
    }
+public:
+   CLASS_GPU(CLASS_FILEOPS &fileOps) : files(fileOps) { _CLASS_GPU_INIT(); }
+   CLASS_GPU(CLASS_FILEOPS &fileOps, cptrptr globalPointer) : files(fileOps) { _CLASS_GPU_INIT(); if(globalPointer) *globalPointer = this; }
 
    HWND CreateRenderWindow(void) const {
       al8  HWND       hWindow;
@@ -126,173 +125,175 @@ al64 struct CLASS_GPU {
       else while(ShowCursor(false) >= 0) ShowCursor(false);
    }
 
+///--- !!! Rewrite based on new version below !!!
    HANDLE InitialiseBackbuffer(cHWND hWindow, cfl32 width, cfl32 height, cfl32 gamma, cui32 formatBackBuffer, cui32 formatDepthBuffer, cui8 msaa, cui8 msaaQuality, cui8 swapBuffers, cAE_WINDOW_STATE windowState) {
       for(ui8 xx = 1; xx < 33; xx++)
-         Try(stCheckMSQL, dev->CheckMultisampleQualityLevels((DXGI_FORMAT)formatBackBuffer, xx, &msaaQlevel[xx]), ss_video);
-      scd1.Width       = (UINT)width;
-      scd1.Height      = (UINT)height;
-      scd1.Format      = (DXGI_FORMAT)formatBackBuffer;
-      scd1.Stereo      = 0;
-      scd1.SampleDesc  = { msaa, (msaaQuality >= msaaQlevel[msaa] ? msaaQlevel[msaa] : msaaQuality - 1) };
-      scd1.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-      scd1.BufferCount = swapBuffers;
-      scd1.Scaling     = DXGI_SCALING_NONE;
-      scd1.SwapEffect  = (msaa > 1 ? DXGI_SWAP_EFFECT_DISCARD : DXGI_SWAP_EFFECT_FLIP_DISCARD);
-//      scd1.SwapEffect  = (msaa > 1 ? DXGI_SWAP_EFFECT_DISCARD : DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
-      scd1.AlphaMode   = DXGI_ALPHA_MODE_UNSPECIFIED;
-//      scd1.Flags       = NULL;
-      scd1.Flags       = (windowState <= 1 ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT : DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
-      scfd.RefreshRate      = { 0, 1 };
-      scfd.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-      scfd.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED; //STRETCHED;
-      scfd.Windowed         = (windowState > 1 ? false : true);
+         Try(stCheckMSQL, dev->CheckMultisampleQualityLevels((DXGI_FORMAT)formatBackBuffer, xx, &data.msaaQlevel[xx]), ss_video);
+      data.scd1.Width       = (UINT)width;
+      data.scd1.Height      = (UINT)height;
+      data.scd1.Format      = (DXGI_FORMAT)formatBackBuffer;
+      data.scd1.Stereo      = 0;
+      data.scd1.SampleDesc  = { msaa, (msaaQuality >= data.msaaQlevel[msaa] ? data.msaaQlevel[msaa] : msaaQuality - 1) };
+      data.scd1.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+      data.scd1.BufferCount = swapBuffers;
+      data.scd1.Scaling     = DXGI_SCALING_NONE;
+      data.scd1.SwapEffect  = (msaa > 1 ? DXGI_SWAP_EFFECT_DISCARD : DXGI_SWAP_EFFECT_FLIP_DISCARD);
+//      data.scd1.SwapEffect  = (msaa > 1 ? DXGI_SWAP_EFFECT_DISCARD : DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
+      data.scd1.AlphaMode   = DXGI_ALPHA_MODE_UNSPECIFIED;
+//      data.scd1.Flags       = NULL;
+      data.scd1.Flags       = (windowState <= 1 ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT : DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+      data.scfd.RefreshRate      = { 0, 1 };
+      data.scfd.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+      data.scfd.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED; //STRETCHED;
+      data.scfd.Windowed         = (windowState > 1 ? false : true);
 
-      Try(stCreateSCFH, factory->CreateSwapChainForHwnd(dev, hWindow, &scd1, &scfd, NULL, (IDXGISwapChain1 **)&swapchain), ss_video);
+      Try(stCreateSCFH, factory->CreateSwapChainForHwnd(dev, hWindow, &data.scd1, &data.scfd, NULL, (IDXGISwapChain1 **)&ren.swapchain), ss_video);
       Try(stMakeWinAss, factory->MakeWindowAssociation(hWindow, DXGI_MWA_NO_ALT_ENTER), ss_video);
-      Try(stSetMaxFLat, swapchain->SetMaximumFrameLatency(swapBuffers - 1), ss_video);
+      Try(stSetMaxFLat, ren.swapchain->SetMaximumFrameLatency(swapBuffers - 1), ss_video);
 
-      td.Width      = (UINT)width;
-      td.Height     = (UINT)height;
-      td.MipLevels  = 1;
-      td.ArraySize  = 1;
-      td.Format     = (DXGI_FORMAT)formatDepthBuffer;
-      td.SampleDesc = { msaa, (msaaQuality > msaaQlevel[msaa] ? msaaQlevel[msaa] : msaaQuality) };
-      td.Usage      = D3D11_USAGE_DEFAULT;
-      td.BindFlags  = D3D11_BIND_DEPTH_STENCIL;
-      Try(stCreateTex2D, dev->CreateTexture2D(&td, NULL, &pDepthBuffer[0]), ss_video);
+      data.td.Width      = (UINT)width;
+      data.td.Height     = (UINT)height;
+      data.td.MipLevels  = 1;
+      data.td.ArraySize  = 1;
+      data.td.Format     = (DXGI_FORMAT)formatDepthBuffer;
+      data.td.SampleDesc = { msaa, (msaaQuality > data.msaaQlevel[msaa] ? data.msaaQlevel[msaa] : msaaQuality) };
+      data.td.Usage      = D3D11_USAGE_DEFAULT;
+      data.td.BindFlags  = D3D11_BIND_DEPTH_STENCIL;
+      Try(stCreateTex2D, dev->CreateTexture2D(&data.td, NULL, &ren.pDepthBuffer[0]), ss_video);
 
-      Try(stResizeTar, swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (ptrptr)&pBackBuffer[0]), ss_video);
-      Try(stCreateRTV, dev->CreateRenderTargetView(pBackBuffer[0], NULL, &rtvBackBuffer[0]), ss_video);
-      pBackBuffer[0]->Release();
+      Try(stResizeTar, ren.swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (ptrptr)&ren.pBackBuffer[0]), ss_video);
+      Try(stCreateRTV, dev->CreateRenderTargetView(ren.pBackBuffer[0], NULL, &ren.rtvBackBuffer), ss_video);
+      ren.pBackBuffer[0]->Release();
 
-      dsvd.Format             = (DXGI_FORMAT)formatDepthBuffer;
-      dsvd.ViewDimension      = D3D11_DSV_DIMENSION_TEXTURE2D;
-      dsvd.Texture2D.MipSlice = 0;
-      Try(stCreateDSV, dev->CreateDepthStencilView(pDepthBuffer[0], &dsvd, &pDSV), ss_video);
+      data.dsvd.Format             = (DXGI_FORMAT)formatDepthBuffer;
+      data.dsvd.ViewDimension      = D3D11_DSV_DIMENSION_TEXTURE2D;
+      data.dsvd.Texture2D.MipSlice = 0;
+      Try(stCreateDSV, dev->CreateDepthStencilView(ren.pDepthBuffer[0], &data.dsvd, &ren.pDSV), ss_video);
 
-      viewport.TopLeftX = 0;
-      viewport.TopLeftY = 0;
-      viewport.Width    = width;
-      viewport.Height   = height;
-      viewport.MinDepth = 0.0f;
-      viewport.MaxDepth = 1.0f;
-      devcon[0]->RSSetViewports(1, &viewport);
+      data.viewport.TopLeftX = 0;
+      data.viewport.TopLeftY = 0;
+      data.viewport.Width    = width;
+      data.viewport.Height   = height;
+      data.viewport.MinDepth = 0.0f;
+      data.viewport.MaxDepth = 1.0f;
+      devcon[0]->RSSetViewports(1, &data.viewport);
 
-      bbFormat = (DXGI_FORMAT)formatBackBuffer;
-      uiMSAA   = msaa;
+      data.bbFormat      = (DXGI_FORMAT)formatBackBuffer;
+      ren.msaaLevel = msaa;
 
-      return swapchain->GetFrameLatencyWaitableObject();
+      return ren.swapchain->GetFrameLatencyWaitableObject();
    };
 
+   // Multisampling supported
    HANDLE InitialiseBackbuffer(cHWND hWindow, RESOLUTION &resData, cAE_WINDOW_STATE windowState) {
       cRESDATA &curDimData = resData.dims[windowState];
 
-      for(ui8 xx = 1; xx < 33; xx++)
-         Try(stCheckMSQL, dev->CheckMultisampleQualityLevels((DXGI_FORMAT)curDimData.fmtBB, xx, &msaaQlevel[xx]), ss_video);
-      scd1.Width       = (UINT)curDimData.width;
-      scd1.Height      = (UINT)curDimData.height;
-      scd1.Format      = (DXGI_FORMAT)curDimData.fmtBB;
-      scd1.Stereo      = 0;
-      scd1.SampleDesc  = { (ui32)curDimData.msaa, (curDimData.msaaQ > msaaQlevel[curDimData.msaa] ? msaaQlevel[curDimData.msaa]: curDimData.msaaQ) };
-      scd1.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-      scd1.BufferCount = curDimData.buffers;
-      scd1.Scaling     = DXGI_SCALING_NONE;
-      scd1.SwapEffect  = (curDimData.msaa > 1 ? DXGI_SWAP_EFFECT_DISCARD : DXGI_SWAP_EFFECT_FLIP_DISCARD);
-//      scd1.SwapEffect  = (msaa > 1 ? DXGI_SWAP_EFFECT_DISCARD : DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
-      scd1.AlphaMode   = DXGI_ALPHA_MODE_UNSPECIFIED;
-//      scd1.Flags       = NULL;
-      scd1.Flags       = (windowState <= 1 ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT : DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
-      scfd.RefreshRate      = { 0, 1 };
-      scfd.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-      scfd.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED; //STRETCHED;
-      scfd.Windowed         = (windowState > 1 ? false : true);
+      for(ui8 xx = 1; xx <= 32; xx++)
+         Try(stCheckMSQL, dev->CheckMultisampleQualityLevels((DXGI_FORMAT)curDimData.fmtBB, xx, &data.msaaQlevel[xx - 1]), ss_video);
 
-      Try(stCreateSCFH, factory->CreateSwapChainForHwnd(dev, hWindow, &scd1, &scfd, NULL, (IDXGISwapChain1 **)&swapchain), ss_video);
+      data.scd1.Width       = (UINT)curDimData.width;
+      data.scd1.Height      = (UINT)curDimData.height;
+      data.scd1.Format      = (DXGI_FORMAT)curDimData.fmtBB;
+      data.scd1.Stereo      = 0;
+      data.scd1.SampleDesc  = { (ui32)curDimData.msaa, (curDimData.msaaQ > data.msaaQlevel[curDimData.msaa - 1] ? data.msaaQlevel[curDimData.msaa - 1] : curDimData.msaaQ) };
+      data.scd1.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+      data.scd1.BufferCount = curDimData.buffers;
+      data.scd1.Scaling     = (curDimData.msaa > 1 ? DXGI_SCALING_STRETCH : DXGI_SCALING_NONE);
+      data.scd1.SwapEffect  = (curDimData.msaa > 1 ? DXGI_SWAP_EFFECT_DISCARD : DXGI_SWAP_EFFECT_FLIP_DISCARD);
+      data.scd1.AlphaMode   = DXGI_ALPHA_MODE_UNSPECIFIED;
+      data.scd1.Flags       = (windowState <= 1 ? curDimData.msaa > 1 ? 0 : DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT : DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+
+      data.scfd.RefreshRate      = (DXGI_RATIONAL &)(VEC2Du32)resData.refreshRate;
+      data.scfd.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+      data.scfd.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED; //STRETCHED;
+      data.scfd.Windowed         = (windowState > 1 ? false : true);
+
+      Try(stCreateSCFH, factory->CreateSwapChainForHwnd(dev, hWindow, &data.scd1, &data.scfd, NULL, (IDXGISwapChain1 **)&ren.swapchain), ss_video);
       Try(stMakeWinAss, factory->MakeWindowAssociation(hWindow, DXGI_MWA_NO_ALT_ENTER), ss_video);
-      Try(stSetMaxFLat, swapchain->SetMaximumFrameLatency(curDimData.buffers - 1), ss_video);
+      Try(stSetMaxFLat, ren.swapchain->SetMaximumFrameLatency(curDimData.buffers - 1), ss_video);
 
-      td.Width      = (UINT)curDimData.width;
-      td.Height     = (UINT)curDimData.height;
-      td.MipLevels  = 1;
-      td.ArraySize  = 1;
-      td.Format     = (DXGI_FORMAT)curDimData.fmtDB;
-      td.SampleDesc = { (ui32)curDimData.msaa, (curDimData.msaaQ > msaaQlevel[curDimData.msaa] ? msaaQlevel[curDimData.msaa] : curDimData.msaaQ) };
-      td.Usage      = D3D11_USAGE_DEFAULT;
-      td.BindFlags  = D3D11_BIND_DEPTH_STENCIL;
-      Try(stCreateTex2D, dev->CreateTexture2D(&td, NULL, &pDepthBuffer[0]), ss_video);
+      data.td.Width      = (UINT)curDimData.width;
+      data.td.Height     = (UINT)curDimData.height;
+      data.td.MipLevels  = 1u;
+      data.td.ArraySize  = 1u;
+      data.td.Format     = (DXGI_FORMAT)curDimData.fmtDB;
+      data.td.SampleDesc = { (ui32)curDimData.msaa, (curDimData.msaaQ > data.msaaQlevel[curDimData.msaa - 1] ? data.msaaQlevel[curDimData.msaa - 1] : curDimData.msaaQ) };
+      data.td.Usage      = D3D11_USAGE_DEFAULT;
+      data.td.BindFlags  = D3D11_BIND_DEPTH_STENCIL;
+      Try(stCreateTex2D, dev->CreateTexture2D(&data.td, NULL, &ren.pDepthBuffer[0]), ss_video);
 
-      Try(stResizeTar, swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (ptrptr)&pBackBuffer[0]), ss_video);
-      Try(stCreateRTV, dev->CreateRenderTargetView(pBackBuffer[0], NULL, &rtvBackBuffer[0]), ss_video);
-      pBackBuffer[0]->Release();
+      Try(stResizeTar, ren.swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (ptrptr)&ren.pBackBuffer[0]), ss_video);
+      Try(stCreateRTV, dev->CreateRenderTargetView(ren.pBackBuffer[0], NULL, &ren.rtvBackBuffer), ss_video);
+      ren.pBackBuffer[0]->Release();
 
-      dsvd.Format             = (DXGI_FORMAT)curDimData.fmtDB;
-      dsvd.ViewDimension      = D3D11_DSV_DIMENSION_TEXTURE2D;
-      dsvd.Texture2D.MipSlice = 0;
-      Try(stCreateDSV, dev->CreateDepthStencilView(pDepthBuffer[0], &dsvd, &pDSV), ss_video);
+      data.dsvd.Format             = (DXGI_FORMAT)curDimData.fmtDB;
+      data.dsvd.ViewDimension      = (curDimData.msaa > 1 ? D3D11_DSV_DIMENSION_TEXTURE2DMS : D3D11_DSV_DIMENSION_TEXTURE2D);
+      data.dsvd.Texture2D.MipSlice = 0;
+      Try(stCreateDSV, dev->CreateDepthStencilView(ren.pDepthBuffer[0], &data.dsvd, &ren.pDSV), ss_video);
 
-      viewport.TopLeftX = 0;
-      viewport.TopLeftY = 0;
-      viewport.Width    = curDimData.width;
-      viewport.Height   = curDimData.height;
-      viewport.MinDepth = 0.0f;
-      viewport.MaxDepth = 1.0f;
-      devcon[0]->RSSetViewports(1, &viewport);
+      data.viewport.TopLeftX = 0;
+      data.viewport.TopLeftY = 0;
+      data.viewport.Width    = curDimData.width;
+      data.viewport.Height   = curDimData.height;
+      data.viewport.MinDepth = 0.0f;
+      data.viewport.MaxDepth = 1.0f;
+      devcon[0]->RSSetViewports(1, &data.viewport);
 
-      bbFormat = (DXGI_FORMAT)curDimData.fmtBB;
-      uiMSAA   = curDimData.msaa;
+      data.bbFormat      = (DXGI_FORMAT)curDimData.fmtBB;
+      ren.msaaLevel = curDimData.msaa;
 
       resData.state = windowState;
 
-      return swapchain->GetFrameLatencyWaitableObject();
+      return ren.swapchain->GetFrameLatencyWaitableObject();
    };
 
    void ResizeBackbuffer(cRESOLUTION &resData, cAE_WINDOW_STATE windowState) {
       cRESDATA &curDimData = resData.dims[windowState];
 
-      Try(stResizeTar, swapchain->ResizeTarget(&md), ss_video);
+      Try(stResizeTar, ren.swapchain->ResizeTarget(&data.md), ss_video);
       devcon[0]->OMSetRenderTargets(0, NULL, NULL);
-      rtvBackBuffer[0]->Release();
-      pDSV->Release();
-      Try(stSCResizeBuf, swapchain->ResizeBuffers(0, (UINT)curDimData.width, (UINT)curDimData.height, (DXGI_FORMAT)curDimData.fmtBB,
+      ren.rtvBackBuffer->Release();
+      ren.pDSV->Release();
+      Try(stSCResizeBuf, ren.swapchain->ResizeBuffers(0, (UINT)curDimData.width, (UINT)curDimData.height, (DXGI_FORMAT)curDimData.fmtBB,
                          (windowState <= 1 ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT : DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH)), ss_video);
 
-      td.Width      = (UINT)curDimData.width;
-      td.Height     = (UINT)curDimData.height;
-      td.MipLevels  = 1;
-      td.ArraySize  = 1;
-      td.Format     = (DXGI_FORMAT)curDimData.fmtDB;
-      td.SampleDesc = { (ui32)curDimData.msaa, (curDimData.msaaQ > msaaQlevel[curDimData.msaa] ? msaaQlevel[curDimData.msaa] : curDimData.msaaQ) };
-      td.Usage      = D3D11_USAGE_DEFAULT;
-      td.BindFlags  = D3D11_BIND_DEPTH_STENCIL;
-      Try(stCreateTex2D, dev->CreateTexture2D(&td, NULL, &pDepthBuffer[0]), ss_video);
+      data.td.Width      = (UINT)curDimData.width;
+      data.td.Height     = (UINT)curDimData.height;
+      data.td.MipLevels  = 1;
+      data.td.ArraySize  = 1;
+      data.td.Format     = (DXGI_FORMAT)curDimData.fmtDB;
+      data.td.SampleDesc = { (ui32)curDimData.msaa, (curDimData.msaaQ > data.msaaQlevel[curDimData.msaa] ? data.msaaQlevel[curDimData.msaa] : curDimData.msaaQ) };
+      data.td.Usage      = D3D11_USAGE_DEFAULT;
+      data.td.BindFlags  = D3D11_BIND_DEPTH_STENCIL;
+      Try(stCreateTex2D, dev->CreateTexture2D(&data.td, NULL, &ren.pDepthBuffer[0]), ss_video);
 
-      Try(stSCGetBuf, swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (ptrptr)&pBackBuffer[0]), ss_video);
-      Try(stCreateRTV, dev->CreateRenderTargetView(pBackBuffer[0], NULL, &rtvBackBuffer[0]), ss_video);
-      pBackBuffer[0]->Release();
+      Try(stSCGetBuf, ren.swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (ptrptr)&ren.pBackBuffer[0]), ss_video);
+      Try(stCreateRTV, dev->CreateRenderTargetView(ren.pBackBuffer[0], NULL, &ren.rtvBackBuffer), ss_video);
+      ren.pBackBuffer[0]->Release();
 
-      dsvd.Format             = (DXGI_FORMAT)curDimData.fmtDB;
-      dsvd.ViewDimension      = D3D11_DSV_DIMENSION_TEXTURE2D;
-      dsvd.Texture2D.MipSlice = 0;
-      Try(stCreateDSV, dev->CreateDepthStencilView(pDepthBuffer[0], &dsvd, &pDSV), ss_video);
+      data.dsvd.Format             = (DXGI_FORMAT)curDimData.fmtDB;
+      data.dsvd.ViewDimension      = (curDimData.msaa > 1 ? D3D11_DSV_DIMENSION_TEXTURE2DMS : D3D11_DSV_DIMENSION_TEXTURE2D);
+      data.dsvd.Texture2D.MipSlice = 0;
+      Try(stCreateDSV, dev->CreateDepthStencilView(ren.pDepthBuffer[0], &data.dsvd, &ren.pDSV), ss_video);
 
-      viewport.TopLeftX = 0;
-      viewport.TopLeftY = 0;
-      viewport.Width    = curDimData.width;
-      viewport.Height   = curDimData.height;
-      viewport.MinDepth = 0.0f;
-      viewport.MaxDepth = 1.0f;
-      devcon[0]->RSSetViewports(1, &viewport);
+      data.viewport.TopLeftX = 0;
+      data.viewport.TopLeftY = 0;
+      data.viewport.Width    = curDimData.width;
+      data.viewport.Height   = curDimData.height;
+      data.viewport.MinDepth = 0.0f;
+      data.viewport.MaxDepth = 1.0f;
+      devcon[0]->RSSetViewports(1, &data.viewport);
 
-      devcon[0]->OMSetRenderTargets(1, &rtvBackBuffer[0], pDSV);
+      devcon[0]->OMSetRenderTargets(1, &ren.rtvBackBuffer, ren.pDSV);
 
-      bbFormat = (DXGI_FORMAT)curDimData.fmtBB;
-      uiMSAA   = curDimData.msaa;
+      data.bbFormat      = (DXGI_FORMAT)curDimData.fmtBB;
+      ren.msaaLevel = curDimData.msaa;
    }
 
    void SetBorderedWindow(cHWND hWindow, RESOLUTION &resData) {
-      if(currentWindowState) {
+      if(curWinState) {
          if(resData.state == 2)
-            Try(stSetFullscr, swapchain->SetFullscreenState(false, NULL), ss_video);
+            Try(stSetFullscr, ren.swapchain->SetFullscreenState(false, NULL), ss_video);
          EnableWindow(hWindow, false);
          SetWindowLongPtrW(hWindow, GWL_EXSTYLE, WS_EX_NOREDIRECTIONBITMAP);
          SetWindowLongPtrW(hWindow, GWL_STYLE, WS_CAPTION | WS_MAXIMIZEBOX);
@@ -301,22 +302,22 @@ al64 struct CLASS_GPU {
          ShowWindow(hWindow, SW_SHOWNORMAL);
          EnableWindow(hWindow, true);
 
-         md.Width            = (UINT)resData.window.width;
-         md.Height           = (UINT)resData.window.height;
-         md.RefreshRate      = { 0, 1 };
-         md.Format           = bbFormat;
-         md.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-         md.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
-         currentWindowState  = resData.state = 0;
+         data.md.Width            = (UINT)resData.window.width;
+         data.md.Height           = (UINT)resData.window.height;
+         data.md.RefreshRate      = { 0, 1 };
+         data.md.Format           = data.bbFormat;
+         data.md.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+         data.md.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
+         curWinState         = resData.state = 0;
 
          ResizeBackbuffer(ScrRes, ae_windowed);
       }
    }
 
    void SetBorderlessWindow(cHWND hWindow, RESOLUTION &resData) {
-      if(currentWindowState != 1) {
+      if(curWinState != 1) {
          if(resData.state == 2)
-            Try(stSetFullscr, swapchain->SetFullscreenState(false, NULL), ss_video);
+            Try(stSetFullscr, ren.swapchain->SetFullscreenState(false, NULL), ss_video);
          EnableWindow(hWindow, false);
          SetWindowLongPtrW(hWindow, GWL_EXSTYLE, WS_EX_NOREDIRECTIONBITMAP | WS_EX_OVERLAPPEDWINDOW);
          SetWindowLongPtrW(hWindow, GWL_STYLE, NULL);
@@ -324,63 +325,46 @@ al64 struct CLASS_GPU {
          ShowWindow(hWindow, SW_SHOWNORMAL);
          EnableWindow(hWindow, true);
 
-         md.Width            = (UINT)resData.borderless.width;
-         md.Height           = (UINT)resData.borderless.height;
-         md.RefreshRate      = { 0, 1 };
-         md.Format           = bbFormat;
-         md.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-         md.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
-         currentWindowState  = resData.state = 1;
+         data.md.Width            = (UINT)resData.borderless.width;
+         data.md.Height           = (UINT)resData.borderless.height;
+         data.md.RefreshRate      = { 0, 1 };
+         data.md.Format           = data.bbFormat;
+         data.md.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+         data.md.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
+         curWinState         = resData.state = 1;
 
          ResizeBackbuffer(ScrRes, ae_borderless);
       }
    }
 
    void SetFullscreenWindow(cHWND hWindow, RESOLUTION &resData) {
-      if(currentWindowState != 2) {
+      if(curWinState != 2) {
          EnableWindow(hWindow, false);
          SetWindowLongPtrW(hWindow, GWL_EXSTYLE, WS_EX_NOREDIRECTIONBITMAP);
          SetWindowLongPtrW(hWindow, GWL_STYLE, NULL);
          SetWindowPos(hWindow, HWND_TOPMOST, 0, 0, (int)resData.full.width, (int)resData.full.height, SWP_NOMOVE | SWP_NOSIZE | SWP_DEFERERASE | SWP_NOCOPYBITS | SWP_NOREDRAW | SWP_FRAMECHANGED);
          ShowWindow(hWindow, SW_SHOWNORMAL);
          EnableWindow(hWindow, true);
-         Try(stSetFullscr, swapchain->SetFullscreenState(true, NULL), ss_video);
+         Try(stSetFullscr, ren.swapchain->SetFullscreenState(true, NULL), ss_video);
 
-         md.Width            = (UINT)resData.full.width;
-         md.Height           = (UINT)resData.full.height;
-         md.RefreshRate      = { 0, 1 };
-         md.Format           = bbFormat;
-         md.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-         md.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
-         currentWindowState  = resData.state = 2;
+         data.md.Width            = (UINT)resData.full.width;
+         data.md.Height           = (UINT)resData.full.height;
+         data.md.RefreshRate      = { 0, 1 };
+         data.md.Format           = data.bbFormat;
+         data.md.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+         data.md.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
+         curWinState         = resData.state = 2;
 
          ResizeBackbuffer(ScrRes, ae_fullscreen);
       }
    }
 
-   inline void ClearFlipRenderViews(cSSE4Df32 colour) const {
-      //al16 static ui32 page;
-      devcon[0]->OMSetRenderTargets(1, &rtvBackBuffer[0], pDSV);
-      devcon[0]->ClearRenderTargetView(rtvBackBuffer[0], (cfl32ptr)&colour);
-      devcon[0]->ClearDepthStencilView(pDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);
-      //page = (page + 1) & 0x01;
-   }
-
-   inline void PresentRenderTarget(const ui8 vsyncs) const {   // Add test for vsync enabled
-      Try(stSCPresent, (ScrRes.state != 2 ? swapchain->Present(0, DXGI_PRESENT_ALLOW_TEARING) : swapchain->Present(vsyncs, 0)), ss_video);
-//      static DXGI_PRESENT_PARAMETERS PP = { 0, NULL, NULL, NULL };
-//      Try(stSCPresent, (ScrRes.state != 2 ? swapchain->Present1(0, DXGI_PRESENT_ALLOW_TEARING, &PP) : swapchain->Present1(vsyncs, 0, &PP)));
-      sysData.gpu.total.frames++;
-      sysData.gpu.frame.prevDrawCalls = sysData.gpu.frame.curDrawCalls;
-      sysData.gpu.frame.curDrawCalls = 0;
-   }
-
    inline void DestroyBuffers(void) {
       for(ui8 xx = 0; xx < 2; xx++) {
-         if(pDSV) pDSV->Release();
-         if(rtvBackBuffer[xx]) rtvBackBuffer[xx]->Release();
-         if(pDepthBuffer[xx]) pDepthBuffer[xx]->Release();
-         if(pBackBuffer[xx]) pBackBuffer[xx]->Release();
+         if(ren.pDSV) ren.pDSV->Release();
+         if(ren.pDepthBuffer[xx]) ren.pDepthBuffer[xx]->Release();
+         if(ren.pBackBuffer[xx]) ren.pBackBuffer[xx]->Release();
       }
+      if(ren.rtvBackBuffer) ren.rtvBackBuffer->Release();
    }
 };

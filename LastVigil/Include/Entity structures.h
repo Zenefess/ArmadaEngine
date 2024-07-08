@@ -1,6 +1,6 @@
 /************************************************************
  * File: Entity structures.h            Created: 2022/12/05 *
- *                                Last modified: 2023/05/19 *
+ *                                Last modified: 2023/06/30 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -8,7 +8,7 @@
  ************************************************************/
 #pragma once
 
-#include "..\pch.h"
+#include "..\master header.h"
 
 // Header elements of immutable structured buffer for predefined objects
 al4 struct OBJECT_IGS {
@@ -187,8 +187,18 @@ al16 struct ENTITY_GROUP { // 112 bytes
    si32    maxBones;
 };
 
+// Paramters for queued rendering
+struct ENT_PARAMS {
+   csi32    (&gpuBuf)[4];
+   csi32    (&vertBuf)[MAX_ENT_LOD];
+   ui32ptrc (&visBuf)[MAX_ENT_LOD];
+   ui32     (&vertCounts)[];
+   cui8       levelsOfDetail;
+   cui8       context;
+};
+
 // Declarations for threaded culling functionality
-al32 struct ENTMAN_THREAD_DATA {
+al16 struct ENTMAN_THREAD_DATA {
    ENTITY_GROUP *group;
    union {
       ptr        p;
@@ -198,7 +208,7 @@ al32 struct ENTMAN_THREAD_DATA {
 };
 
 // Declarations for threaded culling functionality
-al32 struct ENTMAN_THREAD_DATAc {
+al16 struct ENTMAN_THREAD_DATAc {
    ENTITY_GROUP * const group;
    union {
       ptrc        p;
@@ -241,6 +251,11 @@ al32 union ENT_PTRSc {
 
 typedef       BONE_DGS            *       BONE_DGSptr;
 typedef       BONE_DGS            * const BONE_DGSptrc;
+typedef const ENT_PARAMS                  cENT_PARAMS;
+typedef       ENT_PARAMS          *       ENT_PARAMSptr;
+typedef const ENT_PARAMS          *       cENT_PARAMSptr;
+typedef       ENT_PARAMS          * const ENT_PARAMSptrc;
+typedef const ENT_PARAMS          * const cENT_PARAMSptrc;
 typedef const ENT_PTRS                    cENT_PTRS;
 typedef const ENT_PTRSc                   cENT_PTRSc;
 typedef       ENTMAN_THREAD_DATA  *       EMTDptr;
@@ -251,8 +266,16 @@ typedef       ENTMAN_THREAD_DATAc *       EMTDcptr;
 typedef       ENTMAN_THREAD_DATAc * const EMTDcptrc;
 typedef const ENTMAN_THREAD_DATAc *       cEMTDcptr;
 typedef const ENTMAN_THREAD_DATAc * const cEMTDcptrc;
-typedef const ENTITY_GROUP                cENTITY_GROUP;
 typedef const ENTITY                      cENTITY;
+typedef const ENTITY_GROUP                cENTITY_GROUP;
+typedef       ENTITY_GROUP        *       ENTITY_GROUPptr;
+typedef const ENTITY_GROUP        *       cENTITY_GROUPptr;
+typedef       ENTITY_GROUP        * const ENTITY_GROUPptrc;
+typedef const ENTITY_GROUP        * const cENTITY_GROUPptrc;
 typedef const OBJECT_GROUP                cOBJECT_GROUP;
+typedef       OBJECT_GROUP        *       OBJECT_GROUPptr;
+typedef const OBJECT_GROUP        *       cOBJECT_GROUPptr;
+typedef       OBJECT_GROUP        * const OBJECT_GROUPptrc;
+typedef const OBJECT_GROUP        * const cOBJECT_GROUPptrc;
 typedef       SPRITE_DPS          *       SPRITE_DPSptr;
 typedef       SPRITE_DPS          * const SPRITE_DPSptrc;

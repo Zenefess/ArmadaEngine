@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_lights.h                 Created: 2022/10/20 *
- *                                Last modified: 2024/06/15 *
+ *                                Last modified: 2024/07/02 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -10,7 +10,7 @@
 
 #include "Data structures.h"
 
-al16 struct CLASS_LIGHTS {
+al8 struct CLASS_LIGHTS {
    ID3D11Device         *dev;
    ID3D11DeviceContext **devcon;
 
@@ -29,6 +29,7 @@ al16 struct CLASS_LIGHTS {
 
       if(pCB) pCB->Release();
       totalLights += count;
+///--- Replace with .buf usage
       bd.ByteWidth = sizeof(CB_LIGHT) * totalLights;
       bd.Usage = D3D11_USAGE_DYNAMIC;
       bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;

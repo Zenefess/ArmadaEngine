@@ -1,13 +1,13 @@
 /************************************************************
  * File: Direct3D11 thread.cpp          Created: 2022/10/12 *
- *                               Code last mod.: 2024/06/24 *
+ *                               Code last mod.: 2024/07/04 *
  *                                                          *
  * Desc: Video rendering via Direct3D 11 API.               *
  *                                                          *
  * Copyright (c) David William Bull.   All rights reserved. *
  ************************************************************/
 
-#include "pch.h"
+#include "master header.h"
 #include "Direct3D11 thread.h"
 #include "Direct3D11 functions.h"
 #include "colours.h"
@@ -17,93 +17,94 @@
 #include "Armada Intelligence/GUI functions.h"
 #include "Armada Intelligence/class_gui.h"
 
- // For development only
-al32 struct GUI_SPRITE_DEFAULTS { cwchptrc name; cVEC4Df tc; cVEC2Df aa; } defaultUISprite[81] = {
-   { L"Opaque 2048x88r6", { 0.0f, 0.765625f, 1.0f, 0.80859375f }, { 2004.0f / 2048.0f, 44.0f / 88.0f } },                             // 0
-   { L"Opaque 1024x392r6", { 0.0f, 0.80859375f, 0.5f, 1.0f }, { 980.0f / 1024.0f, 348.0f / 392.0f } },
-   { L"Opaque 512x392r6", { 0.5f, 0.80859375f, 0.75f, 1.0f }, { 468.0f / 512.0f, 348.0f / 392.0f } },
-   { L"Opaque 256x392r6", { 0.75f, 0.80859375f, 0.875f, 1.0f }, { 212.0f / 256.0f, 348.0f / 392.0f } },
-   { L"Opaque 256x256r6", { 0.875f, 0.80859375f, 1.0f, 0.95703125f }, { 212.0f / 256.0f, 212.0 / 256.0f } },                          // 4
-   { L"Opaque 256x136r6", { 0.875f, 0.95703125f, 1.0f, 1.0f }, { 212.0f / 256.0f, 92.0f / 136.0f } },// TexCoord error
+ // For development only. Insert <0,0>~<1,1> into slot#0 for non-texture panels --- !!! Now obsolete !!!
+al32 struct GUI_SPRITE_DEFAULTS { cchptrc name; VEC4Df tc; VEC2Df aa; } defaultUISprite[82] = {
+   { "Procedural", { 0.0f, 0.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
+   { "Opaque 2048x88r6", { 0.0f, 0.765625f, 1.0f, 0.80859375f }, { 2004.0f / 2048.0f, 44.0f / 88.0f } },                             // 0
+   { "Opaque 1024x392r6", { 0.0f, 0.80859375f, 0.5f, 1.0f }, { 980.0f / 1024.0f, 348.0f / 392.0f } },
+   { "Opaque 512x392r6", { 0.5f, 0.80859375f, 0.75f, 1.0f }, { 468.0f / 512.0f, 348.0f / 392.0f } },
+   { "Opaque 256x392r6", { 0.75f, 0.80859375f, 0.875f, 1.0f }, { 212.0f / 256.0f, 348.0f / 392.0f } },
+   { "Opaque 256x256r6", { 0.875f, 0.80859375f, 1.0f, 0.93359375f }, { 212.0f / 256.0f, 212.0 / 256.0f } },                          // 4
+   { "Opaque 256x136r6", { 0.875f, 0.93359375f, 1.0f, 1.0f }, { 212.0f / 256.0f, 92.0f / 136.0f } },
 
-   { L"Transparent 1024x512r8", { 0.0f, 0.0f, 0.5f, 0.25f }, { 976.0f / 1024.0f, 464.0f / 512.0f } },
-   { L"Transparent 1024x256r8", { 0.0f, 0.25f, 0.5f, 0.375f }, { 976.0f / 1024.0f, 208.0f / 256.0f } },
-   { L"Transparent 1024x128r8", { 0.0f, 0.375f, 0.5f, 0.4375f }, { 976.0f / 1024.0f, 80.0f / 128.0f } },                            // 8
-   { L"Transparent 1024x64r4", { 0.0f, 0.4375f, 0.5f, 0.46875f }, { 984.0f / 1024.0f, 24.0f / 64.0f } },
-   { L"Transparent 1024x48r4", { 0.0f, 0.46875f, 0.5f, 0.5f }, { 984.0f / 1024.0f, 8.0f / 48.0f } },
-   { L"Transparent 512x1024r8", { 0.5f, 0.0f, 0.75f, 0.5f }, { 464.0f / 512.0f, 976.0f / 1024.0f } },
-   { L"Transparent 512x512r8", { 0.75f, 0.0f, 1.0f, 0.25f }, { 464.0f / 512.0f, 464.0f / 512.0f } },                                  // 12
-   { L"Transparent 256x512r8", { 0.75f, 0.25f, 0.875f, 0.5f }, { 208.0f / 256.0f, 464.0f / 512.0f } },
-   { L"Transparent 256x256r8", { 0.875f, 0.25f, 1.0f, 0.375f }, { 208.0f / 256.0f, 208.0f / 256.0f } },
-   { L"Transparent 256x128r8", { 0.875f, 0.375f, 1.0f, 0.4375f }, { 208.0f / 256.0f, 80.0f / 128.0f } },
-   { L"Transparent 128x128r8", { 0.875f, 0.4375f, 0.9375f, 0.5f }, { 80.0f / 128.0f, 80.0f / 128.0f } },                            // 16
-   { L"Transparent 128x64r4", { 0.9375f, 0.4375f, 1.0f, 0.46875f }, { 88.0f / 128.0f, 24.0f / 64.0f } },
-   { L"Transparent 128x48r4", { 0.9375f, 0.46875f, 1.0f, 0.5f }, { 88.0f / 128.0f, 8.0f / 48.0f } },
+   { "Transparent 1024x512r8", { 0.0f, 0.0f, 0.5f, 0.25f }, { 976.0f / 1024.0f, 464.0f / 512.0f } },
+   { "Transparent 1024x256r8", { 0.0f, 0.25f, 0.5f, 0.375f }, { 976.0f / 1024.0f, 208.0f / 256.0f } },
+   { "Transparent 1024x128r8", { 0.0f, 0.375f, 0.5f, 0.4375f }, { 976.0f / 1024.0f, 80.0f / 128.0f } },                            // 8
+   { "Transparent 1024x64r4", { 0.0f, 0.4375f, 0.5f, 0.46875f }, { 984.0f / 1024.0f, 24.0f / 64.0f } },
+   { "Transparent 1024x48r4", { 0.0f, 0.46875f, 0.5f, 0.5f }, { 984.0f / 1024.0f, 8.0f / 48.0f } },
+   { "Transparent 512x1024r8", { 0.5f, 0.0f, 0.75f, 0.5f }, { 464.0f / 512.0f, 976.0f / 1024.0f } },
+   { "Transparent 512x512r8", { 0.75f, 0.0f, 1.0f, 0.25f }, { 464.0f / 512.0f, 464.0f / 512.0f } },                                  // 12
+   { "Transparent 256x512r8", { 0.75f, 0.25f, 0.875f, 0.5f }, { 208.0f / 256.0f, 464.0f / 512.0f } },
+   { "Transparent 256x256r8", { 0.875f, 0.25f, 1.0f, 0.375f }, { 208.0f / 256.0f, 208.0f / 256.0f } },
+   { "Transparent 256x128r8", { 0.875f, 0.375f, 1.0f, 0.4375f }, { 208.0f / 256.0f, 80.0f / 128.0f } },
+   { "Transparent 128x128r8", { 0.875f, 0.4375f, 0.9375f, 0.5f }, { 80.0f / 128.0f, 80.0f / 128.0f } },                            // 16
+   { "Transparent 128x64r4", { 0.9375f, 0.4375f, 1.0f, 0.46875f }, { 88.0f / 128.0f, 24.0f / 64.0f } },
+   { "Transparent 128x48r4", { 0.9375f, 0.46875f, 1.0f, 0.5f }, { 88.0f / 128.0f, 8.0f / 48.0f } },
 
-   { L"Dark 1024x128r8", { 0.0f, 0.625f, 0.5f, 0.6875f }, { 976.0f / 1024.0f, 80.0f / 128.0f } },
-   { L"Dark 512x128r8", { 0.5f, 0.625f, 0.75f, 0.6875f }, { 464.0f / 512.0f, 80.0f / 128.0f } },                                     // 20
-   { L"Dark 256x128r8", { 0.75f, 0.625f, 0.875f, 0.6875f }, { 208.0f / 256.0f, 80.0f / 128.0f } },
-   { L"Dark 1024x96r8", { 0.0f, 0.6875f, 0.5f, 0.734375f }, { 976.0f / 1024.0f, 48.0f / 96.0f } },
-   { L"Dark 512x96r8", { 0.5f, 0.6875f, 0.75f, 0.734375f }, { 464.0f / 512.0f, 80.0f / 128.0f } },
-   { L"Dark 256x96r8", { 0.75f, 0.6875f, 0.875f, 0.734375f }, { 208.0f / 256.0f, 48.0f / 96.0f } },                                   // 24
-   { L"Dark 512x64r4", { 0.0f, 0.734375f, 0.25f, 0.765625f }, { 472.0f / 512.0f, 24.0f / 64.0f } },
-   { L"Dark 256x64r4", { 0.25f, 0.734375f, 0.375f, 0.765625f }, { 216.0f / 256.0f, 24.0f / 64.0f } },
-   { L"Dark 128x64r4", { 0.375f, 0.734375f, 0.4375f, 0.765625f }, { 88.0f / 128.0f, 24.0f / 64.0f } },
-   { L"Dark 504x32r2", { 0.501953125f, 0.736328125f, 0.748046875f, 0.751953125f }, { 480.0f / 504.0f, 12.0f / 32.0f } },              // 28
-   { L"Dark 248x32r2", { 0.751953125f, 0.736328125f, 0.873046875f, 0.751953125f }, { 224.0f / 248.0f, 12.0f / 32.0f } },
-   { L"Dark 120x32r2", { 0.876953125f, 0.736328125f, 0.935546875f, 0.751953125f }, { 96.0f / 120.0f, 12.0f / 32.0f } },
-   { L"Dark 504x24r2", { 0.501953125f, 0.751953125f, 0.748046875f, 0.763671875f }, { 480.0f / 504.0f, 4.0f / 24.0f } },
-   { L"Dark 248x24r2", { 0.751953125f, 0.751953125f, 0.873046875f, 0.763671875f }, { 224.0f / 248.0f, 4.0f / 24.0f } },              // 32
-   { L"Dark 120x24r2", { 0.876953125f, 0.751953125f, 0.935546875f, 0.763671875f }, { 96.0f / 120.0f, 4.0f / 24.0f } },
+   { "Dark 1024x128r8", { 0.0f, 0.625f, 0.5f, 0.6875f }, { 976.0f / 1024.0f, 80.0f / 128.0f } },
+   { "Dark 512x128r8", { 0.5f, 0.625f, 0.75f, 0.6875f }, { 464.0f / 512.0f, 80.0f / 128.0f } },                                     // 20
+   { "Dark 256x128r8", { 0.75f, 0.625f, 0.875f, 0.6875f }, { 208.0f / 256.0f, 80.0f / 128.0f } },
+   { "Dark 1024x96r8", { 0.0f, 0.6875f, 0.5f, 0.734375f }, { 976.0f / 1024.0f, 48.0f / 96.0f } },
+   { "Dark 512x96r8", { 0.5f, 0.6875f, 0.75f, 0.734375f }, { 464.0f / 512.0f, 80.0f / 128.0f } },
+   { "Dark 256x96r8", { 0.75f, 0.6875f, 0.875f, 0.734375f }, { 208.0f / 256.0f, 48.0f / 96.0f } },                                   // 24
+   { "Dark 512x64r4", { 0.0f, 0.734375f, 0.25f, 0.765625f }, { 472.0f / 512.0f, 24.0f / 64.0f } },
+   { "Dark 256x64r4", { 0.25f, 0.734375f, 0.375f, 0.765625f }, { 216.0f / 256.0f, 24.0f / 64.0f } },
+   { "Dark 128x64r4", { 0.375f, 0.734375f, 0.4375f, 0.765625f }, { 88.0f / 128.0f, 24.0f / 64.0f } },
+   { "Dark 504x32r2", { 0.501953125f, 0.736328125f, 0.748046875f, 0.751953125f }, { 480.0f / 504.0f, 12.0f / 32.0f } },              // 28
+   { "Dark 248x32r2", { 0.751953125f, 0.736328125f, 0.873046875f, 0.751953125f }, { 224.0f / 248.0f, 12.0f / 32.0f } },
+   { "Dark 120x32r2", { 0.876953125f, 0.736328125f, 0.935546875f, 0.751953125f }, { 96.0f / 120.0f, 12.0f / 32.0f } },
+   { "Dark 504x24r2", { 0.501953125f, 0.751953125f, 0.748046875f, 0.763671875f }, { 480.0f / 504.0f, 4.0f / 24.0f } },
+   { "Dark 248x24r2", { 0.751953125f, 0.751953125f, 0.873046875f, 0.763671875f }, { 224.0f / 248.0f, 4.0f / 24.0f } },              // 32
+   { "Dark 120x24r2", { 0.876953125f, 0.751953125f, 0.935546875f, 0.763671875f }, { 96.0f / 120.0f, 4.0f / 24.0f } },
 
-   { L"ButtonUp 1024x128r8", { 0.0f, 0.5f, 0.5f, 0.5625f }, { 976.0f / 1024.0f, 80.0f / 128.0f } },
-   { L"ButtonDn 1024x128r8", { 0.5f, 0.5f, 1.0f, 0.5625f }, { 976.0f / 1024.0f, 80.0f / 128.0f } },
-   { L"ButtonUp 512x128r8", { 0.0f, 0.5625f, 0.25f, 0.625f }, { 464.0f / 512.0f, 80.0f / 128.0f } },                                 // 36
-   { L"ButtonDn 512x128r8", { 0.25f, 0.5625f, 0.5f, 0.625f }, { 464.0f / 512.0f, 80.0f / 128.0f } },
-   { L"ButtonUp 256x128r8", { 0.5f, 0.5625f, 0.625f, 0.625f }, { 208.0f / 256.0f, 80.0f / 128.0f } },
-   { L"ButtonDn 256x128r8", { 0.625f, 0.5625f, 0.75f, 0.625f }, { 208.0f / 256.0f, 80.0f / 128.0f } },
-   { L"ButtonUp 128x128r8", { 0.75f, 0.5625f, 0.8125f, 0.625f }, { 80.0f / 128.0f, 80.0f / 128.0f } },                              // 40
-   { L"ButtonDn 128x128r8", { 0.8125f, 0.5625f, 0.875f, 0.625f }, { 80.0f / 128.0f, 80.0f / 128.0f } },
-   { L"ButtonUp 128x64r4", { 0.875f, 0.5625f, 0.9375f, 0.59375f }, { 88.0f / 128.0f, 24.0f / 64.0f } },
-   { L"ButtonDn 128x64r4", { 0.9375f, 0.5625f, 1.0f, 0.59375f }, { 88.0f / 128.0f, 24.0f / 64.0f } },
-   { L"ButtonUp 64x64r4", { 0.875f, 0.59375f, 0.90625f, 0.625f }, { 24.0f / 64.0f, 24.0f / 64.0f } },                                 // 44
-   { L"ButtonDn 64x64r4", { 0.90625f, 0.59375f, 0.9375f, 0.625f }, { 24.0f / 64.0f, 24.0f / 64.0f } },
-   { L"ButtonUp 56x32r2", { 0.939453125f, 0.595703125f, 0.966796875f, 0.611328125f }, { 32.0f / 56.0f, 12.0f / 32.0f } },
-   { L"ButtonDn 56x32r2", { 0.970703125f, 0.595703125f, 0.998046875f, 0.611328125f }, { 32.0f / 56.0f, 12.0f / 32.0f } },
-   { L"ButtonUp 56x24r2", { 0.939453125f, 0.611328125f, 0.966796875f, 0.623046875f }, { 32.0f / 56.0f, 4.0f / 24.0f } },             // 48
-   { L"ButtonDn 56x24r2", { 0.970703125f, 0.611328125f, 0.998046875f, 0.623046875f }, { 32.0f / 56.0f, 4.0f / 24.0f } },
+   { "ButtonUp 1024x128r8", { 0.0f, 0.5f, 0.5f, 0.5625f }, { 976.0f / 1024.0f, 80.0f / 128.0f } },
+   { "ButtonDn 1024x128r8", { 0.5f, 0.5f, 1.0f, 0.5625f }, { 976.0f / 1024.0f, 80.0f / 128.0f } },
+   { "ButtonUp 512x128r8", { 0.0f, 0.5625f, 0.25f, 0.625f }, { 464.0f / 512.0f, 80.0f / 128.0f } },                                 // 36
+   { "ButtonDn 512x128r8", { 0.25f, 0.5625f, 0.5f, 0.625f }, { 464.0f / 512.0f, 80.0f / 128.0f } },
+   { "ButtonUp 256x128r8", { 0.5f, 0.5625f, 0.625f, 0.625f }, { 208.0f / 256.0f, 80.0f / 128.0f } },
+   { "ButtonDn 256x128r8", { 0.625f, 0.5625f, 0.75f, 0.625f }, { 208.0f / 256.0f, 80.0f / 128.0f } },
+   { "ButtonUp 128x128r8", { 0.75f, 0.5625f, 0.8125f, 0.625f }, { 80.0f / 128.0f, 80.0f / 128.0f } },                              // 40
+   { "ButtonDn 128x128r8", { 0.8125f, 0.5625f, 0.875f, 0.625f }, { 80.0f / 128.0f, 80.0f / 128.0f } },
+   { "ButtonUp 128x64r4", { 0.875f, 0.5625f, 0.9375f, 0.59375f }, { 88.0f / 128.0f, 24.0f / 64.0f } },
+   { "ButtonDn 128x64r4", { 0.9375f, 0.5625f, 1.0f, 0.59375f }, { 88.0f / 128.0f, 24.0f / 64.0f } },
+   { "ButtonUp 64x64r4", { 0.875f, 0.59375f, 0.90625f, 0.625f }, { 24.0f / 64.0f, 24.0f / 64.0f } },                                 // 44
+   { "ButtonDn 64x64r4", { 0.90625f, 0.59375f, 0.9375f, 0.625f }, { 24.0f / 64.0f, 24.0f / 64.0f } },
+   { "ButtonUp 56x32r2", { 0.939453125f, 0.595703125f, 0.966796875f, 0.611328125f }, { 32.0f / 56.0f, 12.0f / 32.0f } },
+   { "ButtonDn 56x32r2", { 0.970703125f, 0.595703125f, 0.998046875f, 0.611328125f }, { 32.0f / 56.0f, 12.0f / 32.0f } },
+   { "ButtonUp 56x24r2", { 0.939453125f, 0.611328125f, 0.966796875f, 0.623046875f }, { 32.0f / 56.0f, 4.0f / 24.0f } },             // 48
+   { "ButtonDn 56x24r2", { 0.970703125f, 0.611328125f, 0.998046875f, 0.623046875f }, { 32.0f / 56.0f, 4.0f / 24.0f } },
 
-   { L"Indicator 128r8", { 0.875f, 0.625f, 0.890625f, 0.6875f }, { 0.5f, 0.75f } },
-   { L"Indicator 96r8", { 0.890625f, 0.625f, 0.90625f, 0.6875f }, { 0.5f, 64.0f / 96.0f } },
-   { L"Indicator 80r8", { 0.875f, 0.6875f, 0.890625f, 0.734375f }, { 0.5f, 48.0f / 80.0f } },                                         // 52
-   { L"Indicator 64r8", { 0.890625f, 0.6875f, 0.90625f, 0.734375f }, { 0.5f, 0.5f } },
-   { L"Indicator 104r4", { 0.90625f, 0.625f, 0.921875f, 0.6875f }, { 0.25f, 80.0f / 104.0f } },
-   { L"Indicator 88r4", { 0.921875f, 0.625f, 0.9375f, 0.6875f }, { 0.25f, 64.0f / 88.0f } },
-   { L"Indicator 72r4", { 0.9375f, 0.625f, 0.953125f, 0.6875f }, { 0.25f, 48.0f / 72.0f } },                                          // 56
-   { L"Indicator 72r4 #2", { 0.90625f, 0.6875f, 0.921875f, 0.734375f }, { 0.25f, 48.0f / 72.0f } },
-   { L"Indicator 64r4", { 0.921875f, 0.6875f, 0.9375f, 0.734375f }, { 0.25f, 40.0f / 64.0f } },
-   { L"Indicator 64r4 #2", { 0.43798828125f, 0.734375f, 0.44970703125f, 0.765625f }, { 0.25f, 40.0f / 64.0f } },
-   { L"Indicator 48r4", { 0.9375f, 0.6875f, 0.953125f, 0.734375f }, { 0.25f, 24.0f / 48.0f } },                                       // 60
-   { L"Indicator 48r4 #2", { 0.44970703125f, 0.73828125f, 0.46142578125f, 0.76171875f }, { 0.25f, 24.0f / 48.0f } },
-   { L"Indicator 84r2", { 0.9541015625f, 0.6357421875f, 0.96875f, 0.6767578125f }, { 0.125f, 60.0f / 84.0f } },
-   { L"Indicator 52r2", { 0.9541015625f, 0.6982421875f, 0.96875f, 0.7236328125f }, { 0.125f, 32.0f / 52.0f } },
-   { L"Indicator 52r2 #2", { 0.46142578125f, 0.736328125f, 0.47314453125f, 0.763671875f }, { 0.125f, 32.0f / 52.0f } },               // 64
-   { L"Indicator 40r2", { 0.9375f, 0.736328125f, 0.953125f, 0.751953125f }, { 0.125f, 20.0f / 40.0f } },
-   { L"Indicator 36r2", { 0.47314453125f, 0.7412109375f, 0.48486328125f, 0.7587890625f }, { 0.125f, 26.0f / 36.0f } },
-   { L"Indicator 32r2", { 0.95166015625f, 0.736328125f, 0.96337890625f, 0.751953125f }, { 0.125f, 12.0f / 32.0f } },
-   { L"Indicator 32r2 #2", { 0.94189453125f, 0.751953125f, 0.94970703125f, 0.763671875f }, { 0.125f, 12.0f / 32.0f } },               // 68
-   { L"Indicator 24r2", { 0.95361328125f, 0.75390625f, 0.96142578125f, 0.76171875f }, { 0.125f, 4.0f / 24.0f } },
-   { L"Indicator 34r1", { 0.96533203125f, 0.736328125f, 0.97314453125f, 0.751953125f }, { 0.0625f, 16.0f / 34.0f } },
-   { L"Indicator 30r1", { 0.97705078125f, 0.73828125f, 0.98486328125f, 0.75f }, { 0.0625f, 12.0f / 30.0f } },
-   { L"Indicator 26r1", { 0.96533203125f, 0.751953125f, 0.97314453125f, 0.763671875f }, { 0.0625f, 8.0f / 26.0f } },                  // 72
-   { L"Indicator 22r1", { 0.97802734375f, 0.75390625f, 0.98388671875f, 0.76171875f }, { 0.0625f, 4.0f / 22.0f } },
-   { L"Indicator 96r8pin #1", { 0.96923828125f, 0.6328125f, 0.98486328125f, 0.6796875f }, { 0.25f, 78.0f / 96.0f } },
-   { L"Indicator 96r8pin #2", { 0.98486328125f, 0.6328125f, 1.0f, 0.6796875f }, { 0.25f, 78.0f / 96.0f } },
-   { L"Indicator 64r8pin #1", { 0.96923828125f, 0.6953125f, 0.98486328125f, 0.7265625f }, { 0.25f, 44.0f / 64.0f } },                 // 76
-   { L"Indicator 64r8pin #2", { 0.984375f, 0.6875f, 1.0f, 0.734375f }, { 0.25f, 44.0f / 64.0f } },
-   { L"Indicator 56r5pin", { 0.48388671875f, 0.73828125f, 0.49755859375f, 0.76171875f }, { 20.0f / 32.0f, 38.0f / 56.0f } },
-   { L"Indicator 34r3.5pin", { 0.98876953125f, 0.7373046875f, 0.99658203125f, 0.7509765625f }, { 14.0f / 32.0f, 16.3858f / 34.0f } },
-   { L"Indicator 26r3.5pin", { 0.98876953125f, 0.7529296875f, 0.99658203125f, 0.7626953125f }, { 14.0f / 32.0f, 8.3858f / 26.0f } }   // 80
+   { "Indicator 128r8", { 0.875f, 0.625f, 0.890625f, 0.6875f }, { 0.5f, 0.75f } },
+   { "Indicator 96r8", { 0.890625f, 0.625f, 0.90625f, 0.6875f }, { 0.5f, 64.0f / 96.0f } },
+   { "Indicator 80r8", { 0.875f, 0.6875f, 0.890625f, 0.734375f }, { 0.5f, 48.0f / 80.0f } },                                         // 52
+   { "Indicator 64r8", { 0.890625f, 0.6875f, 0.90625f, 0.734375f }, { 0.5f, 0.5f } },
+   { "Indicator 104r4", { 0.90625f, 0.625f, 0.921875f, 0.6875f }, { 0.25f, 80.0f / 104.0f } },
+   { "Indicator 88r4", { 0.921875f, 0.625f, 0.9375f, 0.6875f }, { 0.25f, 64.0f / 88.0f } },
+   { "Indicator 72r4", { 0.9375f, 0.625f, 0.953125f, 0.6875f }, { 0.25f, 48.0f / 72.0f } },                                          // 56
+   { "Indicator 72r4 #2", { 0.90625f, 0.6875f, 0.921875f, 0.734375f }, { 0.25f, 48.0f / 72.0f } },
+   { "Indicator 64r4", { 0.921875f, 0.6875f, 0.9375f, 0.734375f }, { 0.25f, 40.0f / 64.0f } },
+   { "Indicator 64r4 #2", { 0.43798828125f, 0.734375f, 0.44970703125f, 0.765625f }, { 0.25f, 40.0f / 64.0f } },
+   { "Indicator 48r4", { 0.9375f, 0.6875f, 0.953125f, 0.734375f }, { 0.25f, 24.0f / 48.0f } },                                       // 60
+   { "Indicator 48r4 #2", { 0.44970703125f, 0.73828125f, 0.46142578125f, 0.76171875f }, { 0.25f, 24.0f / 48.0f } },
+   { "Indicator 84r2", { 0.9541015625f, 0.6357421875f, 0.96875f, 0.6767578125f }, { 0.125f, 60.0f / 84.0f } },
+   { "Indicator 52r2", { 0.9541015625f, 0.6982421875f, 0.96875f, 0.7236328125f }, { 0.125f, 32.0f / 52.0f } },
+   { "Indicator 52r2 #2", { 0.46142578125f, 0.736328125f, 0.47314453125f, 0.763671875f }, { 0.125f, 32.0f / 52.0f } },               // 64
+   { "Indicator 40r2", { 0.9375f, 0.736328125f, 0.953125f, 0.751953125f }, { 0.125f, 20.0f / 40.0f } },
+   { "Indicator 36r2", { 0.47314453125f, 0.7412109375f, 0.48486328125f, 0.7587890625f }, { 0.125f, 26.0f / 36.0f } },
+   { "Indicator 32r2", { 0.95166015625f, 0.736328125f, 0.96337890625f, 0.751953125f }, { 0.125f, 12.0f / 32.0f } },
+   { "Indicator 32r2 #2", { 0.94189453125f, 0.751953125f, 0.94970703125f, 0.763671875f }, { 0.125f, 12.0f / 32.0f } },               // 68
+   { "Indicator 24r2", { 0.95361328125f, 0.75390625f, 0.96142578125f, 0.76171875f }, { 0.125f, 4.0f / 24.0f } },
+   { "Indicator 34r1", { 0.96533203125f, 0.736328125f, 0.97314453125f, 0.751953125f }, { 0.0625f, 16.0f / 34.0f } },
+   { "Indicator 30r1", { 0.97705078125f, 0.73828125f, 0.98486328125f, 0.75f }, { 0.0625f, 12.0f / 30.0f } },
+   { "Indicator 26r1", { 0.96533203125f, 0.751953125f, 0.97314453125f, 0.763671875f }, { 0.0625f, 8.0f / 26.0f } },                  // 72
+   { "Indicator 22r1", { 0.97802734375f, 0.75390625f, 0.98388671875f, 0.76171875f }, { 0.0625f, 4.0f / 22.0f } },
+   { "Indicator 96r8pin #1", { 0.96923828125f, 0.6328125f, 0.98486328125f, 0.6796875f }, { 0.25f, 78.0f / 96.0f } },
+   { "Indicator 96r8pin #2", { 0.98486328125f, 0.6328125f, 1.0f, 0.6796875f }, { 0.25f, 78.0f / 96.0f } },
+   { "Indicator 64r8pin #1", { 0.96923828125f, 0.6953125f, 0.98486328125f, 0.7265625f }, { 0.25f, 44.0f / 64.0f } },                 // 76
+   { "Indicator 64r8pin #2", { 0.984375f, 0.6875f, 1.0f, 0.734375f }, { 0.25f, 44.0f / 64.0f } },
+   { "Indicator 56r5pin", { 0.48388671875f, 0.73828125f, 0.49755859375f, 0.76171875f }, { 20.0f / 32.0f, 38.0f / 56.0f } },
+   { "Indicator 34r3.5pin", { 0.98876953125f, 0.7373046875f, 0.99658203125f, 0.7509765625f }, { 14.0f / 32.0f, 16.3858f / 34.0f } },
+   { "Indicator 26r3.5pin", { 0.98876953125f, 0.7529296875f, 0.99658203125f, 0.7626953125f }, { 14.0f / 32.0f, 8.3858f / 26.0f } }   // 80
 };
 
 // Memory location to write wheel tilt data to
@@ -118,16 +119,16 @@ al16 HWND    hWnd; // Main window's handle
      vui128  ENTMAN_THREAD_STATUS = {};
 
 // Early develepment only...
-RESOLUTION ScrRes = { 3600, 1600, 16.0f / 36.0f, 36.0f / 16.0f, 1.0f, DXGI_FORMAT_R10G10B10A2_UNORM, DXGI_FORMAT_D24_UNORM_S8_UINT, 1, 0, 8, NULL,
-                      3840, 2160, 9.0f / 16.0f, 16.0f / 9.0f, 1.0f, DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_D32_FLOAT, 1, 0, 8, NULL,
-                      3840, 2160, 9.0f / 16.0f, 16.0f / 9.0f, 2.2f, DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_D32_FLOAT, 1, 0, 8, NULL,
-                      120, 360, 0, 0, 0 };
+RESOLUTION ScrRes = { 3600, 1600, 16.0f / 36.0f, 36.0f / 16.0f, 1.0f, DXGI_FORMAT_R10G10B10A2_UNORM, DXGI_FORMAT_D24_UNORM_S8_UINT, 8, 1, 0,
+                      3840, 2160, 9.0f / 16.0f, 16.0f / 9.0f, 1.0f, DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_D32_FLOAT, 8, 1, 0,
+                      3840, 2160, 9.0f / 16.0f, 16.0f / 9.0f, 2.2f, DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_D32_FLOAT, 8, 1, 0,
+                      120, 360, 0, 0, 0, 0 };
 
 #include <dxgidebug.h>
 
 void Direct3D11Thread(ptr argList) {
-   CLASS_GPU gpu = files;
-   CLASS_GUI gui = { gpu, files };
+   CLASS_GPU gpu = { files, &ptrLib[2] };
+   CLASS_GUI gui = { files, gpu, &ptrLib[4] };
 
    CLASS_TIMER  frameTimer;
    CLASS_TIMERS animTimer;
@@ -135,11 +136,11 @@ void Direct3D11Thread(ptr argList) {
    GLOBALCTRLVARS gcvLocal = {};
    GLOBALCOORDS   gcoLocal = {};
 
-   HWND     hRndrWnd;
-   ui64     threadLife;
-   MARGINS  wndMargins     = { -1, -1, -1, -1 };
-   ui32     iTotalFrames   = 0;
-   ui32     iCurrentFrames = 0;
+   HWND    hRndrWnd;
+   ui64    threadLife;
+   MARGINS wndMargins     = { -1, -1, -1, -1 };
+   ui32    iTotalFrames   = 0;
+   ui32    iCurrentFrames = 0;
 
    // Prevent thread from shutting down (after engine reset)
    THREAD_LIFE &= ~VIDEO_THREAD_DIED;
@@ -173,12 +174,10 @@ Reinitialise_:
    gpu.cfg.CreateCullingState();
    gpu.cfg.SetCullingState(0, 0);
 
-   si32 siTextureSet[4];
-   gpu.tex.ConfigData(-1, -1, -1, 8, D3D11_USAGE_IMMUTABLE, false, false, true, false, false);
-   siTextureSet[0] = gpu.tex.LoadTextureSet(L"1024", SPRITE);
-   siTextureSet[1] = gpu.tex.LoadTextureSet(L"1024", TERRAIN);
-   gpu.tex.SetPS2D(0, siTextureSet[0], 20, 3);
-   gpu.tex.SetPS2D(0, siTextureSet[1], 16, 3);
+   gpu.tex.ConfigData(-1, -1, -1, 8u, D3D11_USAGE_IMMUTABLE, false, false, true, false, false);
+   csi32 siTextureSet[2] = { gpu.tex.LoadTextureSet(L"1024", TERRAIN), gpu.tex.LoadTextureSet(L"1024", SPRITE) };
+   gpu.tex.SetPS2D(0, siTextureSet[0], TEX_REG_OS_WORLD, 3u);
+   gpu.tex.SetPS2D(0, siTextureSet[1], TEX_REG_OS_WORLD + 4u, 3u);
 
    CLASS_MAPMAN      mapMan(gpu.files);
    CLASS_ENTMAN      entMan;
@@ -242,90 +241,119 @@ Reinitialise_:
 
    GUI_DESC gd(true);
 
-   cui32 uiAtlasIndex[2] = { gui.LoadAtlas(L"font.c_a_gatintas.eng", 80), gui.LoadAtlas(L"panels.blue_rust", 82) };
+//   cui32 uiAtlasIndex[2] = { gui.LoadAtlas(L"font.c_a_gatintas.eng", -1), gui.LoadAtlas(L"panels.blue_rust", -1) };
+//   cui32 uiAtlasIndex = { gui.LoadAtlas(L"font.c_a_gatintas.eng", -1) };//, gui.LoadAtlas(L"panels.blue_rust", -1) };
 
-   cui32 GUISprites = gui.CreateSpriteLibrary(0, 81, uiAtlasIndex[1]);
-   for(ui32 i = 0; i < 81; i++)
-      gui.CreateSprite(GUISprites, (GUI_SPRITE &)defaultUISprite[i], true);
+//   cui32 GUISprites = gui.CreateSpriteLibrary(0, 82, uiAtlasIndex[1]);
+//   for(ui32 i = 0; i < 82; i++)
+//      gui.CreateSprite(GUISprites, (GUI_SPRITE &)defaultUISprite[i], true);
+//      gui.CreateSprite(GUISprites, (CLASS_GUI::GUI_SPRITE_DEFAULTS &)defaultUISprite[i], true);
+//   gui.SaveSpriteLibrary(L"standard.blue_rust.aesl", GUISprites);
+//   csi16 alphabetIndex = gui.CreateAlphabet("Bogan", 16, 16, { 0.5f, 0.75f }, 0, uiAtlasIndex);
+//   gui.SaveAlphabet(L"main.english.aea", alphabetIndex);
+   csi16 spriteLibIndex = gui.LoadSpriteLibrary(L"standard.blue_rust.aesl", -1);
+   csi16 alphabetIndex  = gui.LoadAlphabet(L"main.english.aea", -1);
 
-   csi16 alphabetIndex = gui.CreateAlphabet(L"Bogan", 16, 16, { 0.5f, 0.75f }, 0, uiAtlasIndex[0]);
    gui.UploadAlphabetBuffer(0);
 
    cchptrc selectionBoxArray[10] = { stOnHoverDefault, stOffHoverDefault, stActivate00DefaultButton, stActivate01DefaultButton, stActivate00DefaultToggle, stActivate01DefaultToggle, stActivate00DefaultScalar, stActivate01DefaultScalar, stActivate10DefaultScalar, stActivate11DefaultScalar };
 
-   GUI_EL_DESC elementDesc = {};
+   al32 char textBuffer[4][128] = { "TR-X \1\2\3\4\5\6\7", "<Input list>", "Ya Mum!", "Eshay, bruh? Let's oge!" };
+
+   GUI_EL_DESC elementDesc;
 
    elementDesc.viewPos     = { 0.0f, 0.0f };
-   elementDesc.index       = { -1, alphabetIndex, 0, 12 };
-   elementDesc.size.panel  = { 1.0f, 1.0f };
-   elementDesc.size.text   = { 0.24f, 0.24f };
-   elementDesc.tint        = { c4_white, c4_white };
-   elementDesc.textArray   = (chptr *)selectionBoxArray;
-   elementDesc.stringCount = 10;
-   elementDesc.panel       = { UI_ALIGN_C, UI_PANEL };
-   elementDesc.text        = { UI_ALIGN_TL, UI_TEXTARRAY };
+   elementDesc.index       = { -1, alphabetIndex, 0, 13 };
+   elementDesc.panel.tint  = c4_white;
+   elementDesc.panel.size  = { 1.0f, 1.0f };
+   elementDesc.panel.align = UI_ALIGN_C;
+   elementDesc.panel.mods  = UI_PANEL;
+   elementDesc.text.tint   = c4_white;
+   elementDesc.text.size   = { 0.24f, 0.24f };
+   elementDesc.text.cArray = (chptr *)selectionBoxArray;
+   elementDesc.text.sCount = 10;
+   elementDesc.text.align  = UI_ALIGN_TL;
+   elementDesc.text.mods   = UI_TEXTARRAY;
    cVEC2Du32 panelElement2 = gui.CreateTextSelectionPanel(elementDesc);
-   elementDesc.viewPos    = { 0.0f, 0.0f };
-   elementDesc.index      = { -1, -1, 0, 34 };
-   elementDesc.size.panel = { 1.0f, 1.0f };
-   elementDesc.tint.panel = c4_white;
-   elementDesc.panel      = { UI_ALIGN_T, UI_PANEL ^ UI_TRANS };
+   elementDesc.viewPos     = { 0.0f, 0.0f };
+   elementDesc.index       = { -1, -1, 0, 35 };
+   elementDesc.panel.tint  = c4_white;
+   elementDesc.panel.size  = { 1.0f, 1.0f };
+   elementDesc.panel.align = UI_ALIGN_T;
+   elementDesc.panel.mods  = UI_PANEL ^ UI_TRANS;
    cui32 panelElement0 = gui.CreateToggle(elementDesc);
-   elementDesc.viewPos = { 0.0f, 0.5f };
-   elementDesc.index   = { -1, -1, 0, 20, 75 };
-   elementDesc.size    = { { 2.0f, 2.0f }, { 2.0f, 2.0f } };
-   elementDesc.tint    = { c4_white, c4_white };
-   elementDesc.panel   = { UI_ALIGN_L | UI_ALIGN_T, UI_PANEL };
-   elementDesc.cursor  = { UI_ALIGN_C, UI_CURSOR };
+   elementDesc.viewPos      = { 0.0f, 0.5f };
+   elementDesc.index        = { -1, -1, 0, 21, 76 };
+   elementDesc.panel.tint   = c4_white;
+   elementDesc.panel.size   = { 2.0f, 2.0f };
+   elementDesc.panel.align  = UI_ALIGN_L | UI_ALIGN_T;
+   elementDesc.panel.mods   = UI_PANEL;
+   elementDesc.cursor.tint  = c4_white;
+   elementDesc.cursor.size  = { 2.0f, 2.0f };
+   elementDesc.cursor.align = UI_ALIGN_C;
+   elementDesc.cursor.mods  = UI_CURSOR;
    cui32 panelElement1 = gui.CreateScalar(elementDesc);
-   elementDesc.viewPos    = { 0.0f, 0.25f };
-   elementDesc.index      = { -1, -1, 0, 34 };
-   elementDesc.size.panel = { 1.0f, 1.0f };
-   elementDesc.tint.panel = c4_white;
-   elementDesc.panel      = { UI_ALIGN_L | UI_ALIGN_T, UI_PANEL };
+   elementDesc.viewPos     = { 0.0f, 0.25f };
+   elementDesc.index       = { -1, -1, 0, 35 };
+   elementDesc.panel.tint  = c4_white;
+   elementDesc.panel.size  = { 1.0f, 1.0f };
+   elementDesc.panel.align = UI_ALIGN_L | UI_ALIGN_T;
+   elementDesc.panel.mods  = UI_PANEL;
    cui32 panelElement3 = gui.CreateButton(elementDesc);
-
-   al32 char textBuffer[128]   = "TR-X \1\2\3\4\5\6\7";
-        char textInputs[128]   = "<Input list>";
-        char textBoxText[128]  = "Ya Mum!";
-        char inputBoxText[128] = "Eshay, bruh? Let's oge!";
-
-   elementDesc.viewPos        = { 0.0f, 0.0f };
-   elementDesc.index.alphabet = alphabetIndex;
-   elementDesc.size.text      = { 0.0468757f, 0.0468757f };
-   elementDesc.tint.text      = c4_white;
-   elementDesc.textPtr        = textInputs;
-   elementDesc.charCount      = 128;
-   elementDesc.text           = { UI_ALIGN_TR, UI_TEXT ^ UI_TRANS };
-   cui32 textInputEl = gui.CreateText(elementDesc);
-   elementDesc.viewPos   = { 0.0f, -0.75f };
-   elementDesc.index     = { -1, alphabetIndex, 0, 20, 52 };
-   elementDesc.size      = { { 2.0f, 2.0f }, { 1.0f, 1.0f }, { 0.15f, 0.15f } };
-   elementDesc.tint      = { c4_white, c4_white, c4_white };
-   elementDesc.textPtr   = inputBoxText;
-   elementDesc.charCount = 128;
-   elementDesc.panel     = { UI_ALIGN_C, UI_PANEL };
-   elementDesc.cursor    = { UI_ALIGN_R, UI_CURSOR };
-   elementDesc.text      = { UI_ALIGN_L, UI_INPUT };
-   cVEC3Du32 inputBox = gui.CreateInputPanel(elementDesc);
-   elementDesc.viewPos    = { 0.0f, 0.0f };
-   elementDesc.index      = { -1, alphabetIndex, 0, 11 };
-   elementDesc.size.panel = { 1.0f, 1.0f };
-   elementDesc.size.text  = { 0.125f, 0.125f };
-   elementDesc.tint       = { c4_white, c4_white };
-   elementDesc.textPtr    = textBoxText;
-   elementDesc.charCount  = 128;
-   elementDesc.panel      = { UI_ALIGN_R, UI_PANEL };
-   elementDesc.text       = { UI_ALIGN_C, UI_ROT | UI_TRANS | UI_SCALE };
-   cVEC2Du32 textBox = gui.CreateTextPanel(elementDesc);
-   elementDesc.viewPos        = { 0.0f, 0.0f };
-   elementDesc.index.alphabet = alphabetIndex;
-   elementDesc.size.text      = { 0.0468757f, 0.0468757f };
-   elementDesc.tint.text      = c4_white;
-   elementDesc.textPtr        = textBuffer;
-   elementDesc.charCount      = 128;
-   elementDesc.text           = { UI_ALIGN_BL, UI_TEXT };
+   elementDesc.viewPos     = { 0.0f, 0.0f };
+   elementDesc.index       = { -1, alphabetIndex };
+   elementDesc.text.tint   = c4_white;
+   elementDesc.text.size   = { 0.0468757f, 0.0468757f };
+   elementDesc.text.cPtr   = textBuffer[0];
+   elementDesc.text.cCount = 128;
+   elementDesc.text.align  = UI_ALIGN_BL;
+   elementDesc.text.mods   = UI_TEXT;
    cui32 textElement = gui.CreateText(elementDesc);
+   elementDesc.viewPos     = { 0.0f, 0.0f };
+   elementDesc.index       = { -1, alphabetIndex };
+   elementDesc.text.tint   = c4_white;
+   elementDesc.text.size   = { 0.0468757f, 0.0468757f };
+   elementDesc.text.cPtr   = textBuffer[1];
+   elementDesc.text.cCount = 128;
+   elementDesc.text.align  = UI_ALIGN_TR;
+   elementDesc.text.mods   = UI_TEXT ^ UI_TRANS;
+   cui32 textInputEl = gui.CreateText(elementDesc);
+   elementDesc.viewPos        = { 0.0f, 0.0f };
+   elementDesc.index          = { -1, alphabetIndex, 0, 12 };
+   elementDesc.panel.tint     = c4_white;
+   elementDesc.panel.size     = { 1.0f, 1.0f };
+   elementDesc.panel.bStyle   = 1u;
+   elementDesc.panel.bSize    = 0.0125f;
+   elementDesc.panel.wOpacity = 1.0f - sqrtf(0.5f);
+   elementDesc.panel.wIndent  = { 1.0f, 1.0f };
+   elementDesc.panel.align    = UI_ALIGN_R;
+   elementDesc.panel.mods     = UI_PANEL;
+   elementDesc.text.tint      = c4_white;
+   elementDesc.text.size      = { 0.125f, 0.125f };
+   elementDesc.text.cPtr      = textBuffer[2];
+   elementDesc.text.cCount    = 128;
+   elementDesc.text.align     = UI_ALIGN_C;
+   elementDesc.text.mods      = UI_ROT | UI_TRANS | UI_SCALE_Y;
+   cVEC2Du32 textBox = gui.CreateTextPanel(elementDesc);
+   elementDesc.viewPos      = { 0.0f, -0.75f };
+   elementDesc.index        = { -1, alphabetIndex, 0, 21, 53 };
+   elementDesc.panel.tint   = c4_white;
+   elementDesc.panel.size   = { 2.0f, 2.0f };
+   elementDesc.panel.bStyle = 0;
+   elementDesc.panel.align  = UI_ALIGN_C;
+   elementDesc.panel.mods   = UI_PANEL;
+   elementDesc.cursor.tint  = c4_white;
+   elementDesc.cursor.size  = { 1.0f, 1.0f };
+   elementDesc.cursor.align = UI_ALIGN_R;
+   elementDesc.cursor.mods  = UI_CURSOR;
+   elementDesc.text.tint    = c4_white;
+   elementDesc.text.size    = { 0.15f, 0.15f };
+   elementDesc.text.cPtr    = textBuffer[3];
+   elementDesc.text.cCount  = 128;
+   elementDesc.text.align   = UI_ALIGN_L;
+   elementDesc.text.mods    = UI_INPUT;
+   cVEC3Du32 inputBox = gui.CreateInputPanel(elementDesc);
+   cui32 textElements[3] = { textElement, textInputEl, textBox.y };
 
    cui32 interfaceMain = gui.CreateInterface(128, 16);
    gui.AddElementToInterface(panelElement0, interfaceMain);
@@ -338,7 +366,6 @@ Reinitialise_:
    gui.AddElementToInterface(textInputEl, interfaceMain);
    gd.interfaceIndex = interfaceMain;
 
-   //   gpu.files.SaveAlphabetData(L"font.main.eng.cfg", english);
    //   gpu.files.SaveMap(L"test.aemap", mapMan.world[mapID]);
 
    gpu.lit.Create(0, 256, 0);
@@ -382,7 +409,7 @@ Reinitialise_:
    al16 fl32 fAngle = 0.0f, fScale = 1.0f;
    ui8 bMouseCursor = true;
 
-   gpu.cam.CreateCamera(0, STAGES_VERTEX_GEOMETRY, STAGES_VERTEX_GEOMETRY, 0, true);
+   gpu.cam.CreateCamera(0, ae_stages_vertex_geometry, ae_stages_vertex_geometry, 1, true);
    gpu.cam.data32[0].fXpos   = 0.0f; gpu.cam.data32[0].fYpos = 0.0f;   gpu.cam.data32[0].fZpos = -192.0f;
    gpu.cam.data32[0].fXrot   = 0.0f; gpu.cam.data32[0].fYrot = 0.0f;   gpu.cam.data32[0].fZrot = 0.0f;
    gpu.cam.data32[0].fZoom   = 1.0f; gpu.cam.data32[0].fSize = 256.0f;
@@ -398,24 +425,31 @@ Reinitialise_:
 //   gpu.SetBorderlessWindow(hWnd, ScrRes);
 //   gpu.SetFullscreenWindow(hWnd, ScrRes);
 
-// Initialise timer
-   frameTimer.Init();
+// Initialise timers
    frameTimer.Reset(1.0);
-   ui8 tRibbons = animTimer.Init();
+   cui8 tRibbons = animTimer.Create();
    animTimer.Reset(1.0, tRibbons);
-   ui8 tPlane = animTimer.Init();
+   cui8 tPlane = animTimer.Create();
    animTimer.Reset(7.0, tPlane);
-   ui8 index = 0, step = 1;
-   double dPlaneAnimTime = 0.0;
-   VEC3Df vCurPos {};
-   si128 &siActiveLayer = (*(MAP_DESC *)ptrLib[14]).mcrv.activeElements.xmm1;
-   si32  &siCell        = (*(MAP_DESC *)ptrLib[14]).mcrv.cellIndex[0].vector.w;
-   si32   chunk         = 0;
+
+   ui8    index          = 0;
+   ui8    step           = 1;
+   fl64   dPlaneAnimTime = 0.0;
+   VEC3Df vCurPos        = null3Df;
+   si128 &siActiveLayer  = (*(MAP_DESC *)ptrLib[14]).mcrv.activeElements.xmm1;
+   si32  &siCell         = (*(MAP_DESC *)ptrLib[14]).mcrv.cellIndex[0].vector.w;
+   si32   chunk          = 0;
 
    ui32 uiFrameCount = 0, uiVisChunks = 0;
    fl32 fAvgFrameTime = 0;
    fl64 dTrisPerSec = 0;
-   // Primary rendering loop
+
+   THREAD_LIFE |= VIDEO_THREAD_DONE;
+
+   ///
+   /// Primary rendering loop
+   ///
+   gui.SetResourceBuffers(0, TEX_REG_OS_GUI);
    do {
       threadLife = THREAD_LIFE;
       if (threadLife & VIDEO_THREAD_RESET) {
@@ -480,37 +514,34 @@ Reinitialise_:
       LockedMoveAndClear(&gcoLocal, &gco, 64); // Forcing volatile copy to avoid glitches
 
       //WaitForSingleObjectEx(waitGPU, 1000, false);
-      gpu.ClearFlipRenderViews(c4_black_trans);
+      gpu.ren.ClearAndFlipOutputImage(c4_black_trans);
 
       // Entities: Wait until visibility & modification culling completes, then upload modified entity data and render
-      cSSE4Du32 entManThreadData = gpuHelper.ent.WaitThenUploadAndRender(0);
+      cui128 entManThreadData = gpuHelper.ent.WaitThenUploadAndRender(0);
 
       // Map: Wait until visibility & modification culling completes, then upload modified cell data and render
-      cSSE4Du32 mapManThreadData = gpuHelper.map.WaitThenUploadAndRender(0, 0);
-      uiVisChunks = mapManThreadData.x;
+      cui128 mapManThreadData = gpuHelper.map.WaitThenUploadAndRender(0, 0);
+      uiVisChunks = mapManThreadData.m128i_u32[0];
 
       // Update UI readouts
-      snprintf(textBuffer, 128, "Pos: <%.3f, %.3f, %.3f>   Rot: <%.3f, %.3f, %.3f>   Cull time: %.3fs   Mouse tilt: %d   Entities: %d",
+      snprintf(textBuffer[0], 128, "Pos/Rot: <%.2f, %.2f, %.2f / %.2f, %.2f, %.2f>   Cull<Cells:%.3fms Ent:%.3fms>   Map cells: %d   Entities: %d",
                gpu.cam.data32[0].fXpos, gpu.cam.data32[0].fYpos, gpu.cam.data32[0].fZpos, gpu.cam.data32[0].fXrot, gpu.cam.data32[0].fYrot, gpu.cam.data32[0].fZrot,
-               sysData.culling.entity.time, gcvLocal.mouse.w, sysData.culling.entity.vis[0]);
-      snprintf(textInputs, 128, "0x%03X 0x%03X 0x%03X 0x%03X", inputsImmediate.x, inputsImmediate.y, inputsImmediate.z, inputsImmediate.w);
+               sysData.culling.map.time, sysData.culling.entity.time, sysData.culling.map.vis[0], sysData.culling.entity.vis[0]);
+      snprintf(textBuffer[1], 128, "0x%03X 0x%03X 0x%03X 0x%03X", inputsImmediate.x, inputsImmediate.y, inputsImmediate.z, inputsImmediate.w);
 //      if(siCell != 0x0CDCDCDCD && siCell != 0x080000001) snprintf(textBoxText, 128, "0x%08X: %.3f", siCell, mapMan.world[0].map[0]->cell[siCell].geometry->dens);
-      snprintf(textBoxText, 128, "%d: %d: %d", inputBox.z, gui.siGUIElements, gui.uiGUIVerts);
+      snprintf(textBuffer[2], 128, "%d:%d:%d", inputBox.z, gui.siGUIElements, gui.uiGUIVerts);
 
       // Render 3D overlay(s)
       gpu.cfg.SetBlendState(0, 1);
       gpu.cfg.SetDepthStencilState(0, 0, 0);
-      if(siActiveLayer.m128i_i32[0] < 0 && siCell != 0x080000001) gpu.ren.DrawVoxel(0, (*(MAP_DESC *)ptrLib[14]).mcrv.activeCell, c4_light_violet);
+      if(siActiveLayer.m128i_i32[0] < 0 && siCell != 0x080000001) gpu.ren.QueueDrawVoxel(0, (*(MAP_DESC *)ptrLib[14]).mcrv.activeCell, c4_light_violet);
 
       // Render GUI
-      gui.UpdateText(textBuffer, textElement);
-      gui.UpdateText(textInputs, textInputEl);
-      gui.UpdateText(textBoxText, textBox);
-      gui.SetResourceBuffers(0, 0);
-      gui.DrawGUIInterface(0, interfaceMain);
+      gui.UpdateText(textBuffer, 128u, textElements, 3u);
+      gui.DrawInterface(0, interfaceMain);
 
       // Display backbuffer
-      gpu.PresentRenderTarget(0);
+      gpu.ren.QueuePresentOutputImage(0);
 
       Sleep(0);
    } while (threadLife & VIDEO_THREAD_ALIVE);

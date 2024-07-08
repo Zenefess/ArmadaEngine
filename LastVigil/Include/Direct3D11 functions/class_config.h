@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_config.h                 Created: 2022/10/20 *
- *                                Last modified: 2024/06/15 *
+ *                                Last modified: 2024/07/04 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -8,7 +8,7 @@
  ************************************************************/
 #pragma once
 
-#include "pch.h"
+#include "master header.h"
 
 //#ifdef DATA_TRACKING
 //#include "data tracking.h"
@@ -21,35 +21,26 @@ al32 struct CLASS_CONFIG {   // Rewrite to use files., malloc pointers, and chan
    ID3D11Device         *dev;
    ID3D11DeviceContext **devcon;
 
-   // Allocate all blob & shader pointers packed
-   ID3DBlob *(*const pBlob)[CFG_MAX_SHADERS] = (ID3DBlob*(*)[CFG_MAX_SHADERS])zalloc64(sizeof(ptr[CFG_MAX_SHADERS * 9]));
-
-   ID3D11VertexShader      **const pVS  = (ID3D11VertexShader **)pBlob + (CFG_MAX_SHADERS * 6);
-   ID3D11PixelShader       **const pPS  = (ID3D11PixelShader**)pBlob + (CFG_MAX_SHADERS * 7);
-   ID3D11GeometryShader    **const pGS  = (ID3D11GeometryShader**)pBlob + (CFG_MAX_SHADERS * 8);
-   ID3D11BlendState        **const pBS  = (ID3D11BlendState**)zalloc64(sizeof(ptr[CFG_MAX_STATES * 5]));
+   // Allocate all blob and shader pointers packed
+   ID3DBlob *(*const pBlob)[CFG_MAX_SHADERS] = (ID3DBlob*(*)[CFG_MAX_SHADERS])zalloc64(RoundUpToNearest64(sizeof(ptr[(CFG_MAX_SHADERS * 9u) + (CFG_MAX_STATES * 5u)])));
+   ID3D11VertexShader      **const pVS  = (ID3D11VertexShader **)pBlob + (CFG_MAX_SHADERS * 6u);
+   ID3D11PixelShader       **const pPS  = (ID3D11PixelShader**)pVS + CFG_MAX_SHADERS;
+   ID3D11GeometryShader    **const pGS  = (ID3D11GeometryShader**)pPS + CFG_MAX_SHADERS;
+   ID3D11BlendState        **const pBS  = (ID3D11BlendState**)pGS + CFG_MAX_SHADERS;
    ID3D11SamplerState      **const pSS  = (ID3D11SamplerState**)pBS + CFG_MAX_STATES;
-   ID3D11InputLayout       **const pIL  = (ID3D11InputLayout**)pBS + (CFG_MAX_STATES * 2);
-   ID3D11DepthStencilState **const pDSS = (ID3D11DepthStencilState**)pBS + (CFG_MAX_STATES * 3);
-   ID3D11RasterizerState   **const pRS  = (ID3D11RasterizerState**)pBS + (CFG_MAX_STATES * 4);
+   ID3D11InputLayout       **const pIL  = (ID3D11InputLayout**)pSS + CFG_MAX_STATES;
+   ID3D11DepthStencilState **const pDSS = (ID3D11DepthStencilState**)pIL + CFG_MAX_STATES;
+   ID3D11RasterizerState   **const pRS  = (ID3D11RasterizerState**)pDSS + CFG_MAX_STATES;
 
-//   ID3DBlob                *pBlob[6][100]{};
-//   ID3D11VertexShader      *pVS[100]{};
-//   ID3D11GeometryShader    *pGS[101]{};
-//   ID3D11PixelShader       *pPS[100]{};
-//   ID3D11BlendState        *pBS[10]{};
-//   ID3D11SamplerState      *pSS[10]{};
-//   ID3D11InputLayout       *pIL[10]{};
-//   ID3D11DepthStencilState *pDSS[10]{};
-//   ID3D11RasterizerState   *pRS[10]{};
-
-   ui8   (*shaderIndex)[CFG_MAX_SHADERS]       = (ui8(*)[CFG_MAX_SHADERS])malloc16(sizeof(ui8[6][CFG_MAX_SHADERS]));
-   wchar (*shaderString)[CFG_MAX_SHADERS][256] = (wchar(*)[CFG_MAX_SHADERS][256])malloc16(sizeof(wchar[6][CFG_MAX_SHADERS][256]));
+   ui8   (*shaderIndex)[CFG_MAX_SHADERS]       = (ui8(*)[CFG_MAX_SHADERS])malloc64(RoundUpToNearest64(sizeof(ui8[6][CFG_MAX_SHADERS])));
+   wchar (*shaderString)[CFG_MAX_SHADERS][256] = (wchar(*)[CFG_MAX_SHADERS][256])malloc64(RoundUpToNearest64(sizeof(wchar[6][CFG_MAX_SHADERS][256])));
 
    ui32 shaderBanks[6] = {};
    ui32 shaderCount    = 0;
 
-   D3D11_BLEND_DESC blendDesc = { 0, 0, 0, D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_COLOR_WRITE_ENABLE_ALL };
+   // 4 bytes spare
+
+   al8 D3D11_BLEND_DESC blendDesc = { 0, 0, 0, D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_COLOR_WRITE_ENABLE_ALL };
 //   CHAR             stShaderModel[3][7] { "vs_5_0", "gs_5_0", "ps_5_0" };
 
    CLASS_CONFIG(CLASS_FILEOPS &fileOps) : files(fileOps) {};
@@ -99,7 +90,7 @@ al32 struct CLASS_CONFIG {   // Rewrite to use files., malloc pointers, and chan
    }
 
    // Returns profile index if successful
-   cui32 CreateVertexFormat(si8 profileIndex, si8 vertexShader, si8 inputFormat) {
+   cui32 CreateVertexFormat(csi8 profileIndex, csi8 vertexShader, csi8 inputFormat) {
       static const D3D11_INPUT_ELEMENT_DESC ied[7][8] = {
          // Map format
          { {"INDEX", 0, DXGI_FORMAT_R32_UINT, 0, 0, D3D11_INPUT_PER_INSTANCE_DATA, 1}, {}, {}, {}, {}, {}, {}, {} },
@@ -138,9 +129,9 @@ al32 struct CLASS_CONFIG {   // Rewrite to use files., malloc pointers, and chan
       return i;
    }
 
-   inline void SetVertexFormat(ui8 context, ui8 profile) const { devcon[context]->IASetInputLayout(pIL[profile]); }
+   inline void SetVertexFormat(cui8 context, cui8 profile) const { devcon[context]->IASetInputLayout(pIL[profile]); }
 
-   si8 CreateSamplerState(cui8 context, const D3D11_TEXTURE_ADDRESS_MODE addrMode, const D3D11_COMPARISON_FUNC compFunc, D3D11_FILTER filter, csi32 maxAnis) {
+   csi8 CreateSamplerState(cui8 context, const D3D11_TEXTURE_ADDRESS_MODE addrMode, const D3D11_COMPARISON_FUNC compFunc, const D3D11_FILTER filter, csi32 maxAnis) {
       al16 static D3D11_SAMPLER_DESC sd {};
            static si8                iStates {};
 

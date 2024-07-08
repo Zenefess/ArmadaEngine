@@ -12,6 +12,10 @@
 
 #include "gui.hlsli"
 
+StructuredBuffer   <CHAR_IMM>   alphabet : register(t80); // Character geometry
+StructuredBuffer   <uint4>      char16   : register(t81); // Text pool
+RWStructuredBuffer <GUI_EL_DYN> element  : register(u1); // Element data
+
 uint main(in const uint index : INDEX) : INDEX {   
    // If invisible
    if(element[index].seo_bits & 0x0800000u) return index;

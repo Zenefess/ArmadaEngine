@@ -1,6 +1,6 @@
 /************************************************************
 * File: Map structures.h               Created: 2022/12/11 *
-*                                Last modified: 2024/05/30 *
+*                                Last modified: 2024/06/30 *
 *                                                          *
 * Desc:                                                    *
 *                                                          *
@@ -8,7 +8,7 @@
 ************************************************************/
 #pragma once
 
-#include "..\pch.h"
+#include "..\master header.h"
 
 #define MM_VIS_BUSY  0x01
 #define MM_MOD_BUSY  0x02
@@ -161,21 +161,21 @@ al32 struct MAP_DESC {
    wchptr stName; // Text label
    wchptr stInfo; // Extended text
    union {
-      VEC3Ds32 totals;
+      VEC3Du32 totals;
       struct {
-         si32 chunkCells; // Chunk cell count
-         si32 mapCells;   // Map cell count
-         si32 mapChunks;  // Map chunk count
+         ui32 chunkCells; // Chunk cell count
+         ui32 mapCells;   // Map cell count
+         ui32 mapChunks;  // Map chunk count
       };
    };
    si16 zso;     // .zDim spawning offset (default ground level)
    si16 ptIndex; // Index of periodic table used by map
    union {
-      VEC3Ds16 dims[3];
+      VEC3Du16 dims[3];
       struct {
-         VEC3Ds16 mapDim;     // Map dimensions; cells
-         VEC3Ds16 chunkDim;   // Chunk dimensions; cells
-         VEC3Ds16 chunkCount; // Map dimensions; chunks
+         VEC3Du16 mapDim;     // Map dimensions; cells
+         VEC3Du16 chunkDim;   // Chunk dimensions; cells
+         VEC3Du16 chunkCount; // Map dimensions; chunks
       };
    };
 
@@ -214,11 +214,21 @@ al32 struct WORLD { // 64 bytes
    si32        curMap;    // Current active map
    si32        totalMaps; // Map count
    si32        maxMaps;   // Maximum map count
+};
 
+// Paramters for queued rendering
+struct MAP_PARAMS {
+   csi32    (&gpuBuf)[5];
+   csi32    (&vertBuf)[MAX_MAP_LOD];
+   ui32ptrc (&visBuf)[MAX_MAP_LOD];
+   ui32     (&vertCounts)[];
+   cui32      chunkCells;
+   cui8       levelsOfDetail;
+   cui8       context;
 };
 
 // Declarations for threaded culling functionality
-al32 struct MAPMAN_THREAD_DATA {
+al16 struct MAPMAN_THREAD_DATA {
    MAP *map;
    union {
       ptr        p;
@@ -227,7 +237,7 @@ al32 struct MAPMAN_THREAD_DATA {
    };
 };
 
-al32 struct MAPMAN_THREAD_DATAc {
+al16 struct MAPMAN_THREAD_DATAc {
    MAP * const map;
    union {
       ptrc         p;
@@ -276,12 +286,32 @@ typedef       CELL_DGS            *       CELL_DGSptr;
 typedef       CELL_DGS            * const CELL_DGSptrc;
 typedef       CELL_DPS            *       CELL_DPSptr;
 typedef       CELL_DPS            * const CELL_DPSptrc;
+typedef const ELEM_IGS                    cELEM_IGS;
+typedef       ELEM_IGS            *       ELEM_IGSptr;
+typedef const ELEM_IGS            *       cELEM_IGSptr;
+typedef       ELEM_IGS            * const ELEM_IGSptrc;
+typedef const ELEM_IGS            * const cELEM_IGSptrc;
+typedef const ELEM_TABLE                  cELEM_TABLE;
+typedef       ELEM_TABLE          *       ELEM_TABLEptr;
+typedef const ELEM_TABLE          *       cELEM_TABLEptr;
+typedef       ELEM_TABLE          * const ELEM_TABLEptrc;
+typedef const ELEM_TABLE          * const cELEM_TABLEptrc;
+typedef const ELEM_TYPE                   cELEM_TYPE;
+typedef       ELEM_TYPE           *       ELEM_TYPEptr;
+typedef const ELEM_TYPE           *       cELEM_TYPEptr;
+typedef       ELEM_TYPE           * const ELEM_TYPEptrc;
+typedef const ELEM_TYPE           * const cELEM_TYPEptrc;
 typedef const MAP_DESC                    cMAP_DESC;
 typedef const MAP                         cMAP;
 typedef       MAP                 *       MAPptr;
 typedef const MAP                 *       cMAPptr;
 typedef       MAP                 * const MAPptrc;
 typedef const MAP                 * const cMAPptrc;
+typedef const MAP_PARAMS                  cMAP_PARAMS;
+typedef       MAP_PARAMS          *       MAP_PARAMSptr;
+typedef const MAP_PARAMS          *       cMAP_PARAMSptr;
+typedef       MAP_PARAMS          * const MAP_PARAMSptrc;
+typedef const MAP_PARAMS          * const cMAP_PARAMSptrc;
 typedef const MAP_PTRS                    cMAP_PTRS;
 typedef const MAP_PTRSc                   cMAP_PTRSc;
 typedef       MAPMAN_THREAD_DATA  *       MMTDptr;

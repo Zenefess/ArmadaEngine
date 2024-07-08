@@ -1,14 +1,13 @@
 /************************************************************
  * File: OpenAL1_1 thread.h             Created: 2022/11/12 *
- *                                Last modified: 2024/06/15 *
+ *                                Last modified: 2024/07/05 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
  * Copyright (c) David William Bull. All rights reserved.   *
  ************************************************************/
 
-#include "typedefs.h"
-#include "Data structures.h"
+#include "master header.h"
 #include <openal\al.h>
 #include <openal\alc.h>
 #include "OAL11 error testing.h"
@@ -26,3 +25,5 @@ extern al16 wchptr  stThrdStat; // Text strings for thread status
 extern al8  HWND    hWnd;       // Main window's handle
 extern al8  HWND    hWndDebug;  // Debug window's handle
 extern al8  HRESULT hr;
+
+SOUND_BANKptrc soundLibrary = (SOUND_BANKptr)zalloc64(sizeof(SOUND_BANK[MAX_SOUND_BANKS]));

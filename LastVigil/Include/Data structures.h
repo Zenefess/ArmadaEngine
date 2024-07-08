@@ -1,6 +1,6 @@
 /************************************************************
  * File: Data structures.h              Created: 2022/10/20 *
- *                                Last modified: 2024/06/25 *
+ *                                Last modified: 2024/07/08 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -15,8 +15,45 @@
 #include "typedefs.h"
 #include "Vector structures.h"
 
-enum AE_PRIMITIVES : ui8 { ae_undefined, ae_pointlist, ae_linelist, ae_linestrip, ae_trianglelist, ae_trianglestrip };
-enum AE_WINDOW_STATE : ui8 { ae_windowed, ae_borderless, ae_fullscreen };
+enum AE_SUBSYSTEM : ui8 {
+   ss_video,
+   ss_audio,
+   ss_input,
+   ss_gui
+};
+
+enum AE_BUFFER_USAGE : ui8 {
+   ae_buf_default,
+   ae_buf_immutable,
+   ae_buf_dynamic,
+   ae_buf_staging
+};
+
+enum AE_GPU_STAGE : ui8 {
+   ae_stage_null,
+   ae_stage_vertex,
+   ae_stage_geometry,
+   ae_stages_vertex_geometry,
+   ae_stage_pixel,
+   ae_stages_vertex_pixel,
+   ae_stages_geometry_pixel,
+   ae_stages_vertex_geometry_pixel
+};
+
+enum AE_PRIMITIVES : ui32 {
+   ae_undefined,
+   ae_pointlist,
+   ae_linelist,
+   ae_linestrip,
+   ae_trianglelist,
+   ae_trianglestrip
+};
+
+enum AE_WINDOW_STATE : ui8 {
+   ae_windowed,
+   ae_borderless,
+   ae_fullscreen
+};
 
 al4 union ID32 {
    struct {
@@ -232,6 +269,15 @@ al16 struct FUNCTION {
    };
 };
 
+struct SOUND_BANK {
+   union {
+      cchptr cLabel; // Display name of sound bank (constant string)
+      chptr  label;  // Display name of sound bank
+   };
+
+   /// To do...
+};
+
 // Global control variables
 al64 union GLOBALCTRLVARS {
    struct {
@@ -258,7 +304,7 @@ al64 union GLOBALCTRLVARS {
 #endif
          fl32x4 faxis16[18];
          ui128  iaxis16[18];
-         float  faxis[72];
+         fl32  faxis[72];
          si32   iaxis[72];
       };
       union { // Position of cursor relative to client window
@@ -301,11 +347,11 @@ al64 union GLOBALCOORDS {
    struct {
       union { // Position
          SSE4Df32 pos;
-         float    p[4];
+         fl32     p[4];
       };
       union { // Velocity
          SSE4Df32 vel;
-         float    v[4];
+         fl32     v[4];
       };
       union { // Orientation
          struct {
@@ -313,40 +359,36 @@ al64 union GLOBALCOORDS {
             SSE4Df32 up;
          };
          AVX8Df32 ori;
-         float    o[8];
+         fl32     o[8];
       };
    };
    fl32x16 zmm;
    fl32x8  ymm[2];
    fl32x4  xmm[4];
-   float _fl[16];
+   fl32    _fl[16];
 };
 
-struct RESDATA { // 36 bytes
+al16 struct RESDATA { // 32 bytes
    union {
-      float  dim[2];
+      fl32  dim[2];
       VEC2Df dims;
+      struct { fl32 w, h; };
       struct {
-         float w; // Width
-         float h; // Height
-      };
-      struct {
-         float width;
-         float height;
+         fl32 width;
+         fl32 height;
       };
    };
-   float aspect;  // Aspect ratio (height / width)
-   float aspectI; // Inverted aspect ratio (width / height)
-   float gamma;   // Gamma ramp scalar
-   ui32  fmtBB;   // Back buffer format
-   ui32  fmtDB;   // Depth buffer format
-   si16  msaa;    // (Multi)sample count
-   si16  msaaQ;   // Multisample quality
-   si16  buffers; // Number of back buffers in swap chain
-   si16  RES;
+   fl32 aspect;  // Aspect ratio (height / width)
+   fl32 aspectI; // Inverted aspect ratio (width / height)
+   fl32 gamma;   // Gamma ramp scalar
+   ui32 fmtBB;   // Back buffer format
+   ui32 fmtDB;   // Depth buffer format
+   ui16 buffers; // Number of back buffers in swap chain
+   ui8  msaa;    // (Multi)sample count
+   ui8  msaaQ;   // Multisample quality
 };
 
-al16 struct RESOLUTION { // 128 bytes
+al16 struct RESOLUTION { // 112 bytes
    union {
       RESDATA dims[3];
       struct {
@@ -357,33 +399,46 @@ al16 struct RESOLUTION { // 128 bytes
    };
    VEC2Du16 windowOS;
    VEC2Du16 borderlessOS;
+   rn3216   refreshRate;
    si8      state;        // 0 == Windowed | 1 == Borderless | 2 = Fullscreen
-   ui8      RES[11];
+   //   ui8      RES;
 };
 
-typedef const ID32          cID32;
-typedef const ID64          cID64;
-typedef const ID32c         cID32c;
-typedef const ID64c         cID64c;
-typedef       ID32  *       ID32ptr;
-typedef       ID64  *       ID64ptr;
-typedef       ID32c *       ID32cptr;
-typedef       ID64c *       ID64cptr;
-typedef const ID32  *       cID32ptr;
-typedef const ID64  *       cID64ptr;
-typedef const ID32c *       cID32cptr;
-typedef const ID64c *       cID64cptr;
-typedef       ID32  * const ID32ptrc;
-typedef       ID64  * const ID64ptrc;
-typedef       ID32c * const ID32cptrc;
-typedef       ID64c * const ID64cptrc;
-typedef const ID32  * const cID32ptrc;
-typedef const ID64  * const cID64ptrc;
-typedef const ID32c * const cID32cptrc;
-typedef const ID64c * const cID64cptrc;
+typedef const ID32               cID32;
+typedef const ID64               cID64;
+typedef const ID32c              cID32c;
+typedef const ID64c              cID64c;
+typedef       ID32       *       ID32ptr;
+typedef       ID64       *       ID64ptr;
+typedef       ID32c      *       ID32cptr;
+typedef       ID64c      *       ID64cptr;
+typedef const ID32       *       cID32ptr;
+typedef const ID64       *       cID64ptr;
+typedef const ID32c      *       cID32cptr;
+typedef const ID64c      *       cID64cptr;
+typedef       ID32       * const ID32ptrc;
+typedef       ID64       * const ID64ptrc;
+typedef       ID32c      * const ID32cptrc;
+typedef       ID64c      * const ID64cptrc;
+typedef const ID32       * const cID32ptrc;
+typedef const ID64       * const cID64ptrc;
+typedef const ID32c      * const cID32cptrc;
+typedef const ID64c      * const cID64cptrc;
+typedef const FUNCTION           cFUNCTION;
+typedef       FUNCTION   *       FUNCTIONptr;
+typedef const FUNCTION   *       cFUNCTIONptr;
+typedef       FUNCTION   * const FUNCTIONptrc;
+typedef const FUNCTION   * const cFUNCTIONptrc;
+typedef const SOUND_BANK         cSOUND_BANK;
+typedef       SOUND_BANK *       SOUND_BANKptr;
+typedef const SOUND_BANK *       cSOUND_BANKptr;
+typedef       SOUND_BANK * const SOUND_BANKptrc;
+typedef const SOUND_BANK * const cSOUND_BANKptrc;
 
+typedef const AE_SUBSYSTEM    cAE_SUBSYSTEM;
 typedef const AE_WINDOW_STATE cAE_WINDOW_STATE;
 typedef const RESDATA         cRESDATA;
 typedef const RESOLUTION      cRESOLUTION;
 
-typedef vol GLOBALCOORDS vGLOBALCOORDS;
+typedef vol GLOBALCOORDS   vGLOBALCOORDS;
+typedef vol GLOBALCTRLVARS vGLOBALCTRLVARS;

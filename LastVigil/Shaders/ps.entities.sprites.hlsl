@@ -1,6 +1,6 @@
 /************************************************************
  * File: ps.instanced.sprites.hlsl      Created: 2022/11/21 *
- * Type: Pixel shader             Last modified: 2023/01/13 *
+ * Type: Pixel shader             Last modified: 2024/06/27 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -10,11 +10,18 @@
 #include "common.hlsli"
 #include "ps.full register access.hlsli"
 
-struct LIGHT { // 32 bytes (2 vectors)
+struct _LIGHT { // 32 bytes (2 vectors)
    float3 position;
    float  range;
    uint2  col_hl;   // 0-47==RGB: s7p8, 48-55==Highlight size : 0p8-1, 56-63==Highlight intensity : 4p4-1
    uint2  RES;
+};
+
+struct LIGHT { // 32 bytes (2 vectors)
+   float3 position;
+   float  range;
+   float3 colour;
+   uint   hls_hli; // 0~15==Highlight size : 1p15, 16~31==Highlight intensity : 6p10
 };
 
 cbuffer cbLight { // 8,192 bytes (512 vectors)
@@ -28,8 +35,6 @@ struct SPRITE_DYN { // 16 bytes (1 vector)
    uint nrps;    // 0-7==Normal map scalar : p8n0.0~1.818359375, 8-15==Roughness map scalar, 16-23==Paint map scalar : p8n0.0~1.0, 24-31==???
 };
 
-const StructuredBuffer<SPRITE_DYN> sprite : register(t0);
-
 // Texture data
 // ------------
 // [0] == Diffuse map | [1] == Normal map | [2] == Occlusion, roughness, paint, and emission maps
@@ -42,6 +47,8 @@ struct GOut { // 56 bytes (3 vectors + 2 scalars)
    uint   ai       : ATLASINDEX;  // 0~6==Atlas index
    float2 tex      : TEXCOORD;
 };
+
+const StructuredBuffer<SPRITE_DYN> sprite : register(t0);
 
 float4 main(in const GOut g) : SV_Target {
    const uint     index    = g.si;
@@ -75,10 +82,8 @@ float4 main(in const GOut g) : SV_Target {
    float3 fLight = 0.0f, fHighlight = 0.0f;
    [unroll]
    for(uint i = 0; i < 32; i++) {
-      // Unpack colour variable
-      const float3 fColour = float3(uint3(l[i].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF) * rcp256 - 128.0f;
       // Unpack highlight variables
-      const float2 fHL     = float2(uint2((l[i].col_hl.y >> uint2(16, 24)) & 0x0FF) + uint2(257, 1)) * float2(rcp512, rcp16);
+      const float2 fHL     = float2(uint2((l[i].hls_hli >> uint2(0, 16u)) & 0x0FFFFu) + uint2(32768u, 0)) * float2(rcp65536, rcp4096);
       // Process each light
       const float  range   = l[i].range;
       const float3 vToL    = l[i].position - g.position;
@@ -87,9 +92,8 @@ float4 main(in const GOut g) : SV_Target {
       const float3 ang     = saturate(dot(vToL / distToL, fNormal));
       const float3 lum     = (1.0f - att) * ang;
       const float3 occ     = (1.0f - ang) * fTexMask.x * lum;
-      fLight     += max(0.0f, (lum - occ) * fColour);
-      fHighlight += max(0.0f, (fTexMask.y - (1.0f - fHL.x)) * lum * fColour * fHL.y);
+      fLight     += max(0.0f, (lum - occ) * l[i].colour);
+      fHighlight += max(0.0f, (fTexMask.y - (1.0f - fHL.x)) * lum * l[i].colour * fHL.y);
    }
-   const float4 fRet = fPaint * float4(fLight + fEmission + (fHighlight * fScalar.y), 1.0f);
-   return fRet;
+   return fPaint * float4(fLight + fEmission + (fHighlight * fScalar.y), 1.0f);
 }

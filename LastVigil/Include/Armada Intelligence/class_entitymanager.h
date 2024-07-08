@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_entitymanager.h          Created: 2023/05/06 *
- *                                Last modified: 2024/06/08 *
+ *                                Last modified: 2024/06/29 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -8,7 +8,7 @@
  ************************************************************/
 #pragma once
 
-#include "pch.h"
+#include "master header.h"
 #include "Data structures.h"
 #include "Entity structures.h"
 #include "Map structures.h"
@@ -22,19 +22,31 @@ static void _ET_Cull_Unchanged(ptr);
 
 inline void transrotate(BONE_DGS &bone, cfl32 dist) { bone.pos.x -= dist * sinf(bone.rot.z); bone.pos.y += dist * cosf(bone.rot.z); }
 
-al32 struct CLASS_ENTMAN {
-   OBJECT_GROUP objGroup[MAX_OBJECT_GROUPS] {};
-   ENTITY_GROUP entGroup[MAX_ENTITY_GROUPS] {};
+al16 struct CLASS_ENTMAN {
+   OBJECT_GROUPptrc objGroup = (OBJECT_GROUP *)zalloc64(RoundUpToNearest64(sizeof(OBJECT_GROUP) * MAX_OBJECT_GROUPS));
+   ENTITY_GROUPptrc entGroup = (ENTITY_GROUP *)zalloc64(RoundUpToNearest64(sizeof(ENTITY_GROUP) * MAX_ENTITY_GROUPS));
 
-   EMTDptrc threadData = (EMTDptr)zalloc32(sizeof(ENTMAN_THREAD_DATA) * 2);
+   si32ptrc siObjects  = (si32ptr)zalloc64(sizeof(si32) * ((MAX_OBJECT_GROUPS * 2) + (MAX_ENTITY_GROUPS * 4)));
+   si32ptrc siParts    = siObjects + MAX_OBJECT_GROUPS;
+   si32ptrc siEntities = siParts + MAX_OBJECT_GROUPS;
+   si32ptrc siBones    = siEntities + MAX_ENTITY_GROUPS;
+   si32ptrc siSpritesO = siBones + MAX_ENTITY_GROUPS;
+   si32ptrc siSpritesT = siSpritesO + MAX_ENTITY_GROUPS;
 
-   si32 siObjects[MAX_OBJECT_GROUPS] {}, siParts[MAX_OBJECT_GROUPS] {};
-   si32 siEntities[MAX_ENTITY_GROUPS] {}, siBones[MAX_ENTITY_GROUPS] {};
-   si32 siSpritesO[MAX_ENTITY_GROUPS] {}, siSpritesT[MAX_ENTITY_GROUPS] {};
-   si32 siEntityGroups = 0, siObjectGroups = 0, siEntry = 0;
+   si32 siEntry        = 0;
+   si32 siObjectGroups = 0;
+   si32 siEntityGroups = 0;
+
+   // 4 bytes spare
+
+   ENTMAN_THREAD_DATA threadData[2];
 
 #ifdef AE_PTR_LIB
-   CLASS_ENTMAN(void) { ptrLib[7] = this; }
+   CLASS_ENTMAN(void) {
+#ifdef AE_PTR_LIB
+      ptrLib[7] = this;
+#endif
+   }
 #endif
 
    inline cENT_PTRSc Pointers(csi16 objectGroup, csi16 entityGroup) const {
@@ -530,8 +542,7 @@ al32 struct CLASS_ENTMAN {
       return 0;
    }
 
-//   inline cVEC4Du32 WaitForCulling(cDWORD sleepDelay) const {
-   inline cSSE4Du32 WaitForCulling(cDWORD sleepDelay) const {
+   inline void WaitForCulling(ui128 &results, cDWORD sleepDelay) const {
       if(sleepDelay) while(ENTMAN_THREAD_STATUS.m128i_u8[0] & 0x03) Sleep(sleepDelay);
       else while(ENTMAN_THREAD_STATUS.m128i_u8[0] & 0x03) _mm_pause();
 
@@ -540,8 +551,8 @@ al32 struct CLASS_ENTMAN {
       ENTMAN_THREAD_STATUS.m128i_u64[0] &= 0x0C;
       ENTMAN_THREAD_STATUS.m128i_u64[1] = 0;
 
-      return cSSE4Du32{ ._ui32 = { ui32(entManThreadData.x >> 4) & 0x03FFFFFFF, ui32(entManThreadData.x >> 34) & 0x03FFFFFFF,
-                                   ui32(entManThreadData.y) & 0x03FFFFFFF, ui32(entManThreadData.y >> 30) & 0x03FFFFFFF } };
+      results = { .m128i_u32 = { ui32(entManThreadData.x >> 4) & 0x03FFFFFFF, ui32(entManThreadData.x >> 34) & 0x03FFFFFFF,
+                                 ui32(entManThreadData.y) & 0x03FFFFFFF, ui32(entManThreadData.y >> 30) & 0x03FFFFFFF } };
    }
 };
 
@@ -549,8 +560,8 @@ static void _ET_Cull_Nonvisible_Accurate(ptr) {}
 static void _ET_Cull_Unchanged(ptr) {}
 
 static void _ET_Cull_Nonvisible_and_Unchanged(ptr threadData) {
-      static si64 frequencyTics, startTics, endTics;
-      QueryPerformanceFrequency((LARGE_INTEGER *)&frequencyTics);
+   static si64 frequencyTics, startTics, endTics;
+   QueryPerformanceFrequency((LARGE_INTEGER *)&frequencyTics);
 
    CLASS_CAM    &camMan = *(CLASS_CAM *)ptrLib[5];
    CLASS_ENTMAN &entMan = *(CLASS_ENTMAN *)ptrLib[7];

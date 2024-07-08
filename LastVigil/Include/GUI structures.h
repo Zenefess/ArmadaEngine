@@ -1,6 +1,6 @@
 /************************************************************
  * File: GUI structures.h               Created: 2023/01/26 *
- *                                Last modified: 2024/06/24 *
+ *                                Last modified: 2024/07/05 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -55,10 +55,10 @@ union GUI_INDICES {
    };
 };
 
-al8 struct GUI_SPRITE { // 32 bytes
-   wchptr name;
-   VEC4Df tc;   // Texture coordinates
+al32 struct GUI_SPRITE { // 32 bytes
+   chptr  name;
    VEC2Df aa;   // Active area %
+   VEC4Df tc;   // Texture coordinates
 };
 
 al16 struct GUI_SPRITE_LIB { // 16 bytes
@@ -90,7 +90,7 @@ al16 struct CHAR_IMM { // 16 bytes
 };
 
 al16 struct ALPHABET { // 32 bytes
-   wchptr stLanguage;
+   chptr  stLanguage;
    wchptr stAtlasFilename; // Filename of atlas texture
    ui32   pIMMos;          // Offset into array for GPU's shaders
    ui16   numChars;
@@ -117,15 +117,18 @@ al32 struct GUI_EL_DGS { // 96 bytes (24 scalars)   ///--- Rewrite to remove red
          fl32 width;         // Total width of vertex's text in view space
          ui32 charBankOS;    // 0~25==Offset into character bank (div.by 16), 26~31==Vertex's char count
          ui16 alphabetIndex; // Offset into alphabet buffer
-         ui8  atlasIndex;    // Runtime index of atlas texture
-         ui8  elementType;   // Text=0, Text Array=1, Panel=2, Button=3, Toggle=4, Scalar=5, Cursor=6, Dial=7
-                             // 4~5==???, 6==Don't (re)calculate text offsets, 7==Button "down"
+         ui8  RES8[2];
       };
-      struct { // Type==Scalar|Cursor
-         VEC2Df animTime; // Durations of animation cycles
-         ui8    animType; // 0==Fade, 1==Zoom, 2==???, 3==Rotate, 4&5==Swing X&Y, 6~7==(Quantum=0, Linear=1, Smoothstep=2, ???=3)
-         ui8    RES8[3];
-      };
+      struct { // Type!=Text|TextArray
+         union {
+            VEC2Df animTime; // Durations of animation cycles
+            VEC2Df border;   // x==Size, y==window opacity
+         };
+         ui8 animType;    // 0==Fade, 1==Zoom, 2==???, 3==Rotate, 4&5==Swing X&Y, 6~7==(Quantum=0, Linear=1, Smoothstep=2, ???=3)
+         ui8 borderStyle; // 0~7==???
+         ui8 atlasIndex;  // Runtime index of atlas texture
+         ui8 elementType; // Text=0, Text Array=1, Panel=2, Button=3, Toggle=4, Scalar=5, Cursor=6, Dial=7
+      };                  // 4~5==???, 6==Don't (re)calculate text offsets, 7==Button "down"
    };
    ui16 sibling; // 0~14==First sibling element offset / Sibling count (if bit15 set)
    union {
@@ -209,8 +212,11 @@ al32 struct GUI_INTERFACE { // 64 bytes
    ui16    maxInputs;   // Maxmimum input bit patterns
    ui16    inputCount;  // Current input bit patterns
    union {              // Array of input combinations
-      VEC4Du8 *inputs;
-      ui8    (*input)[4];
+      ui512  *input512;
+      ui256 (*input256)[2];
+      ui128 (*input128)[2];
+      ui64  (*input64)[8];
+      ptr     inputs;
    };
    union {              // Array of input text labels
       chptr *inputLabels;
@@ -223,8 +229,36 @@ al32 struct GUI_INTERFACE { // 64 bytes
    };
 };
 
+// Properties for element types
+struct GUI_PCT_PROPS {
+   fl32x4 tint;
+   VEC2Df size;
+   union {
+      ptr     p;       // Raw pointer
+      chptr   cPtr;    // String
+      wchptr  wPtr;    // Wide string
+      chptr  *cArray;  // String array
+      wchptr *wArray;  // Wide string array
+      VEC2Df  wIndent; // Window indent (active area) multiplier
+   };
+   union {
+      si32 cCount; // Character count
+      si32 sCount; // String count
+   };
+   fl32 wOpacity; // Window opacity
+   fl32 bSize;    // Border size
+   ui16 bStyle;   // Border style
+   union {
+      struct {
+         ui8 align; // Alignment flags
+         ui8 mods;  // Modifier flags
+      };
+      ui16 flags;
+   };
+};
+
 // Input data for element creation
-al16 struct GUI_EL_DESC { // 144 bytes
+al32 struct GUI_EL_DESC { // 186 of 192 bytes
    union {
       struct {
          ui32 hover[2]; // Functions for onHover & offHover
@@ -236,63 +270,60 @@ al16 struct GUI_EL_DESC { // 144 bytes
             };
          };
       } func;
-      ui32 function[6] = {};
+      ui32 function[6];
    };
+   VEC2Df viewPos;
    union {
-      chptr   textPtr = NULL;
-      wchptr  wtextPtr;
-      chptr  *textArray;
-      wchptr *wtextArray;
+      GUI_PCT_PROPS panel; // Tint, Size, N/A, N/A, Window opacity, Border size, Border style, Alignment, Modifiers
+      GUI_PCT_PROPS button; // Tint, Size, N/A, N/A, Window opacity, Border size, Border style, Alignment, Modifiers
    };
-   struct { // panel, cursor, text
-      SSE4Df32 panel  = { 1.0f, 1.0f, 1.0f, 1.0f };
-      SSE4Df32 cursor = { 1.0f, 1.0f, 1.0f, 1.0f };
-      SSE4Df32 text   = { 1.0f, 1.0f, 1.0f, 1.0f };
-   } tint;
-   struct { // panel, cursor, text
-      VEC2Df panel  = { 1.0f, 1.0f };
-      VEC2Df cursor = { 1.0f, 1.0f };
-      VEC2Df text   = { 1.0f, 1.0f };
-   } size;
+   GUI_PCT_PROPS cursor; // Tint, Size, N/A, N/A, Window opacity, Border size, Border style, Alignment, Modifiers
+   GUI_PCT_PROPS text; // Tint, Size, String (array) pointer, Character/string count, N/A, N/A, N/A, Alignment, Modifiers
    struct { // soundbank, alphabet, spriteLib, panelSprite, cursorSprite
-      si16 soundBank    = -1;
-      si16 alphabet     = -1;
-      ui16 spriteLib    = 0x0FFFFu;
-      ui16 panelSprite  = 0x0FFFFu;
-      ui16 cursorSprite = 0x0FFFFu;
+      si16 soundBank;
+      si16 alphabet;
+      ui16 spriteLib;
+      ui16 panelSprite;
+      ui16 cursorSprite;
    } index;
-   union {
-      struct {
-         struct BITFIELD { // align, mods
-            ui8 align;
-            ui8 mods;
-         } panel;
-         BITFIELD cursor; // align, mods
-         BITFIELD text; // align, mods
-      };
-      struct {
-         ui16 panelBits;
-         ui16 cursorBits;
-         ui16 textBits;
-      };
-   };
-   VEC2Df viewPos = { 0.0f, 0.0f };
-   union {
-      si32 charCount = 0;
-      si32 stringCount;
-   };
-   ui32 RES = 0x0CDCDCDCDu;
+   ui8 RES[6];
 
    GUI_EL_DESC(void) {
-      textBits   = UI_TEXT;
-      panelBits  = UI_PANEL;
-      cursorBits = UI_CURSOR;
+      for(ui8 i = 0; i < 6; ++i)
+         function[i] = 0;
+      viewPos = { 0.0f, 0.0f };
+      panel.tint     = { 1.0f, 1.0f, 1.0f, 1.0f };
+      panel.size     = { 1.0f, 1.0f };
+      panel.wIndent  = { 1.0f, 1.0f };
+      panel.wOpacity = 0.0f;
+      panel.bSize    = 1.0f;
+      panel.bStyle   = 0;
+      panel.align    = UI_ALIGN_C;
+      panel.mods     = UI_PANEL;
+      cursor.tint  = { 1.0f, 1.0f, 1.0f, 1.0f };
+      cursor.size  = { 1.0f, 1.0f };
+      cursor.align = UI_ALIGN_C;
+      cursor.mods  = UI_CURSOR;
+      text.tint   = { 1.0f, 1.0f, 1.0f, 1.0f };
+      text.size   = { 1.0f, 1.0f };
+      text.p      = 0;
+      text.cCount = 0;
+      text.align  = UI_ALIGN_C;
+      text.mods   = UI_TEXT;
+      index.soundBank    = -1;
+      index.alphabet     = -1;
+      index.spriteLib    = 0x0FFFFu;
+      index.panelSprite  = 0x0FFFFu;
+      index.cursorSprite = 0x0FFFFu;
    }
 };
 
+// Defined in "DirectInput8 thread.h"
+extern vGLOBALCTRLVARS gcv;
+
 #define TriggerInputProcessing gcv.misc[7] |= 0x080
 
-// Passing-in true when decalring will set it as globally accessible.
+// Passing-in true when declaring will set it as globally accessible.
 // Set .interfaceIndex before executing "gcv.misc[7] |= 0x080;"
 al32 struct GUI_DESC {
    ui32 interfaceIndex   = 0;    // Currently active interface
@@ -334,11 +365,41 @@ struct UI_PTRS {
    GUI_EL_DGS *vertex;
 };
 
-typedef const AE_ELEMENT_TYPE cAE_ELEMENT_TYPE;
-typedef const AE_REGEN_VERTS  cAE_REGEN_VERTS;
-typedef const GUI_EL_DESC     cGUI_EL_DESC;
-typedef const GUI_ELEMENT     cGUI_ELEMENT;
-typedef const GUI_INDICES     cGUI_INDICES;
-typedef const GUI_SPRITE      cGUI_SPRITE;
-typedef const GUI_SPRITE_LIB  cGUI_SPRITE_LIB;
-typedef const UI_PTRS         cUI_PTRS;
+typedef const AE_ELEMENT_TYPE         cAE_ELEMENT_TYPE;
+typedef const AE_REGEN_VERTS          cAE_REGEN_VERTS;
+typedef const ALPHABET                cALPHABET;
+typedef       ALPHABET        *       ALPHABETptr;
+typedef const ALPHABET        *       cALPHABETptr;
+typedef       ALPHABET        * const ALPHABETptrc;
+typedef const ALPHABET        * const cALPHABETptrc;
+typedef const CHAR_IMM                cCHAR_IMM;
+typedef       CHAR_IMM        *       CHAR_IMMptr;
+typedef const CHAR_IMM        *       cCHAR_IMMptr;
+typedef       CHAR_IMM        * const CHAR_IMMptrc;
+typedef const CHAR_IMM        * const cCHAR_IMMptrc;
+typedef const GUI_EL_DESC             cGUI_EL_DESC;
+typedef const GUI_EL_DGS              cGUI_EL_DGS;
+typedef       GUI_EL_DGS      * const GUI_EL_DGSptrc;
+typedef const GUI_EL_DGS      * const cGUI_EL_DGSptrc;
+typedef const GUI_ELEMENT             cGUI_ELEMENT;
+typedef       GUI_ELEMENT     *       GUI_ELEMENTptr;
+typedef const GUI_ELEMENT     *       cGUI_ELEMENTptr;
+typedef       GUI_ELEMENT     * const GUI_ELEMENTptrc;
+typedef const GUI_ELEMENT     * const cGUI_ELEMENTptrc;
+typedef const GUI_INDICES             cGUI_INDICES;
+typedef const GUI_INTERFACE           cGUI_INTERFACE;
+typedef       GUI_INTERFACE   *       GUI_INTERFACEptr;
+typedef const GUI_INTERFACE   *       cGUI_INTERFACEptr;
+typedef       GUI_INTERFACE   * const GUI_INTERFACEptrc;
+typedef const GUI_INTERFACE   * const cGUI_INTERFACEptrc;
+typedef const GUI_SPRITE              cGUI_SPRITE;
+typedef       GUI_SPRITE      *       GUI_SPRITEptr;
+typedef const GUI_SPRITE      *       cGUI_SPRITEptr;
+typedef       GUI_SPRITE      * const GUI_SPRITEptrc;
+typedef const GUI_SPRITE      * const cGUI_SPRITEptrc;
+typedef const GUI_SPRITE_LIB          cGUI_SPRITE_LIB;
+typedef       GUI_SPRITE_LIB  *       GUI_SPRITE_LIBptr;
+typedef const GUI_SPRITE_LIB  *       cGUI_SPRITE_LIBptr;
+typedef       GUI_SPRITE_LIB  * const GUI_SPRITE_LIBptrc;
+typedef const GUI_SPRITE_LIB  * const cGUI_SPRITE_LIBptrc;
+typedef const UI_PTRS                 cUI_PTRS;

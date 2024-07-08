@@ -1,6 +1,6 @@
 /*******************************************************************************  
  * File: class_gui.h                                       Created: 2023/01/26 *
- *                                                   Last modified: 2024/06/25 *
+ *                                                   Last modified: 2024/07/08 *
  *                                                                             *
  * Desc:                                                                       *
  *                                                                             *
@@ -12,7 +12,7 @@
  *******************************************************************************/
 #pragma once
 
-#include "..\pch.h"
+#include "..\master header.h"
 #include "Data structures.h"
 #include "GUI structures.h"
 #include "GUI functions.h"
@@ -21,31 +21,58 @@
 #include "class_render.h"
 
 al32 struct CLASS_GUI {
-   CLASS_FILEOPS &files;
+   const struct GUI_IO_DATA {
+      ui16ptrc soundBank;
+      ui8ptrc  atlas;
+      ui32ptrc function;
+      ui32ptrc charBankOS;
+
+//      GUI_IO_DATA(cui32 maxSoundBanks, cui32 maxAtlas, cui32 maxFunctions) :
+//         soundBank(salloc1d16(ui16, (maxSoundBanks * 2u) + maxAtlas + (maxFunctions * 8u), max128)),
+//         atlas((ui8ptr)soundBank + maxSoundBanks),
+//         function((ui32ptr)atlas + maxAtlas)
+//      {}
+      GUI_IO_DATA(cui32 maxElements, cui32 maxTextBlocks) :
+         soundBank(salloc1d16(ui16, (maxElements * 2u) + maxElements + (maxElements * 4u * 6u) + (maxTextBlocks * 4u), max128)),
+         atlas((ui8ptr)soundBank + maxElements),
+         function((ui32ptr)atlas + maxElements),
+         charBankOS((ui32ptr)function + maxElements)
+      {}
+
+      ~GUI_IO_DATA() { mfree(soundBank, atlas, function); }
+   };
+
    CLASS_GPU     &gpu;
+   CLASS_FILEOPS &files;
 
-   FUNCTION       *funcLib; // Master library of functions and their display name
-   ALPHABET       *alphabet; // 16KB per 1024 characters
-   CHAR_IMM       *alphabet_pIMM;
-   GUI_SPRITE_LIB *spriteLib;
-   GUI_INTERFACE  *interfaceProfile;
-   GUI_ELEMENT    *element;
-   GUI_EL_DGS     *element_dgs;
-   ui32          (*curVertexList)[MAX_INTERFACE_VERTS];
-   ui32ptr         totalVertexList;
-   ui32ptr         curVertexCount;
-   wchar         (*stLanguage)[MAX_ALPHABETS];
-   wchar         (*stAtlas)[MAX_ATLAS];
-   chptr           textBuffer; ///--- Change to array of pointers, allocated on demand? ---///
-   si16ptr         siAtlasTexIndex;
-   cwchptrc        stGUIDir = L"ui_elements\\";
+   declare1d64z(FUNCTION,       funcLib,          MAX_GUI_FUNCTIONS);              // Master library of functions & their display name
+   declare1d64z(ALPHABET,       alphabet,         MAX_ALPHABETS);                  // 32KB per 1,024 characters
+   declare1d64z(CHAR_IMM,       alphabet_pIMM,    MAX_ALPHABETS * MAX_CHARACTERS); // GPU-bound alphabet data
+   declare1d64z(GUI_SPRITE_LIB, spriteLib,        MAX_GUI_SPRITE_LIBS);            // Master array of sprite libraries
+   declare1d64z(GUI_INTERFACE,  interfaceProfile, MAX_INTERFACES);                 // Master array of interface profiles
+   declare1d64s(GUI_ELEMENT,    element,          MAX_GUI_ELEMENTS, max128);       // 96K per 1,024 elements
+   declare1d64z(GUI_EL_DGS,     element_dgs,      MAX_GUI_ENTRIES);                // GPU-bound element data
 
-   D3D11_MAPPED_SUBRESOURCE ms {};
+   declare1d64z(ui32, totalVertexList, MAX_GUI_ENTRIES);
+   declare1d64s(ui32, curVertexCount,  MAX_INTERFACES, max128);
+   declare1d64z(ui16, uiAtlasTexIndex, MAX_ATLAS);
+   declare1d64z(char, textBuffer,      MAX_TEXT_BUFFER);
 
-   si32 bufDGS;
-   si32 bufAlphabet;
-   si32 bufText;
-   si32 bufVertex;
+   declare2d64z(ui32,  curVertexList, MAX_INTERFACES, MAX_INTERFACE_VERTS);
+   declare2d64z(wchar, stAtlas,       MAX_ATLAS,      MAX_NAME_SIZE);
+   declare2d64z(char,  stLanguage,    MAX_ALPHABETS,  MAX_NAME_SIZE);
+
+   cwchptrc stGUIDir = L"ui_elements\\";
+
+   // 28 bytes spare (4 bytes beyond alignment)
+
+   struct {
+      union { cui16 bufAlphabet; ui16 _bufAlphabet; };
+      union { cui16 bufText;     ui16 _bufText; };
+      union { cui16 bufVertex;   ui16 _bufVertex; };
+      union { cui16 bufDGS;      ui16 _bufDGS; };
+   };
+   
    si32 siGUIElements = 0;
    ui32 uiGUIVerts    = 0;
    si32 siTextBankOS  = 0;
@@ -56,31 +83,15 @@ al32 struct CLASS_GUI {
 
    AVX8Ds32 activeElement = { .ymm = { max256 } };
 
-   CLASS_GUI(CLASS_GPU &gpuClass, CLASS_FILEOPS &fileOps) : gpu(gpuClass), files(fileOps) {
-#ifdef AE_PTR_LIB
-      ptrLib[4] = this;
-#endif
-
-      spriteLib        = (GUI_SPRITE_LIB *)zalloc64(sizeof(GUI_SPRITE_LIB[MAX_GUI_SPRITE_LIBS]));
-      alphabet_pIMM    = (CHAR_IMM *)zalloc64(sizeof(CHAR_IMM[MAX_ALPHABETS][MAX_CHARACTERS]));
-      alphabet         = (ALPHABET *)zalloc64(sizeof(ALPHABET[MAX_ALPHABETS]));
-      stLanguage       = (wchar(*)[MAX_ALPHABETS])zalloc64(sizeof(wchar[MAX_ALPHABETS][MAX_NAME_SIZE]));
-      stAtlas          = (wchar(*)[MAX_ATLAS])zalloc64(sizeof(wchar[MAX_ATLAS][MAX_NAME_SIZE]));
-      siAtlasTexIndex  = (si16ptr)zalloc64(sizeof(si16[MAX_ATLAS]));
-      interfaceProfile = (GUI_INTERFACE *)zalloc64(sizeof(GUI_INTERFACE[MAX_INTERFACES]));
-      textBuffer       = (chptr)zalloc64(sizeof(char[MAX_TEXT_BUFFER]));
-      curVertexList    = (ui32(*)[MAX_INTERFACE_VERTS])zalloc64(sizeof(ui32[MAX_INTERFACES][MAX_INTERFACE_VERTS]));
-      totalVertexList  = (ui32ptr)zalloc64(sizeof(ui32[MAX_GUI_ENTRIES]));
-      curVertexCount   = (ui32ptr)salloc64(sizeof(ui32[MAX_INTERFACES]), max128);
-      element_dgs      = (GUI_EL_DGS *)zalloc64(sizeof(GUI_EL_DGS[MAX_GUI_ENTRIES]));
-      element          = (GUI_ELEMENT *)salloc64(sizeof(GUI_ELEMENT[MAX_GUI_ELEMENTS]), max128);
-      funcLib          = (FUNCTION *)zalloc16(sizeof(FUNCTION[MAX_GUI_FUNCTIONS]));
-      bufDGS           = gpu.buf.CreateStructured(0, element_dgs, sizeof(GUI_EL_DGS), MAX_GUI_ENTRIES, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS, USAGE_DEFAULT);
-      bufAlphabet      = gpu.buf.CreateStructured(0, alphabet_pIMM, sizeof(CHAR_IMM), MAX_ALPHABETS * MAX_CHARACTERS, USAGE_DYNAMIC);
-      bufText          = gpu.buf.CreateStructured(0, textBuffer, 16, MAX_TEXT_BUFFER >> 4, USAGE_DYNAMIC);
-      bufVertex        = gpu.buf.CreateVertex(curVertexList, sizeof(ui32), MAX_GUI_ENTRIES, 1);
+private:
+   inline void _CLASS_GUI_INIT(void) {
+      _bufDGS      = gpu.buf.CreateStructured(0, element_dgs, sizeof(GUI_EL_DGS), MAX_GUI_ENTRIES, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS, ae_buf_default);
+      _bufAlphabet = gpu.buf.CreateStructured(0, alphabet_pIMM, sizeof(CHAR_IMM), MAX_ALPHABETS * MAX_CHARACTERS, ae_buf_dynamic);
+      _bufText     = gpu.buf.CreateStructured(0, textBuffer, 16, MAX_TEXT_BUFFER >> 4, ae_buf_dynamic);
+      _bufVertex   = gpu.buf.CreateVertex(curVertexList, sizeof(ui32), MAX_GUI_ENTRIES, 1);
 
       // Add default UI functions to master library
+      funcLib[0]  = { 0,                            "Null" };
       funcLib[1]  = { __OnHover_Default,            stOnHoverDefault };
       funcLib[2]  = { __OffHover_Default,           stOffHoverDefault };
       funcLib[3]  = { __Activate0_0_Default_Button, stActivate00DefaultButton };
@@ -100,19 +111,23 @@ al32 struct CLASS_GUI {
       funcLib[17] = { __Activate0_1_Default_Array,  stActivate01DefaultArray };
       funcLib[18] = { __Activate1_0_Default_Array,  stActivate10DefaultArray };
    }
+public:
 
-   void _Deinitialise(void) {
+   CLASS_GUI(CLASS_FILEOPS &fileOps, CLASS_GPU &gpuClass) : files(fileOps), gpu(gpuClass) { _CLASS_GUI_INIT(); }
+   CLASS_GUI(CLASS_FILEOPS &fileOps, CLASS_GPU &gpuClass, cptrptr globalPointer) : files(fileOps), gpu(gpuClass) { _CLASS_GUI_INIT(); if(globalPointer) *globalPointer = this; }
+
+   ~CLASS_GUI(void) {
       ui32 i;
 
       if(element) mdealloc(element);
       if(element_dgs) mdealloc(element_dgs);
 //      if(vertexRunLength) mfree(element_dgs);
       if(textBuffer) mdealloc(textBuffer);
-      for(i = MAX_ATLAS; i; ++i)
-         if(siAtlasTexIndex[i])
-            gpu.tex.Unload2D(siAtlasTexIndex[i]);
+      for(i = MAX_ATLAS - 1; i; --i)
+         if(uiAtlasTexIndex[i])
+            gpu.tex.Unload2D(uiAtlasTexIndex[i]);
 //      mfree(vertex_index);
-      for(i = siInterfaces; i; ++i)
+      for(i = siInterfaces - 1; i; --i)
          if(interfaceProfile[i].vertex)
             mdealloc(interfaceProfile[i].vertex);
       mfree(interfaceProfile, stAtlas, stLanguage, alphabet, alphabet_pIMM, spriteLib);
@@ -127,33 +142,35 @@ al32 struct CLASS_GUI {
    }
 
    cui32 CreateAtlas(cwchptrc atlasName, si16 atlasIndex, csi16 textureIndex) {
+      if(atlasIndex >= (si16)MAX_ATLAS) return 0x080000002;
       // Find first available slot if index is -1
       if(atlasIndex == -1) {
          ui8 i = 0;
-         for(; stAtlas[i] && i < MAX_ATLAS; ++i);
+         for(; stAtlas[i][0] && i < MAX_ATLAS; ++i);
          if(i >= MAX_ATLAS) return 0x080000001; // All atlas slots occupied
          atlasIndex = i;
       }
       wcscpy(stAtlas[atlasIndex], atlasName);
-      siAtlasTexIndex[uiAtlas++] = textureIndex;
-//      if(atlasIndex >= uiAtlas) uiAtlas++;
+      uiAtlasTexIndex[atlasIndex] = textureIndex;
+      ++uiAtlas;
 
       return atlasIndex;
    }
 
    cui32 LoadAtlas(cwchptrc atlasFilename, si16 atlasIndex) {
+      if(atlasIndex >= (si16)MAX_ATLAS) return 0x080000002;
       // Find first available slot if index is -1
       if(atlasIndex == -1) {
          ui8 i = 0;
-         for(; stAtlas[i] && i < MAX_ATLAS; ++i);
+         for(; stAtlas[i][0] && i < MAX_ATLAS; ++i);
          if(i >= MAX_ATLAS) return 0x080000001; // All atlas slots occupied
          atlasIndex = i;
       }
-      wsprintf(files.stTemp, L"textures\\gui\\%s%s", atlasFilename, L".dds");
-      csi32 index = gpu.tex.Load2D(files.stTemp);
+      wsprintf(files.wstTemp, L"textures\\gui\\%s%s", atlasFilename, L".dds");
+      csi32 index = gpu.tex.Load2D(files.wstTemp);
       wcscpy(stAtlas[atlasIndex], atlasFilename);
-      siAtlasTexIndex[uiAtlas++] = index;
-//      if(atlasIndex >= uiAtlas) uiAtlas++;
+      uiAtlasTexIndex[atlasIndex] = index;
+      ++uiAtlas;
 
       return atlasIndex;
    }
@@ -170,11 +187,11 @@ al32 struct CLASS_GUI {
       // Find first available slot if index is -1
       if(libraryIndex == -1) {
          ui8 i = 0;
-         for(; spriteLib[i].maxSprites && i < MAX_GUI_SPRITE_LIBS; ++i);
+         for(; spriteLib[i].sprite && i < MAX_GUI_SPRITE_LIBS; ++i);
          if(i >= MAX_GUI_SPRITE_LIBS) return 0x080000001; // All atlas slots occupied
          libraryIndex = i;
       }
-      spriteLib[libraryIndex] = { (GUI_SPRITE *)zalloc32(sizeof(GUI_SPRITE) * maxSprites), (ui16 &)atlasIndex, 0, (ui16 &)maxSprites };
+      spriteLib[libraryIndex] = { (GUI_SPRITE *)zalloc32(sizeof(GUI_SPRITE) * maxSprites), (ui16)atlasIndex, 0, (ui16)maxSprites };
 
       return libraryIndex;
    }
@@ -183,38 +200,57 @@ al32 struct CLASS_GUI {
 ///--- To do...
    }
 
+   // Read atlas filename then locates/loads texture. Returns atlas index
+   inline cui16 ReadAndLoadAtlas(cHANDLE fileHandle) {
+      static al16 wchptrc atlasFilename = (wchptr)malloc16(512u);
+      ui16 i = 0;
+
+      files.ReadWideLine(fileHandle, atlasFilename);
+      while(wcscmp(atlasFilename, stAtlas[i]) && (i < MAX_ATLAS)) ++i;
+      if(i >= MAX_ATLAS) { // Atlas not preloaded
+         cui32 atlasSlot = LoadAtlas(atlasFilename, -1);
+
+         if(atlasSlot == 0x080000001) Try("Atlas texture not found", -5, ss_gui);
+
+         i = atlasSlot;
+      }
+
+      return i;
+   }
+
    // Returns index of library, or 0x080000001 if all sprite library slots occupied
-   cui32 LoadSpriteLibrary(cwchptrc filename, si32 libIndex) {
-      si32 i = 0;
+   csi16 LoadSpriteLibrary(cwchptrc filename, si16 libIndex) {
+      chptr textArrayOS = 0;
+      ui32  stringCount = 0;
+      ui16  index       = 0;
 
       // Find first available slot if index is -1
       if(libIndex == -1) {
-         for(; spriteLib[libIndex].sprite && i < MAX_GUI_SPRITE_LIBS; ++i);
-         if(i >= MAX_GUI_SPRITE_LIBS) return 0x080000001;
-         libIndex = i;
+         for(; spriteLib[index].sprite && index < MAX_GUI_SPRITE_LIBS; ++index);
+         if(index >= MAX_GUI_SPRITE_LIBS) return 0x08001u;
+         libIndex = index;
       }
 
       cHANDLE hSpriteLibData = files.OpenFileForReading(filename, stGUIDir);
 
       // Read (and discard) tag line
-      if(!files.ReadAndVerify(hSpriteLibData, L"AE.SpriteLibrary.01u")) Try("Invalid sprite library file", -4, ss_gui);
-
+      if(!files.ReadAndVerify(hSpriteLibData, "AE.SpriteLibrary.01u")) Try("Invalid sprite library file", -4, ss_gui);
       // Read atlas filename then locate/load texture
-      files.ReadLine(hSpriteLibData, files.stTemp);
-      for(i = 0; wcscmp(files.stTemp, stAtlas[i]) && (i < MAX_ATLAS); ++i);
-      if(i >= MAX_ATLAS) { // Atlas not preloaded
-         cui32 atlasSlot = LoadAtlas(files.stTemp, -1);
-
-         if(atlasSlot == 0x080000001) Try("Atlas texture not found", -5, ss_gui);
-
-         spriteLib[libIndex].atlasIndex = atlasSlot;
-      } else
-         spriteLib[libIndex].atlasIndex = i;
-
+      index = ReadAndLoadAtlas(hSpriteLibData);
       // Read current & maxmimum counts
       files.ReadFromFile(hSpriteLibData, &spriteLib[libIndex].numSprites, sizeof(ui16[2]));
+      // Read total character count of sprite strings
+      files.ReadFromFile(hSpriteLibData, &stringCount, 4u);
+
+      spriteLib[libIndex] = { (GUI_SPRITE *)zalloc32(sizeof(GUI_SPRITE) * spriteLib[libIndex].maxSprites), index, spriteLib[libIndex].numSprites, spriteLib[libIndex].maxSprites };
+      spriteLib[libIndex].sprite[0].name = (chptr)zalloc32(RoundUpToNearest32(stringCount));
+
       // Read sprite data
-      files.ReadFromFile(hSpriteLibData, spriteLib[libIndex].sprite, sizeof(GUI_SPRITE) * spriteLib[libIndex].numSprites);
+      for(textArrayOS = spriteLib[libIndex].sprite[0].name, index = 0; index < spriteLib[libIndex].numSprites; ++index) {
+         spriteLib[libIndex].sprite[index].name = textArrayOS;
+         textArrayOS += files.ReadLine(hSpriteLibData, spriteLib[libIndex].sprite[index].name) + 1u;
+         files.ReadFromFile(hSpriteLibData, &spriteLib[libIndex].sprite[index].aa, sizeof(fl32[6]));
+      };
 
       files.CloseFile(hSpriteLibData);
 
@@ -226,25 +262,37 @@ al32 struct CLASS_GUI {
       // Sprite library slot is empty
       if(!spriteLib[libIndex].maxSprites) return false;
 
-      cHANDLE hSpriteLibData = files.OpenFileForWriting(filename, stGUIDir);
+      ui32 bytesWritten, charsWritten = 0;
 
+      cHANDLE hSpriteLibData = files.OpenFileForWriting(filename, stGUIDir);
+      
       // Write tag line: 2[Engine].SpriteLibrary.2[Format version]1[Compression method]
-      files.WriteToFile(hSpriteLibData, "AE.SpriteLibrary.01u\0", 21);
+      bytesWritten = files.WriteToFile(hSpriteLibData, "AE.SpriteLibrary.01u", 21);
       // Write atlas filename to avoid misindexing upon load
-      files.WriteToFile(hSpriteLibData, stAtlas[spriteLib[libIndex].atlasIndex], ui32(wcslen(stAtlas[spriteLib[libIndex].atlasIndex])));
+      bytesWritten += files.WriteToFile(hSpriteLibData, stAtlas[spriteLib[libIndex].atlasIndex], ui32(wcslen(stAtlas[spriteLib[libIndex].atlasIndex]) << 1u) + 2u);
       // Write current & maximum counts
-      files.WriteToFile(hSpriteLibData, &spriteLib[libIndex].numSprites, sizeof(ui16[2]));
+      bytesWritten += files.WriteToFile(hSpriteLibData, &spriteLib[libIndex].numSprites, sizeof(ui16[2]));
+      // Reserved for total character count of sprite strings
+      files.WriteToFile(hSpriteLibData, &hSpriteLibData, 4u);
       // Write sprite data
-      files.WriteToFile(hSpriteLibData, spriteLib[libIndex].sprite, sizeof(GUI_SPRITE) * spriteLib[libIndex].numSprites);
+      for(ui32 i = 0; i < spriteLib[libIndex].numSprites; ++i) {
+         cui32 stringLength = ui32(strlen(spriteLib[libIndex].sprite[i].name) + 1u);
+         charsWritten += stringLength;
+         files.WriteToFile(hSpriteLibData, spriteLib[libIndex].sprite[i].name, stringLength);
+         files.WriteToFile(hSpriteLibData, &spriteLib[libIndex].sprite[i].aa, sizeof(fl32[6]));
+      };
+      // Write total character count of sprite strings
+      SetFilePointer(hSpriteLibData, bytesWritten, 0, 0);
+      files.WriteToFile(hSpriteLibData, &charsWritten, 4u);
 
       files.CloseFile(hSpriteLibData);
 
       return true;
    }
 
-   cui32 CreateSprite(csi32 libIndex, wchptrc name, cVEC4Df texCoords, cVEC2Df activeArea) const {
+   cui32 CreateSprite(csi32 libIndex, chptrc name, cVEC4Df texCoords, cVEC2Df activeArea) const {
       if(spriteLib[libIndex].numSprites >= MAX_GUI_LIB_SPRITES) return 0x080000001;
-      spriteLib[libIndex].sprite[spriteLib[libIndex].numSprites] = { name, texCoords, activeArea };
+      spriteLib[libIndex].sprite[spriteLib[libIndex].numSprites] = { name, activeArea, texCoords };
 
       return spriteLib[libIndex].numSprites++;
    }
@@ -264,12 +312,31 @@ al32 struct CLASS_GUI {
       return spriteLib[libIndex].numSprites++;
    }
 
+///--- !!! Temporary; for building primary libraries !!!
+   al32 struct GUI_SPRITE_DEFAULTS { cchptrc name; VEC4Df tc; VEC2Df aa; };
+   cui32 CreateSprite(csi32 libIndex, GUI_SPRITE_DEFAULTS spriteData, cbool flipY) const {
+      if(spriteLib[libIndex].numSprites >= MAX_GUI_LIB_SPRITES) return 0x080000001;
+
+      if(flipY) {
+         cfl32 temp = spriteData.tc.y1;
+
+         spriteData.tc.y1 = spriteData.tc.y2;
+         spriteData.tc.y2 = temp;
+      }
+
+      spriteLib[libIndex].sprite[spriteLib[libIndex].numSprites].name = (chptr)spriteData.name;
+      spriteLib[libIndex].sprite[spriteLib[libIndex].numSprites].aa = spriteData.aa;
+      spriteLib[libIndex].sprite[spriteLib[libIndex].numSprites].tc = spriteData.tc;
+
+      return spriteLib[libIndex].numSprites++;
+   }
+
    cui32 DestroySprite(csi32 libIndex, csi16 spriteIndex) {
 ///--- To do...
    }
 
    // Returns index of sprite, or 0x080000001 if all sprite slots occupied
-   cui32 LoadSprite(cwchptrc filename, csi32 libIndex, si16 spriteIndex) {
+   csi32 LoadSprite(cwchptrc filename, csi32 libIndex, si16 spriteIndex) {
       // Find first available slot if index is -1
       if(spriteIndex == -1) {
          si16 i = 0;
@@ -299,9 +366,9 @@ al32 struct CLASS_GUI {
       cHANDLE hSpriteData = files.OpenFileForWriting(filename, stGUIDir);
 
       // Write tag line: 2[Engine].Sprite.2[Format version]1[Compression method]
-      files.WriteToFile(hSpriteData, "AE.Sprite.01u\0", 14);
+      files.WriteToFile(hSpriteData, "AE.Sprite.01u", 14);
       // Write data
-      files.WriteToFile(hSpriteData, spriteLib[libIndex].sprite[spriteIndex].name, ui32(wcslen(spriteLib[libIndex].sprite[spriteIndex].name)));
+      files.WriteToFile(hSpriteData, spriteLib[libIndex].sprite[spriteIndex].name, ui32(strlen(spriteLib[libIndex].sprite[spriteIndex].name)));
       files.WriteToFile(hSpriteData, &spriteLib[libIndex].sprite[spriteIndex].tc, sizeof(fl32[6]));
 
       files.CloseFile(hSpriteData);
@@ -309,19 +376,19 @@ al32 struct CLASS_GUI {
       return true;
    }
 
-   cui16 CreateAlphabet(cwchptrc languageName, csi32 xSegments, csi32 ySegments, cVEC2Df charSize, si16 alphabetIndex, csi16 atlasIndex) {
+   csi16 CreateAlphabet(cchptrc languageName, csi32 xSegments, csi32 ySegments, cVEC2Df charSize, si16 alphabetIndex, csi16 atlasIndex) {
       // Find first available slot if alphabetIndex is -1
       if(alphabetIndex == -1) {
          si16 i = 0;
          for(; alphabet[i].stLanguage && i < MAX_ALPHABETS; ++i);
-         if(i >= MAX_ALPHABETS) return 0x08001; // All alphabet slots occupied
+         if(i >= MAX_ALPHABETS) return 0x08001u; // All alphabet slots occupied
          alphabetIndex = i;
       }
-      if(xSegments < 1 || ySegments < 1) return 0x08002;
-      if(xSegments * ySegments > MAX_CHARACTERS) return 0x08003;
+      if(xSegments < 1 || ySegments < 1) return 0x08002u;
+      if(xSegments * ySegments > MAX_CHARACTERS) return 0x08003u;
 
       cui32 pIMMos = alphabetIndex * MAX_CHARACTERS;
-      wcscpy(stLanguage[uiLanguages], languageName);
+      strcpy(stLanguage[uiLanguages], languageName);
       alphabet[alphabetIndex].stLanguage = stLanguage[uiLanguages++];
       alphabet[alphabetIndex].stAtlasFilename = stAtlas[atlasIndex];
       alphabet[alphabetIndex].atlasIndex = atlasIndex;
@@ -344,32 +411,31 @@ al32 struct CLASS_GUI {
       return alphabetIndex;
    }
 
-   cui32 LoadAlphabet(cwchptrc filename, si16 index) {
+   csi16 LoadAlphabet(cwchptrc filename, si16 index) {
       // Find first available slot if index is -1
       if(index == -1) {
          si16 i = 0;
          for(; alphabet[i].stLanguage && i < MAX_ALPHABETS; ++i);
-         if(i >= MAX_ALPHABETS) return 0x080000001; // All alphabet slots occupied
+         if(i >= MAX_ALPHABETS) return 0x08001u; // All alphabet slots occupied
          index = i;
       }
 
       cHANDLE hAlphabetData = files.OpenFileForReading(filename, stGUIDir);
 
       // Read (and discard) tag line
-      if(!files.ReadAndVerify(hAlphabetData, L"AE.Alphabet.01u")) Try("Invalid alphabet file", -2, ss_gui);
+      if(!files.ReadAndVerify(hAlphabetData, "AE.Alphabet.01u")) Try("Invalid alphabet file", -2, ss_gui);
       // Read primary data
       files.ReadLine(hAlphabetData, stLanguage[uiLanguages]);
-      files.ReadLine(hAlphabetData, stAtlas[uiAtlas]);
-
-///--- Add searching and/or loading of atlas texture
-
-      alphabet[uiLanguages].atlasIndex = siAtlasTexIndex[uiAtlas++];
+      alphabet[uiLanguages].stLanguage = stLanguage[uiLanguages];
+      alphabet[uiLanguages].atlasIndex = ReadAndLoadAtlas(hAlphabetData);
+      alphabet[uiLanguages].stAtlasFilename = stAtlas[alphabet[uiLanguages].atlasIndex];
       files.ReadFromFile(hAlphabetData, &alphabet[uiLanguages].numChars, sizeof(ui16));
       alphabet[uiLanguages].pIMMos = uiLanguages * MAX_CHARACTERS;
       // Read character data
-      files.ReadFromFile(hAlphabetData, &alphabet_pIMM[uiLanguages * MAX_CHARACTERS], sizeof(CHAR_IMM) * alphabet[uiLanguages++].numChars);
+      files.ReadFromFile(hAlphabetData, &alphabet_pIMM[uiLanguages * MAX_CHARACTERS], sizeof(CHAR_IMM) * alphabet[uiLanguages].numChars);
 
       CloseHandle(hAlphabetData);
+      ++uiLanguages;
 
       return index;
    }
@@ -382,10 +448,10 @@ al32 struct CLASS_GUI {
       cHANDLE hAlphabetData = files.OpenFileForWriting(filename, stGUIDir);
 
       // Write tag line: 2[Engine].Alphabet.2[Format version]1[Compression method]
-      files.WriteToFile(hAlphabetData, "AE.Alphabet.01u\0", 16);
+      files.WriteToFile(hAlphabetData, "AE.Alphabet.01u", 16);
       // Write primary data
-      files.WriteToFile(hAlphabetData, alphabet[index].stLanguage, ui32(wcslen(alphabet[index].stLanguage) + 1) * sizeof(wchar));
-      files.WriteToFile(hAlphabetData, alphabet[index].stAtlasFilename, ui32(wcslen(alphabet[index].stAtlasFilename) + 1) * sizeof(wchar));
+      files.WriteToFile(hAlphabetData, alphabet[index].stLanguage, ui32((strlen(alphabet[index].stLanguage) + 1u) * sizeof(char)));
+      files.WriteToFile(hAlphabetData, alphabet[index].stAtlasFilename, ui32((wcslen(alphabet[index].stAtlasFilename) + 1u) * sizeof(wchar)));
       files.WriteToFile(hAlphabetData, &alphabet[index].numChars, sizeof(ui16));
       // Write character data
       files.WriteToFile(hAlphabetData, &alphabet_pIMM[index * MAX_CHARACTERS], sizeof(CHAR_IMM) * alphabet[index].numChars);
@@ -448,56 +514,56 @@ al32 struct CLASS_GUI {
    };
 
    // Returns first vertex, or 0x0FFFFFFFF if insufficient text buffer space
-   cui32 CreateTextVertices(cGUI_EL_DESC &desc, si32 textSize, cbool forTextArray) {
-      if(textSize <= 0) textSize = si32(strlen(desc.textPtr));
+   cui32 CreateTextVertices(cGUI_EL_DESC &desc, ui32 textSize, cbool forTextArray) {
+      if(textSize <= 0) textSize = ui32(strlen(desc.text.cPtr));
 
       cui32 firstVertex     = uiGUIVerts;
-      csi32 siTextBlockSize = max(1, RoundUpToNearest16(desc.charCount <= 0 ? textSize : desc.charCount));
+      cui32 uiTextBlockSize = max(1u, RoundUpToNearest16(desc.text.cCount <= 0 ? textSize : desc.text.cCount));
 
       // Insufficient text buffer space
-      if(siTextBlockSize > (MAX_TEXT_BUFFER - siTextBankOS)) return 0x0FFFFFFFFu;
+      if(uiTextBlockSize > (MAX_TEXT_BUFFER - siTextBankOS)) return 0x0FFFFFFFFu;
 
-      strncpy(&textBuffer[siTextBankOS], desc.textPtr, textSize);
+      strncpy(&textBuffer[siTextBankOS], desc.text.cPtr, textSize);
 
       // Zero first character of trailing vertex
       if(!((siTextBankOS + textSize) & 0x0FFFFFFE0u)) textBuffer[(siTextBankOS + textSize)] = 0;
 
-      si32 i = 0;
-      for(element_dgs[firstVertex].origin[0] = desc.viewPos; i < textSize; ++uiGUIVerts, i += 32) {
+      ui32 i = 0;
+      for(element_dgs[firstVertex].origin[0] = desc.viewPos; i < textSize; ++uiGUIVerts, i += 32u) {
          element_dgs[uiGUIVerts].origin[0]     = CalculateTextOrigin(firstVertex, uiGUIVerts, desc.index.alphabet);
 //         element_dgs[uiGUIVerts].origin[1]     =
 //         element_dgs[uiGUIVerts].origin[2]     =
 //         element_dgs[uiGUIVerts].origin[3]     = { 16384.0f, desc.viewPos.y };
          element_dgs[uiGUIVerts].origin[1]     = { 16384.0f, 16384.0f };
          element_dgs[uiGUIVerts].coords.xmm[1] = _mm_set_ps1(16384.0f);
-         element_dgs[uiGUIVerts].colour        = desc.tint.text.xmm;
-         element_dgs[uiGUIVerts].size          = desc.size.text;
+         element_dgs[uiGUIVerts].colour        = desc.text.tint;
+         element_dgs[uiGUIVerts].size          = desc.text.size;
          element_dgs[uiGUIVerts].rotAngle      = 0.0f;
          element_dgs[uiGUIVerts].parentIndex   = uiGUIVerts;
          element_dgs[uiGUIVerts].width         = 0.0f;
-         element_dgs[uiGUIVerts].charBankOS    = ((i + siTextBankOS) >> 4) | ((textSize - i > 32 ? 32 : textSize - i) << 26);
+         element_dgs[uiGUIVerts].charBankOS    = ((i + siTextBankOS) >> 4u) | ((textSize - i > 32u ? 32u : textSize - i) << 26u);
          element_dgs[uiGUIVerts].alphabetIndex = alphabet[desc.index.alphabet].pIMMos;
-         element_dgs[uiGUIVerts].atlasIndex    = (ui8)alphabet[desc.index.alphabet].atlasIndex;
+         element_dgs[uiGUIVerts].atlasIndex    = (ui8 &)alphabet[desc.index.alphabet].atlasIndex * 2u + 80u;
          element_dgs[uiGUIVerts].elementType   = (forTextArray ? aet_textArray : aet_text);
          element_dgs[uiGUIVerts].sibling       = uiGUIVerts - firstVertex;
          element_dgs[uiGUIVerts].align         = desc.text.align;
          element_dgs[uiGUIVerts].mods          = desc.text.mods;
       }
-      for(; i < siTextBlockSize; ++uiGUIVerts, i += 32) {
+      for(; i < uiTextBlockSize; ++uiGUIVerts, i += 32u) {
 #ifdef __AVX__
          element_dgs[uiGUIVerts].coords.ymm    = _mm256_setzero_ps();
 #else
          element_dgs[uiGUIVerts].coords.xmm[0] = _mm_setzero_ps();
          element_dgs[uiGUIVerts].coords.xmm[1] = _mm_setzero_ps();
 #endif
-         element_dgs[uiGUIVerts].colour        = desc.tint.text.xmm;
-         element_dgs[uiGUIVerts].size          = desc.size.text;
+         element_dgs[uiGUIVerts].colour        = desc.text.tint;
+         element_dgs[uiGUIVerts].size          = desc.text.size;
          element_dgs[uiGUIVerts].rotAngle      = 0.0f;
          element_dgs[uiGUIVerts].parentIndex   = uiGUIVerts;
          element_dgs[uiGUIVerts].width         = 0.0f;
-         element_dgs[uiGUIVerts].charBankOS    = (i + siTextBankOS) >> 4;
+         element_dgs[uiGUIVerts].charBankOS    = (i + siTextBankOS) >> 4u;
          element_dgs[uiGUIVerts].alphabetIndex = alphabet[desc.index.alphabet].pIMMos;
-         element_dgs[uiGUIVerts].atlasIndex    = (ui8)alphabet[desc.index.alphabet].atlasIndex;
+         element_dgs[uiGUIVerts].atlasIndex    = (ui8 &)alphabet[desc.index.alphabet].atlasIndex * 2u + 80u;
          element_dgs[uiGUIVerts].elementType   = (forTextArray ? aet_textArray : aet_text);
          element_dgs[uiGUIVerts].sibling       = uiGUIVerts - firstVertex;
          element_dgs[uiGUIVerts].align         = desc.text.align | 0x080u;
@@ -505,7 +571,7 @@ al32 struct CLASS_GUI {
       }
       element_dgs[firstVertex].sibling = ui16(uiGUIVerts - firstVertex) | 0x08000u;
 
-      siTextBankOS += siTextBlockSize;
+      siTextBankOS += uiTextBlockSize;
 
       return firstVertex;
    }
@@ -538,9 +604,9 @@ al32 struct CLASS_GUI {
    cui32 CreateText(cGUI_EL_DESC &desc) {
       if(siGUIElements >= MAX_GUI_ELEMENTS) return 0x080000001;
 
-      si32 siTextSize = si32(strlen(desc.textPtr));
+      si16 siTextSize = si16(strlen(desc.text.cPtr));
 
-      if((desc.charCount > 0) && (desc.charCount < siTextSize)) siTextSize = desc.charCount;
+      if((desc.text.cCount > 0) && (desc.text.cCount < siTextSize)) siTextSize = desc.text.cCount;
 
       cui32 uiFirstVert = CreateTextVertices(desc, siTextSize, false);
 
@@ -549,8 +615,8 @@ al32 struct CLASS_GUI {
 
       // Calculate width of string view space
 ///--- Change to iterate & add unique character widths
-      cVEC2Df activeSize = { alphabet_pIMM[alphabet[desc.index.alphabet].pIMMos + 1].width * fl32(siTextSize) * desc.size.text.x,
-                             alphabet_pIMM[alphabet[desc.index.alphabet].pIMMos + 1].height * desc.size.text.y };
+      cVEC2Df activeSize = { alphabet_pIMM[alphabet[desc.index.alphabet].pIMMos + 1].width * fl32(siTextSize) * desc.text.size.x,
+                             alphabet_pIMM[alphabet[desc.index.alphabet].pIMMos + 1].height * desc.text.size.y };
 
       cSSE4Df32 activeCoords = CalcActiveCoords(desc.viewPos, activeSize, activeSize, desc.text.align);
 
@@ -586,19 +652,19 @@ al32 struct CLASS_GUI {
 
       GUI_EL_DESC curText;
 
-      Stream16(&desc, &curText, sizeof(GUI_EL_DESC));
+      Stream32(&desc, &curText, sizeof(GUI_EL_DESC));
 
       ui16 i;
 
-      element[siGUIElements].textArray = (ui32ptr)malloc16(sizeof(ui32ptr) * desc.stringCount);
+      element[siGUIElements].textArray = (ui32ptr)malloc16(sizeof(ui32ptr) * desc.text.sCount);
 
       // Generate all text vertices
-      for(i = 0, heightOS = curText.viewPos.y; i < (ui16 &)desc.stringCount; ++i, heightOS -= curText.size.text.y) {
-         curText.viewPos   = { 0.0f, heightOS };
-         curText.textPtr   = desc.textArray[i];
-         curText.charCount = si32(strlen(desc.textArray[i]));
+      for(i = 0, heightOS = curText.viewPos.y; i < (ui16 &)desc.text.sCount; ++i, heightOS -= curText.text.size.y) {
+         curText.viewPos     = { 0.0f, heightOS };
+         curText.text.cPtr   = desc.text.cArray[i];
+         curText.text.cCount = ui16(strlen(desc.text.cArray[i]));
 
-         curVertex = CreateTextVertices(curText, curText.charCount, true);
+         curVertex = CreateTextVertices(curText, curText.text.cCount, true);
 
          if(curVertex == 0x0FFFFFFFFu) break; // Insufficent text buffer space for current string
 
@@ -606,7 +672,7 @@ al32 struct CLASS_GUI {
       }
 
       // Insufficent text buffer space for every string
-      if(i < desc.stringCount) {
+      if(i < desc.text.sCount) {
          mdealloc(element[siGUIElements].textArray);
 
          element[siGUIElements].textArray = 0;
@@ -647,7 +713,7 @@ al32 struct CLASS_GUI {
       cGUI_SPRITE_LIB &curLib = spriteLib[desc.index.spriteLib];
        GUI_SPRITE     &curSpr = curLib.sprite[desc.index.cursorSprite];
 
-      cVEC2Df spriteSize = { fabsf(curSpr.tc.x2 - curSpr.tc.x1) * desc.size.cursor.x, fabsf(curSpr.tc.y2 - curSpr.tc.y1) * desc.size.cursor.y };
+      cVEC2Df spriteSize = { fabsf(curSpr.tc.x2 - curSpr.tc.x1) * desc.cursor.size.x, fabsf(curSpr.tc.y2 - curSpr.tc.y1) * desc.cursor.size.y };
       cVEC2Df activeSize = { spriteSize.x * curSpr.aa.x, spriteSize.y * curSpr.aa.y };
       cVEC4Df viewCoords = { desc.viewPos.x - spriteSize.x, desc.viewPos.y + spriteSize.y, desc.viewPos.x + spriteSize.x, desc.viewPos.y - spriteSize.y };
 
@@ -673,13 +739,13 @@ al32 struct CLASS_GUI {
       element_dgs[uiGUIVerts].viewPos      = desc.viewPos;
       element_dgs[uiGUIVerts].indent       = activeSize;
       element_dgs[uiGUIVerts].texCoords    = curSpr.tc;
-      element_dgs[uiGUIVerts].colour       = desc.tint.cursor.xmm;
+      element_dgs[uiGUIVerts].colour       = desc.cursor.tint;
       element_dgs[uiGUIVerts].size         = spriteSize;
       element_dgs[uiGUIVerts].rotAngle     = 0.0f;
       element_dgs[uiGUIVerts].parentIndex  = uiGUIVerts;
       element_dgs[uiGUIVerts].animTime     = { 0.0f, 0.0f };
       element_dgs[uiGUIVerts].animType     = 0;
-      element_dgs[uiGUIVerts].atlasIndex   = (ui8)curLib.atlasIndex;
+      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + 80u;
       element_dgs[uiGUIVerts].elementType  = aet_cursor;
       element_dgs[uiGUIVerts].sibling      = 0;
       element_dgs[uiGUIVerts].align        = desc.cursor.align;
@@ -691,11 +757,10 @@ al32 struct CLASS_GUI {
    cui32 CreatePanel(cGUI_EL_DESC &desc) {
       if(siGUIElements >= MAX_GUI_ELEMENTS) return 0x080000001;
 
-      cGUI_SPRITE_LIB &curLib = spriteLib[desc.index.spriteLib];
-       GUI_SPRITE     &curSpr = curLib.sprite[desc.index.panelSprite];
+      GUI_SPRITE &curSpr = spriteLib[desc.index.spriteLib].sprite[desc.index.panelSprite];
 
-      cVEC2Df spriteSize = { fabsf(curSpr.tc.x2 - curSpr.tc.x1) * desc.size.panel.x, fabsf(curSpr.tc.y2 - curSpr.tc.y1) * desc.size.panel.y };
-      cVEC2Df activeSize = { spriteSize.x * curSpr.aa.x, spriteSize.y * curSpr.aa.y };
+      cVEC2Df spriteSize = { fabsf(curSpr.tc.x2 - curSpr.tc.x1) * desc.panel.size.x, fabsf(curSpr.tc.y2 - curSpr.tc.y1) * desc.panel.size.y };
+      cVEC2Df activeSize = { spriteSize.x * curSpr.aa.x * desc.panel.wIndent.x, spriteSize.y * curSpr.aa.y * desc.panel.wIndent.y };
       cVEC4Df viewCoords = { desc.viewPos.x - spriteSize.x, desc.viewPos.y + spriteSize.y, desc.viewPos.x + spriteSize.x, desc.viewPos.y - spriteSize.y };
 
       cSSE4Df32 activeCoords = CalcActiveCoords(desc.viewPos, spriteSize, activeSize, desc.panel.align);
@@ -719,14 +784,14 @@ al32 struct CLASS_GUI {
       element[siGUIElements].ui128Var          = null128;
       element_dgs[uiGUIVerts].viewPos      = desc.viewPos;
       element_dgs[uiGUIVerts].indent       = activeSize;
-      element_dgs[uiGUIVerts].texCoords    = curSpr.tc;
-      element_dgs[uiGUIVerts].colour       = desc.tint.panel.xmm;
+      element_dgs[uiGUIVerts].texCoords    = desc.panel.bStyle ? VEC4Df{ 0.0f, 0.0f, 1.0f, 1.0f } : curSpr.tc;
+      element_dgs[uiGUIVerts].colour       = desc.panel.tint;
       element_dgs[uiGUIVerts].size         = spriteSize;
       element_dgs[uiGUIVerts].rotAngle     = 0.0f;
       element_dgs[uiGUIVerts].parentIndex  = uiGUIVerts;
-      element_dgs[uiGUIVerts].animTime     = { 0.0f, 0.0f };
-      element_dgs[uiGUIVerts].animType     = 0;
-      element_dgs[uiGUIVerts].atlasIndex   = (ui8)curLib.atlasIndex;
+      element_dgs[uiGUIVerts].border       = { desc.panel.bSize, desc.panel.wOpacity };
+      element_dgs[uiGUIVerts].borderStyle  = (ui8 &)desc.panel.bStyle;
+      element_dgs[uiGUIVerts].atlasIndex   = desc.panel.bStyle ? 0x0FFu : ((ui8 &)spriteLib[desc.index.spriteLib].atlasIndex * 2u + 80u);
       element_dgs[uiGUIVerts].elementType  = aet_panel;
       element_dgs[uiGUIVerts].sibling      = 0;
       element_dgs[uiGUIVerts].align        = desc.panel.align;
@@ -742,7 +807,7 @@ al32 struct CLASS_GUI {
       cGUI_SPRITE_LIB &curLib = spriteLib[desc.index.spriteLib];
        GUI_SPRITE     &curSpr = curLib.sprite[desc.index.panelSprite];
 
-      cVEC2Df spriteSize = { fabsf(curSpr.tc.x2 - curSpr.tc.x1) * desc.size.panel.x, fabsf(curSpr.tc.y2 - curSpr.tc.y1) * desc.size.panel.y };
+      cVEC2Df spriteSize = { fabsf(curSpr.tc.x2 - curSpr.tc.x1) * desc.panel.size.x, fabsf(curSpr.tc.y2 - curSpr.tc.y1) * desc.panel.size.y };
       cVEC2Df activeSize = { spriteSize.x * curSpr.aa.x, spriteSize.y * curSpr.aa.y };
       cVEC4Df viewCoords = { desc.viewPos.x - spriteSize.x, desc.viewPos.y + spriteSize.y, desc.viewPos.x + spriteSize.x, desc.viewPos.y - spriteSize.y };
 
@@ -768,13 +833,13 @@ al32 struct CLASS_GUI {
       element_dgs[uiGUIVerts].viewPos      = desc.viewPos;
       element_dgs[uiGUIVerts].indent       = activeSize;
       element_dgs[uiGUIVerts].texCoords    = curSpr.tc;
-      element_dgs[uiGUIVerts].colour       = desc.tint.panel.xmm;
+      element_dgs[uiGUIVerts].colour       = desc.panel.tint;
       element_dgs[uiGUIVerts].size         = spriteSize;
       element_dgs[uiGUIVerts].rotAngle     = 0.0f;
       element_dgs[uiGUIVerts].parentIndex  = uiGUIVerts;
       element_dgs[uiGUIVerts].animTime     = { 0.0f, 0.0f };
       element_dgs[uiGUIVerts].animType     = 0;
-      element_dgs[uiGUIVerts].atlasIndex   = (ui8)curLib.atlasIndex;
+      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + 80u;
       element_dgs[uiGUIVerts].elementType  = aet_button;
       element_dgs[uiGUIVerts].sibling      = 0x08001;
       element_dgs[uiGUIVerts].align        = desc.panel.align;
@@ -782,13 +847,13 @@ al32 struct CLASS_GUI {
       element_dgs[uiGUIVerts].viewPos      = desc.viewPos;
       element_dgs[uiGUIVerts].indent       = activeSize;
       element_dgs[uiGUIVerts].texCoords    = curLib.sprite[desc.index.panelSprite + 1].tc;
-      element_dgs[uiGUIVerts].colour       = desc.tint.panel.xmm;
+      element_dgs[uiGUIVerts].colour       = desc.panel.tint;
       element_dgs[uiGUIVerts].size         = spriteSize;
       element_dgs[uiGUIVerts].rotAngle     = 0.0f;
       element_dgs[uiGUIVerts].parentIndex  = uiGUIVerts;
       element_dgs[uiGUIVerts].animTime     = { 0.0f, 0.0f };
       element_dgs[uiGUIVerts].animType     = 0;
-      element_dgs[uiGUIVerts].atlasIndex   = (ui8)curLib.atlasIndex;
+      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex;
       element_dgs[uiGUIVerts].elementType  = aet_button;
       element_dgs[uiGUIVerts].sibling      = 1;
       element_dgs[uiGUIVerts].align        = desc.panel.align | 0x080;
@@ -804,7 +869,7 @@ al32 struct CLASS_GUI {
       const GUI_SPRITE_LIB &curLib = spriteLib[desc.index.spriteLib];
             GUI_SPRITE     &curSpr = curLib.sprite[desc.index.panelSprite];
 
-      cVEC2Df spriteSize = { fabsf(curSpr.tc.x2 - curSpr.tc.x1) * desc.size.panel.x, fabsf(curSpr.tc.y2 - curSpr.tc.y1) * desc.size.panel.y };
+      cVEC2Df spriteSize = { fabsf(curSpr.tc.x2 - curSpr.tc.x1) * desc.panel.size.x, fabsf(curSpr.tc.y2 - curSpr.tc.y1) * desc.panel.size.y };
       cVEC2Df activeSize = { spriteSize.x * curSpr.aa.x, spriteSize.y * curSpr.aa.y };
       cVEC4Df viewCoords = { desc.viewPos.x - spriteSize.x, desc.viewPos.y + spriteSize.y, desc.viewPos.x + spriteSize.x, desc.viewPos.y - spriteSize.y };
 
@@ -830,13 +895,13 @@ al32 struct CLASS_GUI {
       element_dgs[uiGUIVerts].viewPos      = desc.viewPos;
       element_dgs[uiGUIVerts].indent       = activeSize;
       element_dgs[uiGUIVerts].texCoords    = curSpr.tc;
-      element_dgs[uiGUIVerts].colour       = desc.tint.panel.xmm;
+      element_dgs[uiGUIVerts].colour       = desc.panel.tint;
       element_dgs[uiGUIVerts].size         = spriteSize;
       element_dgs[uiGUIVerts].rotAngle     = 0.0f;
       element_dgs[uiGUIVerts].parentIndex  = uiGUIVerts;
       element_dgs[uiGUIVerts].animTime     = { 0.0f, 0.0f };
       element_dgs[uiGUIVerts].animType     = 0;
-      element_dgs[uiGUIVerts].atlasIndex   = (ui8)curLib.atlasIndex;
+      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + 80u;
       element_dgs[uiGUIVerts].elementType  = aet_toggle;
       element_dgs[uiGUIVerts].sibling      = 0x08001;
       element_dgs[uiGUIVerts].align        = desc.panel.align;
@@ -844,13 +909,13 @@ al32 struct CLASS_GUI {
       element_dgs[uiGUIVerts].viewPos      = desc.viewPos;
       element_dgs[uiGUIVerts].indent       = activeSize;
       element_dgs[uiGUIVerts].texCoords    = curLib.sprite[desc.index.panelSprite + 1].tc;
-      element_dgs[uiGUIVerts].colour       = desc.tint.panel.xmm;
+      element_dgs[uiGUIVerts].colour       = desc.panel.tint;
       element_dgs[uiGUIVerts].size         = spriteSize;
       element_dgs[uiGUIVerts].rotAngle     = 0.0f;
       element_dgs[uiGUIVerts].parentIndex  = uiGUIVerts;
       element_dgs[uiGUIVerts].animTime     = { 0.0f, 0.0f };
       element_dgs[uiGUIVerts].animType     = 0;
-      element_dgs[uiGUIVerts].atlasIndex   = (ui8)curLib.atlasIndex;
+      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + 80u;
       element_dgs[uiGUIVerts].elementType  = aet_toggle;
       element_dgs[uiGUIVerts].sibling      = 1;
       element_dgs[uiGUIVerts].align        = desc.panel.align | 0x080;
@@ -868,8 +933,8 @@ al32 struct CLASS_GUI {
        GUI_SPRITE     &panSpr = curLib.sprite[desc.index.panelSprite];
        GUI_SPRITE     &indSpr = curLib.sprite[desc.index.cursorSprite];
 
-      cVEC2Df spriteSize[2] = { { fabsf(panSpr.tc.x2 - panSpr.tc.x1) * desc.size.panel.x, fabsf(panSpr.tc.y2 - panSpr.tc.y1) * desc.size.panel.y },
-                                { fabsf(indSpr.tc.x2 - indSpr.tc.x1) * desc.size.cursor.x, fabsf(indSpr.tc.y2 - indSpr.tc.y1) * desc.size.cursor.y } };
+      cVEC2Df spriteSize[2] = { { fabsf(panSpr.tc.x2 - panSpr.tc.x1) * desc.panel.size.x, fabsf(panSpr.tc.y2 - panSpr.tc.y1) * desc.panel.size.y },
+                                { fabsf(indSpr.tc.x2 - indSpr.tc.x1) * desc.cursor.size.x, fabsf(indSpr.tc.y2 - indSpr.tc.y1) * desc.cursor.size.y } };
       cVEC2Df activeSize[2] = { { spriteSize[0].x * panSpr.aa.x, spriteSize[0].y * panSpr.aa.y }, { spriteSize[1].x * indSpr.aa.x, spriteSize[1].y * indSpr.aa.y } };
       cVEC4Df viewCoords[2] = { { desc.viewPos.x - spriteSize[0].x, desc.viewPos.y + spriteSize[0].y, desc.viewPos.x + spriteSize[0].x, desc.viewPos.y - spriteSize[0].y },
                                 { desc.viewPos.x - spriteSize[1].x, desc.viewPos.y + spriteSize[1].y, desc.viewPos.x + spriteSize[1].x, desc.viewPos.y - spriteSize[1].y } };
@@ -898,13 +963,13 @@ al32 struct CLASS_GUI {
       element_dgs[uiGUIVerts].viewPos      = desc.viewPos;
       element_dgs[uiGUIVerts].indent       = activeSize[0];
       element_dgs[uiGUIVerts].texCoords    = panSpr.tc;
-      element_dgs[uiGUIVerts].colour       = desc.tint.panel.xmm;
+      element_dgs[uiGUIVerts].colour       = desc.panel.tint;
       element_dgs[uiGUIVerts].size         = spriteSize[0];
       element_dgs[uiGUIVerts].rotAngle     = 0.0f;
       element_dgs[uiGUIVerts].parentIndex  = uiGUIVerts;
       element_dgs[uiGUIVerts].animTime     = { 0.0f, 0.0f };
       element_dgs[uiGUIVerts].animType     = 0;
-      element_dgs[uiGUIVerts].atlasIndex   = (ui8)curLib.atlasIndex;
+      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + 80u;
       element_dgs[uiGUIVerts].elementType  = aet_panel;
       element_dgs[uiGUIVerts].sibling      = 0x08001;
       element_dgs[uiGUIVerts].align        = desc.panel.align;
@@ -912,13 +977,13 @@ al32 struct CLASS_GUI {
       element_dgs[uiGUIVerts].viewPos      = { 0.0f, 0.0f }; // .x range -1.0~1.0
       element_dgs[uiGUIVerts].indent       = activeSize[1];
       element_dgs[uiGUIVerts].texCoords    = indSpr.tc;
-      element_dgs[uiGUIVerts].colour       = desc.tint.cursor.xmm;
+      element_dgs[uiGUIVerts].colour       = desc.cursor.tint;
       element_dgs[uiGUIVerts].size         = spriteSize[1];
       element_dgs[uiGUIVerts].rotAngle     = 0.0f;
       element_dgs[uiGUIVerts].parentIndex  = uiGUIVerts - 1;
       element_dgs[uiGUIVerts].animTime     = { 0.0f, 0.0f };
       element_dgs[uiGUIVerts].animType     = 0;
-      element_dgs[uiGUIVerts].atlasIndex   = (ui8)curLib.atlasIndex;
+      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + 80u;
       element_dgs[uiGUIVerts].elementType  = aet_scalar;
       element_dgs[uiGUIVerts].sibling      = 1;
       element_dgs[uiGUIVerts].align        = desc.cursor.align;
@@ -1007,7 +1072,7 @@ al32 struct CLASS_GUI {
 
       for(i = 0; i < element[overlay].vertexCount[1]; ++i) element_dgs[firstVert + i].parentIndex = panelVert;
 
-      element[panel].input = new TEXTBUFFER(desc.charCount, false);
+      element[panel].input = new TEXTBUFFER(desc.text.cCount, false);
 
       element[panel].func.hover[0]     = PassiveDefaultInput;
       element[panel].func.hover[1]     = PassiveDefaultInput;
@@ -1116,7 +1181,7 @@ al32 struct CLASS_GUI {
       interfaceProfile[siInterfaces].vertex      = (ui32ptr)zalloc32(sizeof(ui32) * maxVertices);
       interfaceProfile[siInterfaces].vertCount   = 0;
       interfaceProfile[siInterfaces].maxVertices = maxVertices;
-      interfaceProfile[siInterfaces].inputs      = (VEC4Du8 *)zalloc32(sizeof(VEC4Du8) * maxInputs);
+      interfaceProfile[siInterfaces].inputs      = zalloc32(sizeof(ui64[8]) * maxInputs);
       interfaceProfile[siInterfaces].inputLabel  = (char (*)[32])zalloc32(sizeof(char (*)[32]) * maxInputs);
       interfaceProfile[siInterfaces].inputCount  = 0;
       interfaceProfile[siInterfaces].maxInputs   = maxInputs;
@@ -1151,7 +1216,7 @@ al32 struct CLASS_GUI {
          }
       }
 
-      interfaceProfile[siInterfaces].inputs     = (VEC4Du8 *)zalloc32(sizeof(VEC4Du8) * maxInputs);
+      interfaceProfile[siInterfaces].inputs     = zalloc32(sizeof(ui64[8]) * maxInputs);
       interfaceProfile[siInterfaces].inputLabel = (char (*)[32])zalloc32(sizeof(char (*)[32]) * maxInputs);
       interfaceProfile[siInterfaces].inputCount = 0;
       interfaceProfile[siInterfaces].maxInputs  = maxInputs;
@@ -1163,10 +1228,10 @@ al32 struct CLASS_GUI {
    cui32 LoadInterface(cwchptrc filename, si16 interfaceIndex) {
       // Find first available slot if index is -1
       if(interfaceIndex == -1) {
-         si16 i = 0;
-         for(; interfaceProfile[i].vertCount && i < MAX_INTERFACES; ++i);
-         if(i >= MAX_INTERFACES) return 0x080000001;
-         interfaceIndex = i;
+         si16 ii = 0;
+         for(; interfaceProfile[ii].vertCount && ii < MAX_INTERFACES; ++ii);
+         if(ii >= MAX_INTERFACES) return 0x080000001;
+         interfaceIndex = ii;
       }
 
       cHANDLE hInterfaceData = files.OpenFileForReading(filename, stGUIDir);
@@ -1177,30 +1242,150 @@ al32 struct CLASS_GUI {
 
 ///--- To do...
    }
+private:
+   inline void WriteVertexData(cHANDLE fileHandle, cui32 vertexIndex, cui32 newParentIndex, cui8 newAtlasIndex) const {
+      GUI_EL_DGS curElDGS = element_dgs[vertexIndex];
 
+      curElDGS.parentIndex = newParentIndex;
+      curElDGS.atlasIndex  = newAtlasIndex;
+
+      files.WriteToFile(fileHandle, &curElDGS, sizeof(GUI_EL_DGS));
+   }
+public:
    // Returns false if unsuccessful
-   cbool SaveInterface(cwchptrc filename, csi16 interfaceIndex) const {
-      ui32 i = 0;
+   cbool SaveInterface(cwchptrc filename, csi16 interfaceIndex) {
+      cGUI_INTERFACE &curProfile = interfaceProfile[interfaceIndex];
 
-      // Interface slot is empty
-      if(interfaceProfile[interfaceIndex].vertCount == 0) return false;
+      ui32 i, j, k;
+      ui32 lowestVertex      = 0x0FFFFFFFFu;
+      ui32 newVertexCount    = 0;
+      ui32 newParentIndex    = 0;
+      ui32 newFunctionIndex  = 0;
+      ui32 newCBOSIndex      = 0;
+      ui16 newSoundBankIndex = 0;
+      ui8  newAtlasIndex     = 0;
+
+      // Interface slot is empty?
+      if(curProfile.vertCount == 0) return false;
 
       cHANDLE hInterfaceData = files.OpenFileForWriting(filename, stGUIDir);
       if(!hInterfaceData) return false;
 
       // Write tag line: 2[Engine].Interface.2[Format version]1[Compression method]
-      files.WriteToFile(hInterfaceData, "AE.Interface.01u\0", 17);
-
-      // Write interface data
-      files.WriteToFile(hInterfaceData, &interfaceProfile[interfaceIndex], sizeof(GUI_INTERFACE));
-
-      for(ui32 j = 0; j < interfaceProfile[interfaceIndex].vertCount; ++j) {
-         cGUI_ELEMENT &curElement = element[interfaceProfile[interfaceIndex].vertex[j]];
+      files.WriteToFile(hInterfaceData, "AE.Interface.01u\0", 17u);
+      // Write current & max counts
+      files.WriteToFile(hInterfaceData, &curProfile.maxVertices, 8u);
+      // Write input bit patterns and text labels
+      files.WriteToFile(hInterfaceData, curProfile.input64, curProfile.inputCount * 4u);
+      files.WriteToFile(hInterfaceData, curProfile.inputLabels, curProfile.inputCount * 32u);
+      // Count unique .soundBankIndex, .function, .atlasIndex, and text blocks entries
+      for(i = 0; i < curProfile.vertCount; ++i) newVertexCount += element[curProfile.vertex[i]].vertexCount[0]; // Total vertex count
+      GUI_IO_DATA ioData(curProfile.vertCount, newVertexCount);
+      // Discover all unique references for .soundBankIndex, .function, .atlasIndex, and text blocks
+      for(i = 0; i < curProfile.vertCount; ++i) {
+         cGUI_ELEMENT &curElement = element[curProfile.vertex[i]];
+         for(j = 0; (j < newSoundBankIndex) && (ioData.soundBank[j] != curElement.soundBankIndex); ++j);
+         if(j >= newSoundBankIndex) ioData.soundBank[newSoundBankIndex++] = curElement.soundBankIndex;
+         for(j = 0; j < 6u; ++j) {
+            for(k = 0; (k < newFunctionIndex) && (ioData.function[k] != curElement.function[j]); ++k);
+            if(k >= newFunctionIndex) ioData.function[newFunctionIndex++] = curElement.function[j];
+         }
+         for(j = 0; j < curElement.vertexCount[0]; ++j) {
+            for(k = 0; (k < newAtlasIndex) && (ioData.atlas[k] != element_dgs[curElement.vertexIndex + j].atlasIndex); ++k);
+            if(k >= newAtlasIndex) ioData.atlas[newAtlasIndex++] = element_dgs[curElement.vertexIndex + j].atlasIndex;
+         }
+         if(curElement.elementType == aet_text)
+            for(j = 0; j < curElement.vertexCount[0]; ++j) {
+               for(k = 0; (k < newCBOSIndex) && (ioData.charBankOS[k] != (element_dgs[curElement.vertexIndex + j].charBankOS & 0x03FFFFFFu)); ++k);
+               if(k >= newCBOSIndex) ioData.charBankOS[newCBOSIndex++] = element_dgs[curElement.vertexIndex + j].charBankOS & 0x03FFFFFFu;
+            }
+         if(curElement.elementType == aet_textArray) {
+            ui32 l;
+            for(j = 0; j < (ui32)curElement.textCount; ++j) {
+               cui32 curVertex = curElement.textArray[j];
+               cui32 endVertex = curVertex + (element_dgs[curVertex].sibling & 0x07FFFu);
+               for(k = curVertex; k <= endVertex; ++k)
+                  for(l = 0; (l < newCBOSIndex) && (ioData.charBankOS[l] != (element_dgs[k].charBankOS & 0x03FFFFFFu)); ++k)
+                     if(l >= newCBOSIndex) ioData.charBankOS[newCBOSIndex++] = element_dgs[k].charBankOS & 0x03FFFFFFu;
+            }
+         }
+      }
+      ui32 fileOffset = files.GetFilePosition(hInterfaceData);
+      files.WriteToFile(hInterfaceData, &null64, 11u); // Reserve space for soundBank, atlas, function and text block counts
+      // Write all .soundBank text names and references
+      for(i = 0; i < newSoundBankIndex; ++i) {
+         files.WriteToFile(hInterfaceData, &i, 2u);
+         files.WriteToFile(hInterfaceData, soundLibrary[ioData.soundBank[i]].label, ui32(strlen(soundLibrary[ioData.soundBank[i]].label) + 1u));
+      }
+///--- Redo...
+      // Write .atlasIndex filenames and references
+      for(i = 0; i < curProfile.vertCount; ++i) {
+         cGUI_ELEMENT &curElement = element[curProfile.vertex[i]];
+         for(j = curElement.vertexIndex; j < ui32(curElement.vertexCount[0] + curElement.vertexIndex); ++j) {
+            cui32 curAtlasIndex = (element_dgs[j].atlasIndex - TEX_REG_OS_GUI) >> 1u;
+            if(curAtlasIndex != 0x0FFu)
+               if(ioData.atlas[curAtlasIndex] == 0x0FFu) {
+                  files.WriteToFile(hInterfaceData, stAtlas[curAtlasIndex], ui32((wcslen(stAtlas[curAtlasIndex]) + 1u) << 1u));
+                  files.WriteToFile(hInterfaceData, &newAtlasIndex, 1u);
+                  ioData.atlas[curAtlasIndex] = newAtlasIndex++;
+               }
+         }
+      }
+      // Write all .function text names
+      for(i = 0; i < curProfile.vertCount; ++i) {
+         cGUI_ELEMENT &curElement = element[curProfile.vertex[i]];
+         for(j = 0; j < 6; ++j)
+            if(curElement.function[j])
+               if(ioData.function[curElement.function[j]] == 0x0FFFFFFFFu) {
+                  files.WriteToFile(hInterfaceData, funcLib[curElement.function[j]].label, ui32(strlen(funcLib[curElement.function[j]].label) + 1u));
+                  files.WriteToFile(hInterfaceData, &newFunctionIndex, 4u);
+                  ioData.function[curElement.function[j]] = newFunctionIndex++;
+               }
+      }
+///--- ...Redo
+      // Write all text blocks
+///--- To do...
+      fileOffset = files.SetFilePosition(hInterfaceData, fileOffset, file_current);
+      files.WriteToFile(hInterfaceData, &newSoundBankIndex, 2u);
+      files.WriteToFile(hInterfaceData, &newAtlasIndex, 1u);
+      files.WriteToFile(hInterfaceData, &newFunctionIndex, 4u);
+      files.WriteToFile(hInterfaceData, &newCBOSIndex, 4u);
+      files.SetFilePosition(hInterfaceData, fileOffset, file_current);
+      // Write elements
+      for(i = 0; i < curProfile.vertCount; ++i) {
+         GUI_ELEMENT curElement = element[curProfile.vertex[i]];
+         curElement.vertexIndex -= (si32)lowestVertex;
          // Write element data
-         files.WriteToFile(hInterfaceData, &curElement, sizeof(GUI_ELEMENT));
-         for(ui32 k = 0; k < curElement.vertexCount[1]; ++k)
-            // Write GUI_EL_DGS data
-            files.WriteToFile(hInterfaceData, &element_dgs[curElement.vertexIndex], sizeof(GUI_EL_DGS) * curElement.vertexCount[1]);
+         files.WriteToFile(hInterfaceData, &curElement.coords, 32u);     // Coordinates
+         files.WriteToFile(hInterfaceData, &curElement.vertexIndex, 8u); // Vertex indices
+         files.WriteToFile(hInterfaceData, &curElement.bitField, 2u);    // Flags
+         files.WriteToFile(hInterfaceData, curElement.ptrVar, sizeof(ptr[2]));  // Scratch space
+         switch(curElement.elementType & 0x0Fu) {
+         case aet_text:
+            /// List all unique .charBankOS values; write: .charBankOS as idenitifier followed by 32-char text block
+            /// Loop-write vertex data
+//            if(textVertex) { // Write .alphabetIndex filename --- !!! Rewrite to use reference indices !!!
+//               ui32 i = 0;
+//               while((i < uiLanguages) && (curElDGS.alphabetIndex != alphabet[i].pIMMos)) ++i;
+//               files.WriteToFile(fileHandle, stLanguage[i], strlen(stLanguage[i]) + 1u);
+//            }
+
+            break;
+         case aet_textArray:
+            break;
+         case aet_panel:
+         case aet_button:
+         case aet_toggle:
+         case aet_cursor:
+         case aet_dial:
+            WriteVertexData(hInterfaceData, curElement.vertexIndex, newParentIndex++, newAtlasIndex);
+            break;
+         case aet_scalar:
+            WriteVertexData(hInterfaceData, curElement.vertexIndex, newParentIndex, newAtlasIndex);
+            WriteVertexData(hInterfaceData, curElement.vertexIndex + 1u, newParentIndex, newAtlasIndex);
+            newParentIndex += 2;
+            break;
+         }
       }
 
       return true;
@@ -1292,7 +1477,7 @@ al32 struct CLASS_GUI {
       element[elementIndex.y].textEntry = si16(element_dgs[curElement.textArray[0]].viewPos.y);
    }
 
-   inline void UpdateText(cchptr text, cui32 elementIndex) {
+   inline void UpdateText(cchptrc text, cui32 elementIndex) {
       GUI_ELEMENT &curElement = element[elementIndex];
 
       csi32 vertexIndex   = curElement.vertexIndex;
@@ -1339,7 +1524,7 @@ al32 struct CLASS_GUI {
          element_dgs[vertexIndex + i].align |= 0x080;
    }
 
-   inline void UpdateText(cchptr text, cVEC2Du32 elementIndex) {
+   inline void UpdateText(cchptrc text, cVEC2Du32 elementIndex) {
       GUI_ELEMENT &curElement = element[elementIndex.y];
 
       csi32 vertexIndex   = curElement.vertexIndex;
@@ -1386,6 +1571,34 @@ al32 struct CLASS_GUI {
          element_dgs[vertexIndex + i].align |= 0x080;
    }
 
+///--- !!! Rewrite !!!
+   inline void UpdateText(cchptrcptrc stringArray, cui32ptrc elementArray, cui32 elementCount) { for(ui32 i = 0; i < elementCount; ++i) UpdateText(stringArray[i], elementArray[i]); }
+
+///--- !!! Rewrite !!!
+   inline void UpdateText(cchptrcptrc stringArray, cui32ptrc elementArray, cVEC2Du32 countAndOffset) {
+      for(ui32 i = countAndOffset.y; i < (countAndOffset.x + countAndOffset.y); ++i) UpdateText(stringArray[i], elementArray[i]);
+   }
+
+   ///--- !!! Rewrite !!!
+   inline void UpdateText(cchptrcptrc stringArray, cui32ptrc elementArray, cui32 elementCount, cui32 elementOffset) {
+      for(ui32 i = elementOffset; i < (elementCount + elementOffset); ++i) UpdateText(stringArray[i], elementArray[i]);
+   }
+
+///--- !!! Rewrite !!!
+   inline void UpdateText(ptrc stringArray, cui32 maxCharCount, cui32ptrc elementArray, cui32 elementCount) {
+      for(ui32 i = 0; i < elementCount; ++i) UpdateText((i * maxCharCount) + cchptrc(stringArray), elementArray[i]);
+   }
+
+///--- !!! Rewrite !!!
+   inline void UpdateText(ptrc stringArray, cui32 maxCharCount, cui32ptrc elementArray, cVEC2Du32 countAndOffset) {
+      for(ui32 i = countAndOffset.y; i < (countAndOffset.x + countAndOffset.y); ++i) UpdateText((i * maxCharCount) + cchptrc(stringArray), elementArray[i]);
+   }
+
+///--- !!! Rewrite !!!
+   inline void UpdateText(ptrc stringArray, cui32 maxCharCount, cui32ptrc elementArray, cui32 elementCount, cui32 elementOffset) {
+      for(ui32 i = elementOffset; i < (elementCount + elementOffset); ++i) UpdateText((i * maxCharCount) + cchptrc(stringArray), elementArray[i]);
+   }
+
    inline void RegenVertexBuffer(cui32 interfaceIndex, cAE_REGEN_VERTS count) const {
       ui32 i = 0;
       for(ui32 j = 0; j < interfaceProfile[interfaceIndex].vertCount; ++j)
@@ -1394,7 +1607,7 @@ al32 struct CLASS_GUI {
       curVertexCount[interfaceIndex] = i;
    }
 
-   inline void RegenTotalVertexBuffer(void) const { for(si32 i = 0; i < uiGUIVerts; ++i) totalVertexList[i] = i; }
+   inline void RegenTotalVertexBuffer(void) const { for(ui32 i = 0; i < uiGUIVerts; ++i) totalVertexList[i] = i; }
 
    inline void UploadAlphabetBuffer(cui8 context) const { gpu.buf.UpdateStructured(context, alphabet_pIMM, bufAlphabet, 1); }
 
@@ -1408,48 +1621,39 @@ al32 struct CLASS_GUI {
 
    inline void UploadTotalVertexBuffer(cui8 context) const { gpu.buf.UpdateVertex(context, totalVertexList, bufVertex, RoundUpToNearest4(uiGUIVerts)); }
 
-   inline csi16 SetResourceBuffers(cui8 context, cui8 startIndex) const {
-      gpu.buf.SetUAV(0, bufDGS, 1, 1);
+   inline void SetResourceBuffers(cui8 context, cui8 startIndex) const {
       gpu.buf.SetVSR(0, bufAlphabet, startIndex, 1);
       gpu.buf.SetVSR(0, bufText, startIndex + 1, 1);
       gpu.buf.SetGSR(0, bufAlphabet, startIndex, 1);
       gpu.buf.SetGSR(0, bufText, startIndex + 1, 1);
       for(ui8 i = 0; i < uiAtlas; ++i)
-         gpu.tex.SetPS2D(0, siAtlasTexIndex[i], i * 2 + 80, 1);
-
-      return startIndex + 2; // Next available index
+         gpu.tex.SetPS2D(0, uiAtlasTexIndex[i], i * 2 + startIndex, 1);
    }
 
    // Use the value in the globally accessible MAP_DESC object
-   inline void DrawGUIInterface(cui8 context) const {
-      gpu.cfg.SetShaderGroup(context, 4);
-      gpu.cfg.SetVertexFormat(context, 2);
-      gpu.buf.SetVertex(context, bufVertex, 0, ae_pointlist);
+   inline void DrawInterface(cui8 context) const {
       UploadTextBuffer(context);
       UploadEntryBuffer(context);
       UploadVertexBuffer(context, (*(const GUI_DESC *)ptrLib[15]).interfaceIndex);
-      gpu.ren.Draw(context, curVertexCount[(*(const GUI_DESC *)ptrLib[15]).interfaceIndex]);
+
+      gpu.ren.QueueDrawGUI(context, bufVertex, bufDGS, curVertexCount[(*(const GUI_DESC *)ptrLib[15]).interfaceIndex]);
    }
 
-   inline void DrawGUIInterface(cui8 context, cui32 interfaceIndex) const {
-      gpu.cfg.SetShaderGroup(context, 4);
-      gpu.cfg.SetVertexFormat(context, 2);
-      gpu.buf.SetVertex(context, bufVertex, 0, ae_pointlist);
+   inline void DrawInterface(cui8 context, cui32 interfaceIndex) const {
       UploadTextBuffer(context);
       UploadEntryBuffer(context);
       UploadVertexBuffer(context, interfaceIndex);
-      gpu.ren.Draw(context, curVertexCount[interfaceIndex]);
+
+      gpu.ren.QueueDrawGUI(context, bufVertex, bufDGS, curVertexCount[interfaceIndex]);
    }
 
-   inline void DrawAllGUIElements(cui8 context) const {
-      gpu.cfg.SetShaderGroup(context, 4);
-      gpu.cfg.SetVertexFormat(context, 2);
-      gpu.buf.SetVertex(context, bufVertex, 0, ae_pointlist);
+   inline void DrawAllElements(cui8 context) const {
       UploadTextBuffer(context);
       UploadEntryBuffer(context);
       RegenTotalVertexBuffer();
       UploadTotalVertexBuffer(context);
-      gpu.ren.Draw(context, uiGUIVerts);
+
+      gpu.ren.QueueDrawGUI(context, bufVertex, bufDGS, uiGUIVerts);
    }
 
    // Returns indices of [0] top-most element under cursor, [1] element in use by button 0, and [2] element in use by button 1. If no element, relevant index will be -1.

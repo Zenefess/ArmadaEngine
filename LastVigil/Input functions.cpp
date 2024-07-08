@@ -7,7 +7,7 @@
 *  Copyright (c) David William Bull. All rights reserved.  *
 ************************************************************/
 
-#include "pch.h"
+#include "master header.h"
 #include "data tracking.h"
 #include "Common functions.h"
 #include "class_timers.h"
@@ -54,8 +54,8 @@ void ProcessInputs(INPUT_PROC_DATA &ipd, GLOBALCTRLVARS &ctrlVars) {
 
 /// !!! For testing purposes !!!
 void ProcessInputs(GLOBALCTRLVARS &ctrlVars) {
-   CLASS_GPU    &gpu    = *(CLASS_GPU *)ptrLib[1]; // Replace with separate cam. and gui. references?
    CLASS_GUI    &gui    = *(CLASS_GUI *)ptrLib[4];
+   CLASS_CAM    &cam    = *(CLASS_CAM *)ptrLib[5];
    CLASS_MAPMAN &mapMan = *(CLASS_MAPMAN *)ptrLib[6];
    MAP_DESC     &md     = *(MAP_DESC *)ptrLib[14];
 
@@ -71,7 +71,7 @@ void ProcessInputs(GLOBALCTRLVARS &ctrlVars) {
    if(siActiveLayer.m128i_i32[0] < 0) {
       // Locate cell under cursor
       md.mcrv.activeCell.z = siWheel;
-      md.mcrv.activePlane  = gpu.cam.CursorLayerIntersect(siWheel, cfl32x4{ 0.0f, 0.0f, 0.5f }, ctrlVars.curCoords, 0, 0);
+      md.mcrv.activePlane  = cam.CursorLayerIntersect(siWheel, cfl32x4{ 0.0f, 0.0f, 0.5f }, ctrlVars.curCoords, 0, 0);
 
       siCell  = mapMan.CalcCellIndex(md.mcrv.activeCell, 0, 0);
       siChunk = siCell / md.chunkCells;
@@ -130,14 +130,14 @@ void ProcessInputs(GLOBALCTRLVARS &ctrlVars) {
          //gpu.MouseCursor(hWnd, false);
          ctrlVars.misc[7] &= 0x0F7;
       }
-      gpu.cam.data32[0].fXrot -= ctrlVars.mouse.y;
-      gpu.cam.data32[0].fYrot += ctrlVars.mouse.x;
+      cam.data32[0].fXrot -= ctrlVars.mouse.y;
+      cam.data32[0].fYrot += ctrlVars.mouse.x;
    } else
       if(!(ctrlVars.misc[7] & 0x04)) {
          //gpu.MouseCursor(hWnd, true);
          ctrlVars.misc[7] |= 0x08;
       }
    // Gamepad 0x02 input
-   gpu.cam.data32[0].fXrot -= ctrlVars.joy[0].s.x1 * fElapsedTime;
-   gpu.cam.data32[0].fYrot += ctrlVars.joy[0].s.y1 * fElapsedTime;
+   cam.data32[0].fXrot -= ctrlVars.joy[0].s.x1 * fElapsedTime;
+   cam.data32[0].fYrot += ctrlVars.joy[0].s.y1 * fElapsedTime;
 }

@@ -1,6 +1,6 @@
 /**********************************************************
  * File: D3D11 type defines.h         Created: 2023/04/16 *
- *                              Last modified: 2024/06/08 *
+ *                              Last modified: 2024/07/02 *
  *                                                        *
  * Desc:                                                  *
  *                                                        *
@@ -16,14 +16,14 @@
 #include "vector structures.h"
 
 typedef al16       __m128    vector;
-typedef al16 const vector    cvector;
+typedef al16 const __m128    cvector;
 typedef al32       AVXmatrix matrix;
-typedef al32 const matrix    cmatrix;
+typedef al32 const AVXmatrix cmatrix;
 
 // Constant buffers
 al32 struct CB_VIEW {
-   matrix projection;   // Projection transformation
-   matrix orthographic; // Projection transformation
+   matrix projection;   // Transformation
+   matrix orthographic; // Transformation
    VEC2Df guiScale;     // Final scaling factors for GUI
    ui64   bitField;
 };
@@ -54,7 +54,7 @@ al16 struct _CB_LIGHT { // 32 bytes
    ui8 RES[8];
 };
 
-al16 struct CB_LIGHT { // 32 bytes
+al32 struct CB_LIGHT { // 32 bytes
    VEC3Df pos;
    float  range;
    VEC3Df col;

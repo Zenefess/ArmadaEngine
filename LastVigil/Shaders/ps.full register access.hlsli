@@ -1,19 +1,19 @@
 /**************************************************************
  * File: ps.full register access.hlsli    Created: 2023/04/14 *
- *                                      Last mod.: 2023/04/25 *
+ *                                      Last mod.: 2023/06/26 *
  *                                                            *
  * Desc: Functions for sampling across all 128 registers.     *
  *                                                            *
  * Copyright (c) David William Bull.     All rights reserved. *
  **************************************************************/
 
+//#define FULL_LIBRARY
+
 const Texture2D    Texture[128] : register(t0); // Atlas library: t0~t15==Miscellaneous textures, t16-t79==Terrain & sprite, t80~t127==GUI atlas'
 const SamplerState Sampler[3]   : register(s0); // s0==Point filering (wrapped), s1==Point magnification (clamped), s2==Anisotropic filtering (wrapped)
 
 // index.x==(Relative) texture register, index.y==Sampler register
 const float4 SampleMiscellaneous(in const int2 index, in const float2 texCoord) {
-   float4 sample;
-   
    [forcecase] switch(index.x) {
    default:
       return Texture[0].Sample(Sampler[index.y], texCoord);
@@ -23,6 +23,7 @@ const float4 SampleMiscellaneous(in const int2 index, in const float2 texCoord) 
       return Texture[2].Sample(Sampler[index.y], texCoord);
    case 3:
       return Texture[3].Sample(Sampler[index.y], texCoord);
+#ifdef FULL_LIBRARY
    case 4:
       return Texture[4].Sample(Sampler[index.y], texCoord);
    case 5:
@@ -47,6 +48,7 @@ const float4 SampleMiscellaneous(in const int2 index, in const float2 texCoord) 
       return Texture[14].Sample(Sampler[index.y], texCoord);
    case 15:
       return Texture[15].Sample(Sampler[index.y], texCoord);
+#endif
    }
 }
 
@@ -75,6 +77,7 @@ const float3x4 Sample3of4Terrain(in const int2 index, in const float2 texCoord) 
       sample[1] = Texture[29].Sample(Sampler[index.y], texCoord);
       sample[2] = Texture[30].Sample(Sampler[index.y], texCoord);
       return sample;
+#ifdef FULL_LIBRARY
    case 32:
       sample[0] = Texture[32].Sample(Sampler[index.y], texCoord);
       sample[1] = Texture[33].Sample(Sampler[index.y], texCoord);
@@ -135,6 +138,7 @@ const float3x4 Sample3of4Terrain(in const int2 index, in const float2 texCoord) 
       sample[1] = Texture[77].Sample(Sampler[index.y], texCoord);
       sample[2] = Texture[78].Sample(Sampler[index.y], texCoord);
       return sample;
+#endif
    }
 }
 
@@ -163,6 +167,7 @@ const float3x4 Sample3of4Sprite(in const int2 index, in const float2 texCoord) {
       sample[1] = Texture[29].Sample(Sampler[index.y], texCoord);
       sample[2] = Texture[30].Sample(Sampler[index.y], texCoord);
       return sample;
+#ifdef FULL_LIBRARY
    case 32:
       sample[0] = Texture[32].Sample(Sampler[index.y], texCoord);
       sample[1] = Texture[33].Sample(Sampler[index.y], texCoord);
@@ -223,13 +228,11 @@ const float3x4 Sample3of4Sprite(in const int2 index, in const float2 texCoord) {
       sample[1] = Texture[77].Sample(Sampler[index.y], texCoord);
       sample[2] = Texture[78].Sample(Sampler[index.y], texCoord);
       return sample;
+#endif
    }
 }
 
-// index.x==(Relative) texture register, index.y==Sampler register
-const float4 Sample1of2GUI(in const int2 index, in const float2 texCoord) {
-   float4 sample;
-
+const float4 Sample1of2GUI(in const uint2 index, in const float2 texCoord) {
    [forcecase] switch(index.x) {
    default:
       return Texture[80].Sample(Sampler[index.y], texCoord);
@@ -239,6 +242,7 @@ const float4 Sample1of2GUI(in const int2 index, in const float2 texCoord) {
       return Texture[84].Sample(Sampler[index.y], texCoord);
    case 86:
       return Texture[86].Sample(Sampler[index.y], texCoord);
+#ifdef FULL_LIBRARY
    case 88:
       return Texture[88].Sample(Sampler[index.y], texCoord);
    case 90:
@@ -279,11 +283,12 @@ const float4 Sample1of2GUI(in const int2 index, in const float2 texCoord) {
       return Texture[124].Sample(Sampler[index.y], texCoord);
    case 126:
       return Texture[126].Sample(Sampler[index.y], texCoord);
+#endif
    }
 }
 
 // index.x==(Relative) texture register, index.y==Sampler register
-const float2x4 Sample2GUI(in const int2 index, in const float2 texCoord) {
+const float2x4 Sample2GUI(in const uint2 index, in const float2 texCoord) {
    float2x4 sample;
 
    [forcecase] switch(index.x) {
@@ -303,6 +308,7 @@ const float2x4 Sample2GUI(in const int2 index, in const float2 texCoord) {
       sample[0] = Texture[86].Sample(Sampler[index.y], texCoord);
       sample[1] = Texture[87].Sample(Sampler[index.y], texCoord);
       return sample;
+#ifdef FULL_LIBRARY
    case 88:
       sample[0] = Texture[88].Sample(Sampler[index.y], texCoord);
       sample[1] = Texture[89].Sample(Sampler[index.y], texCoord);
@@ -383,5 +389,6 @@ const float2x4 Sample2GUI(in const int2 index, in const float2 texCoord) {
       sample[0] = Texture[126].Sample(Sampler[index.y], texCoord);
       sample[1] = Texture[127].Sample(Sampler[index.y], texCoord);
       return sample;
+#endif
    }
 }

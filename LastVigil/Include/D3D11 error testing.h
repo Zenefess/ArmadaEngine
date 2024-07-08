@@ -1,6 +1,6 @@
 /************************************************************
  * File: D3D11 error testing.h          Created: 2023/02/07 *
- *                                Last modified: 2024/06/15 *
+ *                                Last modified: 2024/06/29 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -35,3 +35,4 @@ cchar stResizeTar[]   = "swapchain->ResizeTarget";
 cchar stSCResizeBuf[] = "swapchain->ResizeBuffers";
 cchar stSetFullscr[]  = "swapchain->SetFullscreenState";
 cchar stSetMaxFLat[]  = "swapchain->SetMaximumFrameLatency";
+cchar stSetRTandUAV[] = "devcon->OMSetRenderTargetsAndUnorderedAccessViews";

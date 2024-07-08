@@ -16,7 +16,7 @@
 
 enum TEXTYPE { GUI, TERRAIN, SPRITE };
 
-al16 struct CLASS_TEXTURES {
+al8 struct CLASS_TEXTURES {
    ID3D11Device              *dev;
    ID3D11DeviceContext      **devcon;
    ID3D11Texture2D          **const pTexture = (ID3D11Texture2D**)malloc64(sizeof(ptr[MAX_TEXTURES]));

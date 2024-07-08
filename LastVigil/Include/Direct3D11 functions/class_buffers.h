@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_buffers.h                Created: 2022/10/20 *
- *                                Last modified: 2024/06/15 *
+ *                                Last modified: 2024/06/29 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -9,24 +9,6 @@
 #pragma once
 
 #include "Data structures.h"
-
-enum AE_BUFFER_USAGE : ui8 {
-   USAGE_DEFAULT,
-   USAGE_IMMUTABLE,
-   USAGE_DYNAMIC,
-   USAGE_STAGING
-};
-
-enum AE_GPU_STAGE : ui8 {
-   STAGE_NULL,
-   STAGE_VERTEX,
-   STAGE_GEOMETRY,
-   STAGES_VERTEX_GEOMETRY,
-   STAGE_PIXEL,
-   STAGES_VERTEX_PIXEL,
-   STAGES_GEOMETRY_PIXEL,
-   STAGES_VERTEX_GEOMETRY_PIXEL
-};
 
 al16 struct CLASS_BUFFERS {
    ID3D11Device                     *dev;
@@ -43,8 +25,8 @@ al16 struct CLASS_BUFFERS {
    D3D11_SUBRESOURCE_DATA            srd {};
    si16                              bufferCount[4] {};
 
-   si32 CreateVertex(ptrc source, cui32 stride, cui32 numVerts, csi16 count) {
-      si32 index = bufferCount[0];
+   csi32 CreateVertex(ptrc source, cui32 stride, cui32 numVerts, csi16 count) {
+      csi32 index = bufferCount[0];
 
       bd[0][index].ByteWidth           = stride * numVerts;
       bd[0][index].Usage               = D3D11_USAGE_DYNAMIC;
@@ -63,8 +45,8 @@ al16 struct CLASS_BUFFERS {
       return index;   // Index of first buffer allocated
    }
 
-   si32 CreateIndex(cui8 context, ptrc source, cui32 stride, csi16 count) {
-      si32 index = bufferCount[1];
+   csi32 CreateIndex(cui8 context, ptrc source, cui32 stride, csi16 count) {
+      csi32 index = bufferCount[1];
 
       bd[1][index].ByteWidth           = stride;
       bd[1][index].Usage               = D3D11_USAGE_DYNAMIC;
@@ -82,8 +64,8 @@ al16 struct CLASS_BUFFERS {
       return index;   // Index of first buffer allocated
    }
 
-   si32 CreateConstant(cui8 context, ptrc source, cui32 stride, csi16 count, cui16 slot, cui8 stage, cbool immutable) {
-      si32 index = bufferCount[2];
+   csi32 CreateConstant(cui8 context, ptrc source, cui32 stride, csi16 count, cui16 slot, cui8 stage, cbool immutable) {
+      csi32 index = bufferCount[2];
 
       bd[2][index].ByteWidth           = stride;
       bd[2][index].Usage               = (immutable ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DYNAMIC);
@@ -97,19 +79,19 @@ al16 struct CLASS_BUFFERS {
          Try(stCreateBuf, dev->CreateBuffer(&bd[2][index + xx], &srd, &pBuffer[2][index + xx]), ss_video);
          bufferCount[2]++;
       }
-      if(stage & STAGE_VERTEX)
+      if(stage & ae_stage_vertex)
          devcon[context]->VSSetConstantBuffers(slot, count, (ID3D11Buffer *const *)&pBuffer[2][index]);
-      if(stage & STAGE_GEOMETRY)
+      if(stage & ae_stage_geometry)
          devcon[context]->GSSetConstantBuffers(slot, count, (ID3D11Buffer *const *)&pBuffer[2][index]);
-      if(stage & STAGE_PIXEL)
+      if(stage & ae_stage_pixel)
          devcon[context]->PSSetConstantBuffers(slot, count, (ID3D11Buffer *const *)&pBuffer[2][index]);
 
       return index;   // Index of first buffer allocated
    }
 
    // BindFlags == D3D11_BIND_SHADER_RESOURCE
-   si32 CreateStructured(cui8 context, cptrc source, cui32 stride, cui32 count, cui8 usageType) {
-      si32 index = bufferCount[3];
+   csi32 CreateStructured(cui8 context, cptrc source, cui32 stride, cui32 count, cui8 usageType) {
+      csi32 index = bufferCount[3];
 
       bd[3][index].ByteWidth           = stride * count;
       bd[3][index].Usage               = (D3D11_USAGE)usageType; //(immutable ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DYNAMIC);
@@ -128,12 +110,12 @@ al16 struct CLASS_BUFFERS {
       srvd[0].Buffer.ElementWidth = stride;
       dev->CreateShaderResourceView(pBuffer[3][index], NULL, &pSRV[index]);
 
-      return index++;
+      return index;
    }
 
    // Set custom bind flags
-   si32 CreateStructured(cui8 context, cptrc source, cui32 stride, cui32 count, cui32 bindFlags, cui8 usageType) {
-      si32 index = bufferCount[3];
+   csi32 CreateStructured(cui8 context, cptrc source, cui32 stride, cui32 count, cui32 bindFlags, cui8 usageType) {
+      csi32 index = bufferCount[3];
 
       bd[3][index].ByteWidth           = stride * count;
       bd[3][index].Usage               = (D3D11_USAGE)usageType; //(immutable ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DYNAMIC);
@@ -159,11 +141,11 @@ al16 struct CLASS_BUFFERS {
       srvd[0].Buffer.ElementWidth = stride;
       dev->CreateShaderResourceView(pBuffer[3][index], NULL, &pSRV[index]);
 
-      return index++;
+      return index;
    }
 
    // Update [count] vertices of vertex buffer [index] with data from [source]
-   inline void UpdateVertex(cui8 context, cptrc source, csi16 index, cui32 count) {
+   inline void UpdateVertex(cui8 context, cptrc source, cui16 index, cui32 count) {
       Try(stMap, devcon[context]->Map(pBuffer[0][index], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), ss_video);
 
       Stream(source, ms.pData, bd[0][index].StructureByteStride * count);
@@ -171,7 +153,7 @@ al16 struct CLASS_BUFFERS {
       devcon[context]->Unmap(pBuffer[0][index], NULL);
    }
 
-   inline void UpdateIndex(cui8 context, cptrc source, csi16 index, si16 numBuffers) {
+   inline void UpdateIndex(cui8 context, cptrc source, cui16 index, si16 numBuffers) {
       do {
          numBuffers--;
          Try(stMap, devcon[context]->Map(pBuffer[1][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), ss_video);
@@ -180,7 +162,7 @@ al16 struct CLASS_BUFFERS {
       } while (numBuffers);
    }
 
-   inline void UpdateConstant(cui8 context, cptrc source, csi16 index, si16 numBuffers) {
+   inline void UpdateConstant(cui8 context, cptrc source, cui16 index, si16 numBuffers) {
       do {
          numBuffers--;
          Try(stMap, devcon[context]->Map(pBuffer[2][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), ss_video);
@@ -190,7 +172,7 @@ al16 struct CLASS_BUFFERS {
       } while (numBuffers);
    }
 
-   inline void UpdateStructured(cui8 context, cptrc source, csi16 index, si16 numBuffers) {
+   inline void UpdateStructured(cui8 context, cptrc source, cui16 index, si16 numBuffers) {
       do {
          numBuffers--;
          Try(stMap, devcon[context]->Map(pBuffer[3][index + numBuffers], NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms), ss_video);
@@ -200,7 +182,7 @@ al16 struct CLASS_BUFFERS {
       } while (numBuffers);
    }
 
-   inline void UpdateStructuredSubresource(cui8 context, cptrc source, csi16 index, cui32 byteCount) {
+   inline void UpdateStructuredSubresource(cui8 context, cptrc source, cui16 index, cui32 byteCount) {
       const D3D11_BOX boxData = { 0, 0, 0, byteCount, 1, 1};
       devcon[context]->UpdateSubresource(pBuffer[3][index], 0, &boxData, source, 0, 0);
    }
@@ -213,23 +195,23 @@ al16 struct CLASS_BUFFERS {
 
    inline void UnlockStructuredAfterUpdate(cui8 context, csi16 index) const { devcon[context]->Unmap(pBuffer[3][index], NULL); }
 
-   inline void SetVertex(cui8 context, csi16 index, cui8 slot, cui32 vertexFormat) const {
+   inline void SetVertexPrimitive(cui8 context, cui16 index, cui8 slot, cui32 vertexFormat) const {
       devcon[context]->IASetVertexBuffers(slot, 1, &pBuffer[0][index], &uiStrides[0][index], &uiOffsets[0][index]);
       devcon[0]->IASetPrimitiveTopology((D3D11_PRIMITIVE_TOPOLOGY &)vertexFormat);
    }
 
-   inline void SetVertexGroup(cui8 context, csi16 index, csi16 count, cui8 firstSlot, cui32 vertexFormat) const {
+   inline void SetVertexGroup(cui8 context, cui16 index, csi16 count, cui8 firstSlot, cui32 vertexFormat) const {
       devcon[context]->IASetVertexBuffers(firstSlot, count, &pBuffer[0][index], &uiStrides[0][index], &uiOffsets[0][index]);
       devcon[0]->IASetPrimitiveTopology((D3D11_PRIMITIVE_TOPOLOGY &)vertexFormat);
    }
 
-   inline void SetVertexStagger(cui8 context, cui32 stride, cui32 offset, csi16 index, csi16 count, csi32 vertexFormat) {
+   inline void SetVertexStagger(cui8 context, cui32 stride, cui32 offset, cui16 index, csi16 count, csi32 vertexFormat) {
       for(ui16 xx = 256; xx < count + 256; xx++) { uiStrides[0][xx] = stride; uiOffsets[0][xx] = offset; }
       devcon[context]->IASetVertexBuffers(index, count, &pBuffer[0][index], &uiStrides[0][256], &uiOffsets[0][256]);
       devcon[0]->IASetPrimitiveTopology((D3D11_PRIMITIVE_TOPOLOGY &)vertexFormat);
    }
 
-   inline void SetIndex(cui8 context, csi16 index, cui8 slot) const { devcon[context]->IASetIndexBuffer(pBuffer[1][index], DXGI_FORMAT_R16_UINT, 0); }
+   inline void SetIndex(cui8 context, cui16 index, cui8 slot) const { devcon[context]->IASetIndexBuffer(pBuffer[1][index], DXGI_FORMAT_R16_UINT, 0); }
 
    inline void SetVSR(cui8 context, cui16 index, cui16 slot, cui16 count) const { devcon[context]->VSSetShaderResources(slot, count, &pSRV[index]); }
 
@@ -238,7 +220,8 @@ al16 struct CLASS_BUFFERS {
    inline void SetPSR(cui8 context, cui16 index, cui16 slot, cui16 count) const { devcon[context]->PSSetShaderResources(slot, count, &pSRV[index]); }
 
    inline void SetUAV(cui8 context, cui16 index, cui16 slot, cui16 count) const {
-      const UINT appendConsume = 0x0FFFFFFFF;
+      if(slot >= D3D11_1_UAV_SLOT_COUNT) Try(stSetRTandUAV, -1, ss_video);
+      const UINT appendConsume = 0x0FFFFFFFFu;
       devcon[context]->OMSetRenderTargetsAndUnorderedAccessViews(0x0FFFFFFFF, NULL, NULL, slot, count, &pUAV[index], &appendConsume);
    }
 

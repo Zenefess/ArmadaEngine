@@ -45,7 +45,7 @@
     <ClInclude Include="Resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="pch.h">
+    <ClInclude Include="master header.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Main thread.h">

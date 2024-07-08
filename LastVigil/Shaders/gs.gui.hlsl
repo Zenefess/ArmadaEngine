@@ -1,6 +1,6 @@
 /************************************************************************************************
  * File: gs.gui.hlsl                                                        Created: 2023/04/09 *
- * Type: Geometry shader                                              Last modified: 2024/06/24 *
+ * Type: Geometry shader                                              Last modified: 2024/06/27 *
  *                                                                                              *
  * Notes: 8 characters per instance.                                                            *
  *                                                                                              *
@@ -18,6 +18,10 @@
  ************************************************************************************************/
 
 #include "gui.hlsli"
+
+StructuredBuffer   <CHAR_IMM>   alphabet : register(t80); // Character geometry
+StructuredBuffer   <uint4>      char16   : register(t81); // Text pool
+RWStructuredBuffer <GUI_EL_DYN> element  : register(u1); // Element data
 
 [instance(4)] [maxvertexcount(32)]
 void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceID, inout TriangleStream<GOut> output) {
@@ -108,7 +112,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       } else parScaling.xy = 1.0f;
    }
 
-   const uint ai_type = ((curElement.ind_type >> 16u) & 0x07Fu) | (type << 7u);
+   const uint ai = (curElement.ind_type >> 16u) & 0x0FFu;
    
    float2 coords = 0.0f;
    float  border = ((curElement.pei != input[0]) && (curBits & 0x0200u) ? invScale.y : invScale.x);
@@ -154,7 +158,8 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       }
 
       // Calculate vertices
-      vert[0].ai_type = vert[1].ai_type = vert[2].ai_type = ai_type;
+      vert[0].ai.x = vert[1].ai.x = vert[2].ai.x = ai | (curElement.ind_type & 0x0FF00u) | (f32tof16(curElement.width_at0 * (curElement.size.y / curElement.size.x)) << 16u);
+      vert[0].ai.y = vert[1].ai.y = vert[2].ai.y = f32tof16(asfloat(curElement.taos_at1)) | (f32tof16(curElement.width_at0) << 16u);
 
       vert[0].pos = vert[1].pos = float4(0.0f, 0.0f, 0.0f, 1.0f);
       vert[2].pos = float4(coords * guiScale, 0.0f, 1.0f);
@@ -329,8 +334,8 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
             const uint2  chTC = alphabet[curChar].tc;
             const float4 tc   = float4((uint4(chTC.xx, chTC.yy) >> uint4(0, 16u, 0, 16u)) & 0x0FFFFu) * rcp32768;
 
-            const GOut verts[4] = { float4(vertPos[0].xy, 0.0f, 1.0f), colour, tc.xw, ai_type, float4(vertPos[0].zw, 0.0f, 1.0f), colour, tc.xy, ai_type,
-                                    float4(vertPos[1].xy, 0.0f, 1.0f), colour, tc.zw, ai_type, float4(vertPos[1].zw, 0.0f, 1.0f), colour, tc.zy, ai_type };
+            const GOut verts[4] = { float4(vertPos[0].xy, 0.0f, 1.0f), colour, tc.xw, ai, 2u, float4(vertPos[0].zw, 0.0f, 1.0f), colour, tc.xy, ai, 2u,
+                                    float4(vertPos[1].xy, 0.0f, 1.0f), colour, tc.zw, ai, 2u, float4(vertPos[1].zw, 0.0f, 1.0f), colour, tc.zy, ai, 2u };
 
             output.Append(verts[0]);
             output.Append(verts[1]);

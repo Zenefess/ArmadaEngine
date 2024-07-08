@@ -1,6 +1,6 @@
 /************************************************************
  * File: File operations.h              Created: 2022/11/06 *
- *                                Last modified: 2024/06/21 *
+ *                                Last modified: 2024/07/07 *
  *                                                          *
  * Notes: 2024/05/06: Added support for data tracking       *
  *                                                          *
@@ -21,26 +21,30 @@ extern vui64       THREAD_LIFE;
 extern HANDLE      hErrorOutput;
 extern CLASS_TIMER mainTimer;
 
-enum AE_SUBSYSTEM : ui8 { ss_video, ss_audio, ss_input, ss_gui };
-
-typedef const AE_SUBSYSTEM cAE_SUBSYSTEM;
-
 extern inline void Try(cchptrc stEvent, cui32 uiResult, cAE_SUBSYSTEM subsystem);
+
+enum ENUM_FILE_POS : ui8 { file_begin, file_current, file_end };
 
 al32 struct CLASS_FILEOPS {
    cchar   stLoadShaders[32] = "Invalid shader list.cfg file";
-   wchptrc pathWorking       = (wchptr)malloc16(sizeof(wchar[512]));
-   wchptrc stTemp            = (wchptr)malloc16(sizeof(wchar[4096]));
-   ui32    uiBytes           = 0;
-   DWORD   bytesProcessed    = 0;
+   wchptrc pathWorking       = (wchptr)malloc64(sizeof(wchar[512]));
+   union {
+      chptrc  stTemp;
+      wchptrc wstTemp = (wchptr)malloc64(sizeof(wchar[4096]));
+   };
+   ui32  uiBytes        = 0;
+   DWORD bytesProcessed = 0;
+
+   CLASS_FILEOPS(void) {}
+   CLASS_FILEOPS(cptrptr globalPointer) { if(globalPointer) *globalPointer = this; }
 
    inline cHANDLE OpenFileForReading(cwchptrc filename, cwchptrc folder) const {
       csize_t folderLength = wcslen(folder);
 
-      wcscpy(stTemp, folder);
-      wcscpy(stTemp + folderLength, L"\\");
-      wcscpy(stTemp + folderLength + 1, filename);
-      cHANDLE hFile = CreateFile(stTemp, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, 0);
+      wcscpy(wstTemp, folder);
+      wcscpy(wstTemp + folderLength, L"\\");
+      wcscpy(wstTemp + folderLength + 1, filename);
+      cHANDLE hFile = CreateFile(wstTemp, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, 0);
       if(!hFile) return hFile;
 #ifdef DATA_TRACKING
       sysData.storage.filesOpened++;
@@ -51,15 +55,23 @@ al32 struct CLASS_FILEOPS {
    inline cHANDLE OpenFileForWriting(cwchptrc filename, cwchptrc folder) const {
       csize_t folderLength = wcslen(folder);
 
-      wcscpy(stTemp, folder);
-      wcscpy(stTemp + folderLength, L"\\");
-      wcscpy(stTemp + folderLength + 1, filename);
-      cHANDLE hFile = CreateFile(stTemp, GENERIC_WRITE, FILE_SHARE_WRITE, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+      wcscpy(wstTemp, folder);
+      wcscpy(wstTemp + folderLength, L"\\");
+      wcscpy(wstTemp + folderLength + 1, filename);
+      cHANDLE hFile = CreateFile(wstTemp, GENERIC_WRITE, FILE_SHARE_WRITE, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
       if(!hFile) return hFile;
 #ifdef DATA_TRACKING
       sysData.storage.filesOpened++;
 #endif
       return hFile;
+   }
+
+   // Returns current position in file
+   inline cui32 GetFilePosition(cHANDLE file) { return SetFilePointer(file, 0, 0, 1u); }
+
+   // Sets current position in file
+   inline cui32 SetFilePosition(cHANDLE file, cui32 offset, ENUM_FILE_POS startPos) {
+      return SetFilePointer(file, offset, 0, startPos);
    }
 
    inline cui32 ReadFromFile(cHANDLE file, ptrc dest, cui32 bytesToRead) {
@@ -79,41 +91,135 @@ al32 struct CLASS_FILEOPS {
    }
 
    // Returns number of bytes read
-   inline cui32 ReadLine(cHANDLE file, wchar *stDest) const {
-      static wchar chCurrent = NULL;
+   inline cui32 ReadLine(cHANDLE file, chptrc stDest) const {
+      static char chCurrent = 0;
 
       ui32 xx = 0;
 
-      for(xx = 0; xx < 255; xx++) {
-         cbool bOK = ReadFile(file, &chCurrent, 1, (LPDWORD)&uiBytes, NULL);
-         if(!bOK || !uiBytes) {
-            stDest[xx] = NULL;
-            return 0;
+      for(xx = 0; xx < 255u; xx++) {
+         cbool bOK = ReadFile(file, &chCurrent, 1, (LPDWORD)&uiBytes, 0);
+         if(!bOK || !uiBytes || !chCurrent) break;
+         if(chCurrent == '/n')
+            if(xx < 2u) {
+               stDest[0] = 1; stDest[1] = 0; return 1;
+            } else {
+               if(stDest[xx - 1] == '\r') {
+                  stDest[xx - 1] = 0;
+                  return 1u;
+               }
+            }
+         else stDest[xx] = chCurrent;
+      }
+      stDest[xx] = 0;
+#ifdef DATA_TRACKING
+      sysData.storage.bytesRead += xx;
+#endif
+      return xx;
+   }
+
+   // Returns number of bytes read
+   inline cui32 ReadLine(cHANDLE file, wchptrc stDest) const {
+      static wchar chCurrent = 0;
+
+      ui32 xx = 0;
+
+      for(xx = 0; xx < 255u; xx++) {
+         cbool bOK = ReadFile(file, &chCurrent, 1, (LPDWORD)&uiBytes, 0);
+         if(!bOK || !uiBytes || !chCurrent) {
+            break;
          }
          switch(chCurrent) {
-         case '\n':
-            if(xx < 2) {
+         case L'\n':
+            if(xx < 2u) {
                stDest[0] = 1; stDest[1] = 0; return 1;
             } else
-               if(stDest[xx - 1] == '\r') {
-                  stDest[xx - 1] = NULL;
+               if(stDest[xx - 1] == L'\r') {
+                  stDest[xx - 1] = 0;
                   return 1;
                }
          default:
             stDest[xx] = chCurrent;
          }
       }
-      stDest[xx] = NULL;
+      stDest[xx] = 0;
 #ifdef DATA_TRACKING
-      sysData.storage.bytesRead += uiBytes;
+      sysData.storage.bytesRead += xx;
 #endif
-      return uiBytes;
+      return xx;
+   }
+
+   // Returns number of bytes read
+   inline cui32 ReadWideLine(cHANDLE file, chptrc stDest) const {
+      static char chCurrent[2] = { 0, 0 };
+
+      ui32 xx = 0;
+
+      for(xx = 0; xx < 255u; xx++) {
+         cbool bOK = ReadFile(file, &chCurrent, 2, (LPDWORD)&uiBytes, 0);
+         if(!bOK || !uiBytes || !chCurrent) {
+            break;
+         }
+         switch(chCurrent[0]) {
+         case '\n':
+            if(xx < 2u) {
+               stDest[0] = 1; stDest[1] = 0; return 1;
+            } else
+               if(stDest[xx - 1] == '\r') {
+                  stDest[xx - 1] = 0;
+                  return 1u;
+               }
+         default:
+            stDest[xx] = chCurrent[0];
+         }
+      }
+      stDest[xx] = 0;
+#ifdef DATA_TRACKING
+      sysData.storage.bytesRead += xx;
+#endif
+      return xx;
+   }
+
+   // Returns number of bytes read
+   inline cui32 ReadWideLine(cHANDLE file, wchptrc stDest) const {
+      static wchar chCurrent = 0;
+
+      ui32 xx = 0;
+
+      for(xx = 0; xx < 255u; xx++) {
+         cbool bOK = ReadFile(file, &chCurrent, 2, (LPDWORD)&uiBytes, 0);
+         if(!bOK || !uiBytes || !chCurrent) {
+            break;
+         }
+         switch(chCurrent) {
+         case L'\n':
+            if(xx < 2u) {
+               stDest[0] = 1; stDest[1] = 0; return 1;
+            } else
+               if(stDest[xx - 1] == L'\r') {
+                  stDest[xx - 1] = 0;
+                  return 1;
+               }
+         default:
+            stDest[xx] = chCurrent;
+         }
+      }
+      stDest[xx] = 0;
+#ifdef DATA_TRACKING
+      sysData.storage.bytesRead += xx;
+#endif
+      return xx;
+   }
+
+   // Returns true if identical
+   inline cbool ReadAndVerify(cHANDLE file, cchptrc string) const {
+      ReadLine(file, stTemp);
+      return (strncmp(stTemp, string, strlen(string)) ? false : true);
    }
 
    // Returns true if identical
    inline cbool ReadAndVerify(cHANDLE file, cwchptrc string) const {
-      ReadLine(file, stTemp);
-      return (wcsncmp(stTemp, string, wcslen(string)) ? true : false);
+      ReadWideLine(file, wstTemp);
+      return (wcsncmp(wstTemp, string, wcslen(string)) ? false : true);
    }
 
    inline cbool CloseFile(cHANDLE file) const {
@@ -135,26 +241,26 @@ al32 struct CLASS_FILEOPS {
 #endif
 
       // Read (and discard) tag line
-      uiBytes = ReadLine(hShaderGroups, stTemp);
+      uiBytes = ReadLine(hShaderGroups, wstTemp);
 #ifdef DATA_TRACKING
       sysData.storage.bytesRead += uiBytes;
 #endif
-      if(wcsncmp(stTemp, L"Stages: ", 8)) Try(stLoadShaders, -1, ss_video);
+      if(wcsncmp(wstTemp, L"Stages: ", 8)) Try(stLoadShaders, -1, ss_video);
       // Read line
-      while(uiBytes = ReadLine(hShaderGroups, stTemp)) {
+      while(uiBytes = ReadLine(hShaderGroups, wstTemp)) {
 #ifdef DATA_TRACKING
          sysData.storage.bytesRead += uiBytes;
 #endif
-         if(stTemp[0] >= '0' && stTemp[0] <= '9') {
-            ui8 uiBank = ui8(stTemp[0] - '0');
+         if(wstTemp[0] >= '0' && wstTemp[0] <= '9') {
+            ui8 uiBank = ui8(wstTemp[0] - '0');
             ui8 xx = 1;
-            if(stTemp[1] >= '0' && stTemp[1] <= '9') {
+            if(wstTemp[1] >= '0' && wstTemp[1] <= '9') {
                uiBank *= 10;
-               uiBank += ui8(stTemp[1] - '0');
+               uiBank += ui8(wstTemp[1] - '0');
                xx++;
             }
             for(ui8 uiType = 0; xx < 255; xx++) {
-               switch(stTemp[xx]) {
+               switch(wstTemp[xx]) {
                case 'c':   // Compute shader
                case 'C':
                   uiType = 0;
@@ -183,33 +289,33 @@ al32 struct CLASS_FILEOPS {
                   xx = 254;
                }
                xx++; if(xx >= 255) break;
-               if(stTemp[xx] >= '0' && stTemp[xx] <= '9') {
-                  uiIndex[uiType][uiBank] = stTemp[xx] - '0';
+               if(wstTemp[xx] >= '0' && wstTemp[xx] <= '9') {
+                  uiIndex[uiType][uiBank] = wstTemp[xx] - '0';
                   xx++; if(xx >= 255) break;
-                  if(stTemp[xx] >= '0' && stTemp[xx] <= '9') {
+                  if(wstTemp[xx] >= '0' && wstTemp[xx] <= '9') {
                      uiIndex[uiType][uiBank] *= 10;
-                     uiIndex[uiType][uiBank] = stTemp[xx] - '0';
+                     uiIndex[uiType][uiBank] = wstTemp[xx] - '0';
                   } else {
-                     if(stTemp[xx] == ' ') continue;
-                     if(stTemp[xx] == '\t') continue;
-                     if(stTemp[xx] == '/') break;
-                     if(stTemp[xx] == NULL) break;
+                     if(wstTemp[xx] == ' ') continue;
+                     if(wstTemp[xx] == '\t') continue;
+                     if(wstTemp[xx] == '/') break;
+                     if(wstTemp[xx] == NULL) break;
                      xx--;
                   }
                } else {
-                  if(stTemp[xx] == ' ') continue;
-                  if(stTemp[xx] == '\t') continue;
-                  if(stTemp[xx] == '/') break;
-                  if(stTemp[xx] == NULL) break;
+                  if(wstTemp[xx] == ' ') continue;
+                  if(wstTemp[xx] == '\t') continue;
+                  if(wstTemp[xx] == '/') break;
+                  if(wstTemp[xx] == NULL) break;
                   xx--;
                }
             }
          } else
-            switch(stTemp[0]) {
+            switch(wstTemp[0]) {
             case 'v':
             case 'V':
                wcscpy(stShader[1][uiBanks[1]], stShadersDir);
-               wcscat(stShader[1][uiBanks[1]], stTemp);
+               wcscat(stShader[1][uiBanks[1]], wstTemp);
                wcscat(stShader[1][uiBanks[1]], stExtension);
                uiShaders++;
                uiBanks[1]++;
@@ -217,7 +323,7 @@ al32 struct CLASS_FILEOPS {
             case 'g':
             case 'G':
                wcscpy(stShader[2][uiBanks[2]], stShadersDir);
-               wcscat(stShader[2][uiBanks[2]], stTemp);
+               wcscat(stShader[2][uiBanks[2]], wstTemp);
                wcscat(stShader[2][uiBanks[2]], stExtension);
                uiShaders++;
                uiBanks[2]++;
@@ -225,7 +331,7 @@ al32 struct CLASS_FILEOPS {
             case 'p':
             case 'P':
                wcscpy(stShader[5][uiBanks[5]], stShadersDir);
-               wcscat(stShader[5][uiBanks[5]], stTemp);
+               wcscat(stShader[5][uiBanks[5]], wstTemp);
                wcscat(stShader[5][uiBanks[5]], stExtension);
                uiShaders++;
                uiBanks[5]++;
@@ -249,6 +355,6 @@ al32 struct CLASS_FILEOPS {
    }
 
    void _Deinitialise(void) const {
-      mfree(stTemp, pathWorking);
+      mfree(wstTemp, pathWorking);
    }
 };

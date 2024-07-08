@@ -42,16 +42,16 @@ al32 struct CLASS_CAM {
 
    CLASS_CAM(CLASS_BUFFERS &bufClass) : buf(bufClass) { ptrLib[5] = this; }
 
-   inline void SetDimsf(cVEC3Ds16 dims, cui8 cam) { data32[cam].fDims[0].vector = { fl32(dims.x), fl32(dims.y), fl32(dims.z), 1.0f }; }
+   inline void SetDimsf(cVEC3Du16 dims, cui8 cam) { data32[cam].fDims[0].vector = { fl32(dims.x), fl32(dims.y), fl32(dims.z), 1.0f }; }
 
-   inline void SetDimsf(cVEC4Ds16 dims, cui8 cam) { data32[cam].fDims[0].vector = { fl32(dims.x), fl32(dims.y), fl32(dims.z), fl32(dims.w) }; }
+   inline void SetDimsf(cVEC4Du16 dims, cui8 cam) { data32[cam].fDims[0].vector = { fl32(dims.x), fl32(dims.y), fl32(dims.z), fl32(dims.w) }; }
 
-   inline void SetDimsf(cVEC3Ds16 chunkDims, cVEC3Ds16 chunkCounts, cui8 cam) {
+   inline void SetDimsf(cVEC3Du16 chunkDims, cVEC3Du16 chunkCounts, cui8 cam) {
       data32[cam].fDims[0].vector = { fl32(chunkDims.x), fl32(chunkDims.y), fl32(chunkDims.z), 1.0f };
       data32[cam].fDims[1].vector = { fl32(chunkCounts.x), fl32(chunkCounts.y), fl32(chunkCounts.z), 1.0f };
    }
 
-   inline void SetDimsf(cVEC4Ds16 chunkDims, cVEC4Ds16 chunkCounts, cui8 cam) {
+   inline void SetDimsf(cVEC4Du16 chunkDims, cVEC4Du16 chunkCounts, cui8 cam) {
       data32[cam].fDims[0].vector = { fl32(chunkDims.x), fl32(chunkDims.y), fl32(chunkDims.z), fl32(chunkDims.w) };
       data32[cam].fDims[1].vector = { fl32(chunkCounts.x), fl32(chunkCounts.y), fl32(chunkCounts.z), fl32(chunkDims.w) };
    }

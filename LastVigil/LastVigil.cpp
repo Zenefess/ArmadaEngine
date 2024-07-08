@@ -1,12 +1,12 @@
 /************************************************************
  * File: LastVigil.cpp                  Created: 2022/10/08 *
- *                           Code last modified: 2024/06/25 *
+ *                           Code last modified: 2024/06/26 *
  *                                                          *
  * Desc: Initial setup, and debug management.               *
  *                                                          *
  * Copyright (c) David William Bull.   All rights reserved. *
  ************************************************************/
-#include "pch.h"
+#include "master header.h"
 #include <stdio.h>
 #include "Command queue.h"
 
@@ -22,13 +22,13 @@ extern void OpenAL1_1Thread(ptr);
 extern void DirectInput8Thread(ptr);
 
 #ifdef DATA_TRACKING
-     SYSTEM_DATA   sysData(1024);
+     SYSTEM_DATA   sysData = 1024;
 #endif
 //     COMMAND_MANAGER cmd;
      cptr          ptrLib[16];
- vol GLOBALCOORDS  gco = {};
-     CLASS_FILEOPS files;
-     CLASS_TIMER   mainTimer;
+     CLASS_FILEOPS files     = ptrLib;
+     CLASS_TIMER   mainTimer = &ptrLib[1];
+     vGLOBALCOORDS gco       = {};
      wchar         stErrorFilename[64];
      vui64         THREAD_LIFE = 0x0;   // 'Thread active' flags
      wchptr        stThrdStat;          // Debug output
@@ -45,13 +45,8 @@ int __cdecl wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
    al16 HANDLE hThread[5] {};
         ui64   threadLife;
 
-   fpdtInitCustom;
-
    hPrevInstance;
    hInst = hInstance;   // Store instance handle globally
-
-   // Initialise timer
-   mainTimer.Init();
 
    FILETIME currentTime;
    GetSystemTimePreciseAsFileTime(&currentTime);
@@ -70,32 +65,38 @@ int __cdecl wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
    // Begin video rendering thread
    THREAD_LIFE |= VIDEO_THREAD_ALIVE;
    hThread[1] = (HANDLE)_beginthread(Direct3D11Thread, 0, NULL);
-   Sleep(250);
+   Sleep(100);
    SetThreadIdealProcessor(hThread[1], 0);
    SetThreadPriority(hThread[1], 1);
 
    // Begin audio rendering thread
    THREAD_LIFE |= AUDIO_THREAD_ALIVE;
    hThread[2] = (HANDLE)_beginthread(OpenAL1_1Thread, 0, NULL);
-   Sleep(250);
+   Sleep(100);
    SetThreadIdealProcessor(hThread[2], 2);
    SetThreadPriority(hThread[2], 1);
 
    // Begin input processing thread
    THREAD_LIFE |= INPUT_THREAD_ALIVE;
    hThread[3] = (HANDLE)_beginthread(DirectInput8Thread, 0, NULL);
-   Sleep(250);
+   Sleep(100);
    SetThreadIdealProcessor(hThread[3], 1);
    SetThreadPriority(hThread[3], 2);
 
    // Begin world generation thread
    THREAD_LIFE |= GEN_THREAD_ALIVE;
    hThread[4] = (HANDLE)_beginthread(WorldGenThread, 0, NULL);
-   Sleep(250);
+   Sleep(100);
    SetThreadIdealProcessor(hThread[4], 3);
    SetThreadPriority(hThread[4], 0);
 
-   // Primary application loop
+   // Wait for video, audio and input subsystems to finish initialising
+   while((THREAD_LIFE & VAI_THREADS_DONE) != VAI_THREADS_DONE) Sleep(1);
+   THREAD_LIFE &= ~VAI_THREADS_DONE;
+
+   ///
+   /// Primary application loop
+   ///
    do {
       threadLife = THREAD_LIFE;
 

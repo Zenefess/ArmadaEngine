@@ -7,7 +7,7 @@
  * Copyright (c) David William Bull.   All rights reserved. *
  ************************************************************/
 
-#include "pch.h"
+#include "master header.h"
 #include "OpenAL1_1 thread.h"
 
 #ifdef _DEBUG
@@ -63,7 +63,11 @@ Reinitialise_:
    siSound[0] = sndFiles.LoadWAV(L"mirrors.wav", L"sounds");
    //alSourcePlay(siSound[0]);
 
-   // Primary rendering loop
+   THREAD_LIFE |= AUDIO_THREAD_DONE;
+
+   ///
+   /// Primary rendering loop
+   ///
    do {
       threadLife = THREAD_LIFE & AUDIO_THREAD;
 

@@ -1,14 +1,16 @@
 /************************************************************
  * File: class_mapmanager.h             Created: 2022/11/29 *
- *                                Last modified: 2024/05/30 *
+ *                                Last modified: 2024/06/29 *
  *                                                          *
  * Desc:                                                    *
+ *                                                          *
+ * To do: Change Read/WriteFile to files. equivalents.      *
  *                                                          *
  *  Copyright (c) David William Bull. All rights reserved.  *
  ************************************************************/
 #pragma once
 
-#include "pch.h"
+#include "master header.h"
 #include "Data structures.h"
 #include "Map structures.h"
 #include "File operations.h"
@@ -24,17 +26,13 @@ static void _MM_Cull_Nonvisible_Accurate(ptr);
 static void _MM_Cull_Unchanged(ptr);
 
 // Map manager
-al32 struct CLASS_MAPMAN {
+al16 struct CLASS_MAPMAN {
    CLASS_FILEOPS &files;
 
-   cwchar stMapsDir[10] = L"map_data\\";
-
-   MMTDptrc threadData = (MMTDptr)zalloc32(sizeof(MAPMAN_THREAD_DATA) * 2);
-
-   WORLDptr    world;
-   ELEM_TABLE *table;
-   ELEM_TYPE  *element;
-   ELEM_IGS   *elem_igs;
+   WORLDptrc      world    = (WORLDptr)zalloc64(sizeof(WORLD[MAX_WORLDS]));
+   ELEM_TABLEptrc table    = (ELEM_TABLEptr)zalloc64(RoundUpToNearest64(sizeof(ELEM_TABLE[MAX_TABLES])));
+   ELEM_TYPEptrc  element  = (ELEM_TYPEptr)zalloc64(RoundUpToNearest64(sizeof(ELEM_TYPE[MAX_ELEMENTS])));
+   ELEM_IGSptrc   elem_igs = (ELEM_IGSptr)zalloc64(RoundUpToNearest64(sizeof(ELEM_IGS[MAX_ELEMENTS])));
 
    wchar (*stPeriodicName)[MAX_TABLES];
    wchar (*stElementName)[MAX_TABLES];
@@ -43,19 +41,19 @@ al32 struct CLASS_MAPMAN {
    VEC3Ds32 mapXYZ;             // Current map cell
    si32     totalWorlds;        // Number of worlds
    si32     elemTables;         // Number of element tables
-   ui32     uiBytes = 0;
+   ui32     uiBytes        = 0;
    ui16     uiMapBoundaries;    // Map edge flags: (Per bit... 0:Finite boundaries, 1:Wrap coordinates) 0-4==X axis, 5-9==Y axis, 10-14==Z axis
    ui8      uiPeriodicName = 0;
    ui8      uiElementName  = 0;
+
+   cwchar stMapsDir[10] = L"map_data\\";
+
+   MAPMAN_THREAD_DATA threadData[2];
 
    CLASS_MAPMAN(CLASS_FILEOPS &fileOpsClass) : files(fileOpsClass) {
 #ifdef AE_PTR_LIB
       ptrLib[6] = this;
 #endif
-      world    = (WORLDptr)zalloc32(sizeof(WORLD[MAX_WORLDS]));
-      table    = (ELEM_TABLE *)zalloc32(sizeof(ELEM_TABLE[MAX_TABLES]));
-      element  = (ELEM_TYPE *)zalloc16(sizeof(ELEM_TYPE[MAX_ELEMENTS]));
-      elem_igs = (ELEM_IGS *)zalloc32(sizeof(ELEM_IGS[MAX_ELEMENTS]));
 }
 
    inline cMAP_PTRSc Pointers(csi16 worldIndex, csi16 mapIndex) const {
@@ -135,12 +133,12 @@ al32 struct CLASS_MAPMAN {
          index = i;
       }
 
-      wcscpy(files.stTemp, stMapsDir);
-      wcscpy(files.stTemp + wcslen(stMapsDir), filename);
-      HANDLE hElementData = CreateFile(files.stTemp, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
+      wcscpy(files.wstTemp, stMapsDir);
+      wcscpy(files.wstTemp + wcslen(stMapsDir), filename);
+      HANDLE hElementData = CreateFile(files.wstTemp, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
 
       // Read & process tagline
-      files.ReadLine(hElementData, files.stTemp);
+      files.ReadLine(hElementData, files.wstTemp);
 //--- To do...
       // Read primary data
       files.ReadLine(hElementData, stPeriodicName[uiPeriodicName]);
@@ -173,9 +171,9 @@ al32 struct CLASS_MAPMAN {
       // Periodic table slot is empty
       if(!table[index].stName) return 0x080000001;
 
-      wcscpy(files.stTemp, stMapsDir);
-      wcscpy(files.stTemp + wcslen(stMapsDir), filename);
-      HANDLE hElementData = CreateFile(files.stTemp, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+      wcscpy(files.wstTemp, stMapsDir);
+      wcscpy(files.wstTemp + wcslen(stMapsDir), filename);
+      HANDLE hElementData = CreateFile(files.wstTemp, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
       // Write tag line: 2[Engine].Elements.2[Format version]1[Compression method]
       WriteFile(hElementData, "AE.Elements.01u\0", 16, (LPDWORD)&uiBytes, NULL);
@@ -267,23 +265,23 @@ al32 struct CLASS_MAPMAN {
 
       MAP &curMap = *world[worldIndex].map[mapIndex];
 
-      wcscpy(files.stTemp, stMapsDir);
-      wcscpy(files.stTemp + wcslen(stMapsDir), filename);
-      HANDLE hMapData = CreateFile(files.stTemp, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
+      wcscpy(files.wstTemp, stMapsDir);
+      wcscpy(files.wstTemp + wcslen(stMapsDir), filename);
+      HANDLE hMapData = CreateFile(files.wstTemp, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
 
       // Read & process tagline
-      files.ReadLine(hMapData, files.stTemp);
+      files.ReadLine(hMapData, files.wstTemp);
 //--- To do...
       // Read critical map information
-      files.ReadLine(hMapData, files.stTemp);
-      curMap.desc.stName = (wchptr)malloc32(wcslen(files.stTemp) + 1);
-      wcscpy(curMap.desc.stName, files.stTemp);
-      files.ReadLine(hMapData, files.stTemp);
-      curMap.desc.stInfo = (wchptr)malloc32(wcslen(files.stTemp) + 1);
-      wcscpy(curMap.desc.stInfo, files.stTemp);
+      files.ReadLine(hMapData, files.wstTemp);
+      curMap.desc.stName = (wchptr)malloc32(wcslen(files.wstTemp) + 1);
+      wcscpy(curMap.desc.stName, files.wstTemp);
+      files.ReadLine(hMapData, files.wstTemp);
+      curMap.desc.stInfo = (wchptr)malloc32(wcslen(files.wstTemp) + 1);
+      wcscpy(curMap.desc.stInfo, files.wstTemp);
       // Search periodic table array for match
-      files.ReadLine(hMapData, files.stTemp);
-      for(i = 0; !wcscmp(files.stTemp, table[i].stName) || i < MAX_TABLES; i++);
+      files.ReadLine(hMapData, files.wstTemp);
+      for(i = 0; !wcscmp(files.wstTemp, table[i].stName) || i < MAX_TABLES; i++);
       if(i < MAX_TABLES)
          curMap.desc.ptIndex = i;
       // Not present; attempt to load
@@ -291,7 +289,7 @@ al32 struct CLASS_MAPMAN {
          for(i = 0; table[i].stName || i < MAX_TABLES; i++);
          if(i >= MAX_TABLES)   // No free slots available
             return 0x080000002;
-         LoadPeriodicTable(files.stTemp, i);
+         LoadPeriodicTable(files.wstTemp, i);
          curMap.desc.ptIndex = i;
       }
 
@@ -322,7 +320,7 @@ al32 struct CLASS_MAPMAN {
 //      curMap.pCB->bitFlags   = 0;
       // Read cell data
       curMap.cell = (CELL *)malloc32(sizeof(CELL) * curMap.desc.mapCells);
-      for(si32 i = 0; i < curMap.desc.mapCells; i++) {
+      for(ui32 i = 0; i < curMap.desc.mapCells; i++) {
          ReadFile(hMapData, &curMap.cell[i].vel, sizeof(VEC2Df), (LPDWORD)&uiBytes, NULL);
          ReadFile(hMapData, &curMap.cell[i].temp, sizeof(float), (LPDWORD)&uiBytes, NULL);
          ReadFile(hMapData, &curMap.cell[i].rad, sizeof(float), (LPDWORD)&uiBytes, NULL);
@@ -344,9 +342,9 @@ al32 struct CLASS_MAPMAN {
 
       MAP &curMap = *world[worldIndex].map[mapIndex];
 
-      wcscpy(files.stTemp, stMapsDir);
-      wcscpy(files.stTemp + wcslen(stMapsDir), filename);
-      HANDLE hMapData = CreateFile(files.stTemp, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+      wcscpy(files.wstTemp, stMapsDir);
+      wcscpy(files.wstTemp + wcslen(stMapsDir), filename);
+      HANDLE hMapData = CreateFile(files.wstTemp, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
       // Write tag line: 2[Engine].4[Frontend].2[Data type].3[Format version]1[Compression method]
       WriteFile(hMapData, "AE.LV01.MD.001u\0", 16, (LPDWORD)&uiBytes, NULL);
@@ -362,7 +360,7 @@ al32 struct CLASS_MAPMAN {
       WriteFile(hMapData, &curMap.oob.rad, sizeof(float), (LPDWORD)&uiBytes, NULL);
       WriteFile(hMapData, &curMap.oob.elec, sizeof(float), (LPDWORD)&uiBytes, NULL);
       // Write cell data
-      for(si32 i = 0; i < curMap.desc.mapCells; i++) {
+      for(ui32 i = 0; i < curMap.desc.mapCells; i++) {
          WriteFile(hMapData, &curMap.cell[i].vel, sizeof(VEC2Df), (LPDWORD)&uiBytes, NULL);
          WriteFile(hMapData, &curMap.cell[i].temp, sizeof(float), (LPDWORD)&uiBytes, NULL);
          WriteFile(hMapData, &curMap.cell[i].rad, sizeof(float), (LPDWORD)&uiBytes, NULL);
@@ -389,7 +387,7 @@ al32 struct CLASS_MAPMAN {
       csi32     totalCells  = zStep * md.mapDim.z;
       csi32     chunkCells  = md.chunkDim.x * md.chunkDim.y * md.chunkDim.z;
       csi32     totalChunks = totalCells / chunkCells;
-      cVEC3Ds16 chunkCount  = { si16(md.mapDim.x / md.chunkDim.x), si16(md.mapDim.y / md.chunkDim.y), si16(md.mapDim.z / md.chunkDim.z) };
+      cVEC3Du16 chunkCount  = { ui16(md.mapDim.x / md.chunkDim.x), ui16(md.mapDim.y / md.chunkDim.y), ui16(md.mapDim.z / md.chunkDim.z) };
       csi32     chunkChOS   = chunkCount.x * chunkCount.y;
       csi32     surfaceChOS = md.zso * chunkChOS;
       csi32     solidChOS   = chunkChOS + surfaceChOS;
@@ -554,7 +552,7 @@ al32 struct CLASS_MAPMAN {
 
    inline void SetGlobalMapDescriptor(csi32 mapIndex, csi32 worldIndex) const { ptrLib[14] = &world[worldIndex].map[mapIndex]->desc; }
 
-   inline csi32 CalcCellIndex(cVEC3Ds32 coord, csi32 mapIndex, csi32 worldIndex) const {
+   inline cui32 CalcCellIndex(cVEC3Ds32 coord, csi32 mapIndex, csi32 worldIndex) const {
       cMAP_DESC &curDesc = world[worldIndex].map[mapIndex]->desc;
       cVEC3Ds32  vCell   = { coord.x + (curDesc.mapDim.x >> 1), coord.y + (curDesc.mapDim.y >> 1), coord.z + curDesc.zso };
 
@@ -574,10 +572,10 @@ al32 struct CLASS_MAPMAN {
 
       cui32 uiCell = uiCellX + uiCellY + uiCellZ;
 
-      return (uiCell < curDesc.mapCells ? uiCell : 0x080000001);
+      return uiCell < curDesc.mapCells ? uiCell : 0x080000001;
    }
 
-   inline csi32 CalcCellIndex_(cVEC3Ds32 coord, csi32 mapIndex, csi32 worldIndex) const {
+   inline cui32 CalcCellIndex_(cVEC3Ds32 coord, csi32 mapIndex, csi32 worldIndex) const {
       cMAP_DESC &curDesc = world[worldIndex].map[mapIndex]->desc;
 
       if(coord.x < 0 || coord.x >= curDesc.mapDim.x) return 0x80000001;
@@ -596,27 +594,27 @@ al32 struct CLASS_MAPMAN {
 
       cui32 uiCell = uiCellX + uiCellY + uiCellZ;
 
-      return (uiCell < curDesc.mapCells ? uiCell : 0x080000001);
+      return uiCell < curDesc.mapCells ? uiCell : 0x080000001;
    }
 
-   inline csi32 CalcChunkIndex(cVEC3Ds32 coord, csi32 mapIndex, csi32 worldIndex) const {
-      cVEC3Ds16 &curCount = world[worldIndex].map[mapIndex]->desc.chunkCount;
-      cVEC3Ds32  chunk    = { coord.x + (curCount.x >> 1), coord.y + (curCount.y >> 1), coord.z + (curCount.z >> 1) };
+   inline cui32 CalcChunkIndex(cVEC3Ds32 coord, csi32 mapIndex, csi32 worldIndex) const {
+      cVEC3Du16 &curCount = world[worldIndex].map[mapIndex]->desc.chunkCount;
+      cVEC3Du32  chunk    = { ui32(coord.x + si32(curCount.x >> 1u)), ui32(coord.y + si32(curCount.y >> 1u)), ui32(coord.z + si32(curCount.z >> 1u)) };
 
       if(chunk.x < 0 || chunk.x >= curCount.x) return 0x080000001;
       if(chunk.y < 0 || chunk.y >= curCount.y) return 0x080000001;
       if(chunk.z < 0 || chunk.z >= curCount.z) return 0x080000001;
 
-      csi32 siChunks[3] = { chunk.x, chunk.y * curCount.x, chunk.z * (curCount.x * curCount.y) };
+      cui32 uiChunks[3] = { chunk.x, chunk.y * curCount.x, chunk.z * (curCount.x * curCount.y) };
 
-      csi32 siChunk = siChunks[0] + siChunks[1] + siChunks[2];
+      cui32 uiChunk = uiChunks[0] + uiChunks[1] + uiChunks[2];
 
-      return (siChunk < si32(world[worldIndex].map[mapIndex]->desc.mapChunks) ? siChunk : 0x080000001);
+      return uiChunk < si32(world[worldIndex].map[mapIndex]->desc.mapChunks) ? uiChunk : 0x080000001;
    }
 
 
-   inline csi32 CalcChunkIndex_(cVEC3Ds32 coord, csi32 mapIndex, csi32 worldIndex) const {
-      cVEC3Ds16 &curCount = world[worldIndex].map[mapIndex]->desc.chunkCount;
+   inline cui32 CalcChunkIndex_(cVEC3Ds32 coord, csi32 mapIndex, csi32 worldIndex) const {
+      cVEC3Du16 &curCount = world[worldIndex].map[mapIndex]->desc.chunkCount;
 
       if(coord.x < 0 || coord.x >= curCount.x) return 0x080000001;
       if(coord.y < 0 || coord.y >= curCount.y) return 0x080000001;
@@ -626,7 +624,7 @@ al32 struct CLASS_MAPMAN {
 
       csi32 siChunk = siChunks[0] + siChunks[1] + siChunks[2];
 
-      return (siChunk < si32(world[worldIndex].map[mapIndex]->desc.mapChunks) ? siChunk : 0x080000001);
+      return siChunk < si32(world[worldIndex].map[mapIndex]->desc.mapChunks) ? siChunk : 0x080000001;
    }
 
    // Rewrite for automated SIMD selection during compilation
@@ -886,8 +884,7 @@ al32 struct CLASS_MAPMAN {
       return 0;
    }
 
-//   inline cVEC4Du32 WaitForCulling(cDWORD sleepDelay) const {
-   inline cSSE4Du32 WaitForCulling(cDWORD sleepDelay) const {
+   inline void WaitForCulling(ui128 &results, cDWORD sleepDelay) const {
       if(sleepDelay) while(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x03) Sleep(sleepDelay);
       else while(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x03) _mm_pause();
 
@@ -896,8 +893,8 @@ al32 struct CLASS_MAPMAN {
       MAPMAN_THREAD_STATUS.m128i_u64[0] &= 0x0C;
       MAPMAN_THREAD_STATUS.m128i_u64[1] = 0;
 
-      return cSSE4Du32{ ._ui32 = { ui32(mapManThreadData.x >> 4) & 0x03FFFFFFF, ui32(mapManThreadData.x >> 34) & 0x03FFFFFFF,
-                                   ui32(mapManThreadData.y) & 0x03FFFFFFF, ui32(mapManThreadData.y >> 30) & 0x03FFFFFFF } };
+      results = { .m128i_u32 = { ui32(mapManThreadData.x >> 4) & 0x03FFFFFFF, ui32(mapManThreadData.x >> 34) & 0x03FFFFFFF,
+                                 ui32(mapManThreadData.y) & 0x03FFFFFFF, ui32(mapManThreadData.y >> 30) & 0x03FFFFFFF } };
    }
 };
 
@@ -971,13 +968,13 @@ static void _MM_Cull_Nonvisible_Simple(ptr threadData) {
    cVEC2Ds32 vScrDim    = { si32(ScrRes.dims[ScrRes.state].w) - 1, si32(ScrRes.dims[ScrRes.state].h) - 1 };
 //   cSSE4Ds32 chunkCount = { .vector = { data->map->pCB->chunkCount.x, data->map->pCB->chunkCount.y,
 //                                        data->map->pCB->chunkCount.z, data->map->desc.mapChunks } };
-   cSSE4Ds32 chunkCount = { .vector = { data->map->desc.chunkCells, data->map->desc.mapCells,
+   cSSE4Du32 chunkCount = { .vector = { data->map->desc.chunkCells, data->map->desc.mapCells,
                                         data->map->desc.chunkCount.z, data->map->desc.mapChunks } };
    cSSE4Ds32 mapDim     = { .vector = { data->map->desc.mapDim.x >> 1, data->map->desc.mapDim.y >> 1, data->map->desc.mapDim.z >> 1, 1 } };
    cSSE4Ds32 chunkDim   = { .vector = { data->map->desc.chunkDim.x, data->map->desc.chunkDim.y, data->map->desc.chunkDim.z, 1 } };
 
-   SSE4Ds32 coords[2];   // Change to AVX8Ds32
-   SSE4Ds32 vChunk[8];
+   SSE4Du32 coords[2];   // Change to AVX8Ds32
+   SSE4Du32 vChunk[8];
    ui64     chunks;
    si32     i;
 
@@ -1045,29 +1042,29 @@ static void _MM_Cull_Nonvisible_Simple(ptr threadData) {
       if(coords[1].vector.x2 > chunkCount.vector.x) coords[1].vector.x2 = chunkCount.vector.x;
       if(coords[1].vector.y2 > chunkCount.vector.y) coords[1].vector.y2 = chunkCount.vector.y;
       // Calculate run lengths
-      csi32     lengths[2] = { coords[0].vector.x2 - coords[0].vector.x1 + 1, coords[1].vector.x2 - coords[1].vector.x1 + 1 };
-      cAVX8Ds32 lines[2] = { { .vector = { coords[0].vector.x1, coords[0].vector.y1, vChunk[0].vector.z, lengths[0],
+      cui32     lengths[2] = { coords[0].vector.x2 - coords[0].vector.x1 + 1u, coords[1].vector.x2 - coords[1].vector.x1 + 1u };
+      cAVX8Du32 lines[2] = { { .vector = { coords[0].vector.x1, coords[0].vector.y1, vChunk[0].vector.z, lengths[0],
                                            coords[0].vector.x2, coords[0].vector.y2, vChunk[0].vector.z, lengths[0] } },
                              { .vector = { coords[1].vector.x1, coords[1].vector.y1, vChunk[4].vector.z, lengths[1],
                                            coords[1].vector.x2, coords[1].vector.y2, vChunk[4].vector.z, lengths[1] } } };
       // Rasterise prism
-      AVX8Df32  accum     = (cAVX8Df32 &)_mm256_cvtepi32_ps((si256 &)lines);
-      AVX8Ds32  line      = lines[0];
-      cAVX8Ds32 sCols     = { .xmm = { _mm_broadcastd_epi32(si128{.m128i_i32 = lines[1].vector.x.z - lines[0].vector.x.z + 1}),
-                                       _mm_broadcastd_epi32(si128{.m128i_i32 = lines[1].vector.y.z - lines[0].vector.y.z + 1}) } };
+      AVX8Df32  accum     = (cAVX8Df32 &)_mm256_cvtepi32_ps((ui256 &)lines);
+      AVX8Du32  line      = lines[0];
+      cAVX8Du32 sCols     = { .xmm = { _mm_broadcastd_epi32(ui128{.m128i_u32 = lines[1].vector.x.z - lines[0].vector.x.z + 1}),
+                                       _mm_broadcastd_epi32(ui128{.m128i_u32 = lines[1].vector.y.z - lines[0].vector.y.z + 1}) } };
       cAVX8Df32 fCols     = { .ymm = _mm256_cvtepi32_ps(sCols.ymm) };
-      cAVX8Ds32 xyDelta   = { .ymm = _mm256_sub_epi32(lines[1].ymm, lines[0].ymm) };
-      cAVX8Ds32 signTest  = { .ymm = _mm256_sign_epi32(ones32x8, xyDelta.ymm)};
-      cAVX8Ds32 signMod   = { .ymm = _mm256_or_epi32(signTest.ymm, ones32x8) };
-      cAVX8Ds32 sPredelta = { .ymm = _mm256_add_epi32(signMod.ymm, xyDelta.ymm) };
+      cAVX8Du32 xyDelta   = { .ymm = _mm256_sub_epi32(lines[1].ymm, lines[0].ymm) };
+      cAVX8Du32 signTest  = { .ymm = _mm256_sign_epi32(ones32x8, xyDelta.ymm)};
+      cAVX8Du32 signMod   = { .ymm = _mm256_or_epi32(signTest.ymm, ones32x8) };
+      cAVX8Du32 sPredelta = { .ymm = _mm256_add_epi32(signMod.ymm, xyDelta.ymm) };
       cAVX8Df32 fPredelta = { .ymm = _mm256_cvtepi32_ps(sPredelta.ymm) };
       cAVX8Df32 delta     = { .ymm = _mm256_div_ps(fPredelta.ymm, fCols.ymm) };
 
       while(line.vector.x.z <= lines[1].vector.x.z) {
          // Rasterise slice
-         for(SSE4Ds32 lineX = { .xmm = line.xmm[0] }; lineX.vector.y <= line.vector.y.y; lineX.vector.x = line.vector.x.x, lineX.vector.y++)
-            for(csi32 endPoint = lineX.vector.x + lineX.vector.w; lineX.vector.x < endPoint; lineX.vector.x++) {
-               csi32 chunkIndex = mapMan.CalcChunkIndex_((cVEC3Ds32 &)lineX, 0, 0);
+         for(SSE4Du32 lineX = { .xmm = line.xmm[0] }; lineX.vector.y <= line.vector.y.y; lineX.vector.x = line.vector.x.x, lineX.vector.y++)
+            for(cui32 endPoint = lineX.vector.x + lineX.vector.w; lineX.vector.x < endPoint; lineX.vector.x++) {
+               cui32 chunkIndex = mapMan.CalcChunkIndex_((cVEC3Ds32 &)lineX, 0, 0);
                cui32 QWordOS    = chunkIndex >> 6;
                cui64 bitOS      = ui64(0x01) << (chunkIndex & 0x03F);
 

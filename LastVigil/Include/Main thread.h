@@ -1,6 +1,6 @@
 /**********************************************************
  * File: Main thread.h                Created: 2008/09/16 *
- *                              Last modified: 2024/06/20 *
+ *                              Last modified: 2024/07/05 *
  *                                                        *
  * Desc:                                                  *
  *                                                        *
@@ -13,8 +13,8 @@
  *  --------------------------------------------
  *
  *  0==Class: File operations
- *  1==Class: GPU manager
- *  2==
+ *  1==Class: Main timer
+ *  2==Class: GPU manager
  *  3==
  *  4==Class: GUI manager
  *  5==Class: Camera manager
@@ -44,7 +44,11 @@ extern HWND          hWndDebug;    // Debug window's handle
 extern HANDLE        hErrorOutput; // File handle for error output
 extern HRESULT       hr;
 extern wchar         stErrorFilename[64];
+
+// Defined in "OpenAL1_1 thread.h"
+extern SOUND_BANKptrc soundLibrary;
+
+// Defined in "DirectInput8 thread.h"
 extern vGLOBALCOORDS gco;
 
 extern inline void Try(cchptrc stEvent, cui32 uiResult, cAE_SUBSYSTEM subsystem);
-extern        void WriteError(cchptrc, cbool);

@@ -7,7 +7,7 @@
  *  Copyright (c) David William Bull. All rights reserved.  *
  ************************************************************/
 
-#include "pch.h"
+#include "master header.h"
 #include <algorithm>
 #include <intrin.h>
 #include "DirectInput8 thread.h"
@@ -434,10 +434,14 @@ Reinitialise_:
    // Obtain gamepads
    Try(stEnumGamepads, di8->EnumDevices(DI8DEVCLASS_GAMECTRL, GamepadEnumeration, NULL, DIEDFL_ATTACHEDONLY), ss_input);
 
-   inputTimer.Init();
    inputTimer.Reset(1.0);
    cfl64 dCurrentFrameTime = 0.0;
 
+   THREAD_LIFE |= INPUT_THREAD_DONE;
+
+   ///
+   /// Primary rendering loop
+   ///
    do {
       threadLife = THREAD_LIFE;
       if (threadLife & INPUT_THREAD_RESET) goto Reinitialise_;

@@ -8,7 +8,7 @@
  *  Copyright (c) David William Bull. All rights reserved.  *
  ************************************************************/
 
-#include "pch.h"
+#include "master header.h"
 #include "data tracking.h"
 #include "typedefs.h"
 #include "Vector structures.h"
@@ -153,46 +153,6 @@ void __Activate1_1_Default_Scalar(cptrc indices) {
       element.stateBits &= 0x0F7;
 }
 
-// If not active, set element to receive input
-void __Activate0_0_Default_Input(cptrc indices) {
-   #define vertex2 ((*(cCLASS_GUI *)ptrLib[4]).element_dgs[((GUI_INDICES &)indices).vertex + 2])
-
-   GUI_ELEMENT(&element)[3] = (GUI_ELEMENT(&)[3])(*(cCLASS_GUI *)ptrLib[4]).element[((GUI_INDICES &)indices).element];
-   TEXTBUFFER  &textBuffer  = *element->input;
-
-   if(!(textBuffer.source.bitField & 0x010))
-      if(element[0].stateBits & 0x04) {
-         if(!(textBuffer.source.bitField & 0x08)) {
-            //element[2].charCount = textBufferInfo.source.byteOffset >> (element[2].bitField & 0x0800 ? 1 : 0);
-            textBuffer.source.bitField |= 0x013;
-         }
-      } else {
-         element[0].stateBits |= 0x04;
-         //element[1].stateBits |= 0x040;
-
-         textBuffer.source.pCH        =  &(*(cCLASS_GUI *)ptrLib[4]).textBuffer[(vertex2.charBankOS & 0x03FFFFFF) << 4];
-         textBuffer.source.byteCount  =  element[2].vertexCount[1] << 5;
-         textBuffer.source.byteOffset =  element[2].charCount << (element[2].bitField & 0x0800 ? 1 : 0);
-         textBuffer.source.bitField   |= 0x09;
-      }
-
-   #undef vertex2
-}
-
-// If active, confirm change
-void __Activate0_1_Default_Input(cptrc indices) {
-   if((*(cCLASS_GUI *)ptrLib[4]).element[((cGUI_INDICES &)indices).element].stateBits & 0x04)
-      (*(cCLASS_GUI *)ptrLib[4]).element[((cGUI_INDICES &)indices).element].input->source.bitField &= 0x0F7;
-   else
-      (*(cCLASS_GUI *)ptrLib[4]).element[((cGUI_INDICES &)indices).element].input->source.bitField &= 0x0EF;
-}
-
-// If active, cancel change
-void __Activate1_0_Default_Input(cptrc indices) {
-   if((*(cCLASS_GUI *)ptrLib[4]).element[((cGUI_INDICES &)indices).element].stateBits & 0x04)
-      (*(cCLASS_GUI *)ptrLib[4]).element[((cGUI_INDICES &)indices).element].input->source.bitField = 0x05;
-}
-
 // Reprocess string
 void __Passive_Default_Input(cptrc indices) {
    GUI_ELEMENT (&element)[3] = (GUI_ELEMENT (&)[3])(*(cCLASS_GUI *)ptrLib[4]).element[((GUI_INDICES &)indices).element];
@@ -203,7 +163,7 @@ void __Passive_Default_Input(cptrc indices) {
 
       csi32 indexVert = ((GUI_INDICES &)indices).vertex + 2;
 
-      GUI_EL_DGS *const vertex = &gui.element_dgs[indexVert];
+      GUI_EL_DGSptrc vertex = &gui.element_dgs[indexVert];
 
       chptrc pCH    = textBuffer.source.pCH;
       cui32  pIMMos = gui.alphabet[vertex[0].alphabetIndex].pIMMos;
@@ -228,7 +188,7 @@ void __Passive_Default_Input(cptrc indices) {
          vertex[oldVertCount].align |= 0x080;
       } else {
          cui32 vertexCharCount = ((((element[2].charCount - 1) & 31) + 1) << 26);
-            if(newVertCount > oldVertCount) {
+         if(newVertCount > oldVertCount) {
             vertex[oldVertCount].charBankOS    = (vertex[oldVertCount].charBankOS & 0x03FFFFFFu) | 0x080000000u;
             vertex[newVertCount].origin[0]     = (*(cCLASS_GUI *)ptrLib[4]).CalculateTextOrigin(indexVert, indexVert + newVertCount, vertex[0].alphabetIndex);
             vertex[newVertCount].origin[1]     = { 16384.0f, 16384.0f };
@@ -275,12 +235,52 @@ void __Passive_Default_Input(cptrc indices) {
    }
 }
 
+// If not active, set element to receive input
+void __Activate0_0_Default_Input(cptrc indices) {
+   #define vertex2 ((*(cCLASS_GUI *)ptrLib[4]).element_dgs[((GUI_INDICES &)indices).vertex + 2])
+
+   GUI_ELEMENT(&element)[3] = (GUI_ELEMENT(&)[3])(*(cCLASS_GUI *)ptrLib[4]).element[((GUI_INDICES &)indices).element];
+   TEXTBUFFER  &textBuffer  = *element->input;
+
+   if(!(textBuffer.source.bitField & 0x010))
+      if(element[0].stateBits & 0x04) {
+         if(!(textBuffer.source.bitField & 0x08)) {
+            //element[2].charCount = textBufferInfo.source.byteOffset >> (element[2].bitField & 0x0800 ? 1 : 0);
+            textBuffer.source.bitField |= 0x013;
+         }
+      } else {
+         element[0].stateBits |= 0x04;
+         //element[1].stateBits |= 0x040;
+
+         textBuffer.source.pCH        =  &(*(cCLASS_GUI *)ptrLib[4]).textBuffer[(vertex2.charBankOS & 0x03FFFFFF) << 4];
+         textBuffer.source.byteCount  =  element[2].vertexCount[1] << 5;
+         textBuffer.source.byteOffset =  element[2].charCount << (element[2].bitField & 0x0800 ? 1 : 0);
+         textBuffer.source.bitField   |= 0x09;
+      }
+
+   #undef vertex2
+}
+
+// If active, confirm change
+void __Activate0_1_Default_Input(cptrc indices) {
+   if((*(cCLASS_GUI *)ptrLib[4]).element[((cGUI_INDICES &)indices).element].stateBits & 0x04)
+      (*(cCLASS_GUI *)ptrLib[4]).element[((cGUI_INDICES &)indices).element].input->source.bitField &= 0x0F7;
+   else
+      (*(cCLASS_GUI *)ptrLib[4]).element[((cGUI_INDICES &)indices).element].input->source.bitField &= 0x0EF;
+}
+
+// If active, cancel change
+void __Activate1_0_Default_Input(cptrc indices) {
+   if((*(cCLASS_GUI *)ptrLib[4]).element[((cGUI_INDICES &)indices).element].stateBits & 0x04)
+      (*(cCLASS_GUI *)ptrLib[4]).element[((cGUI_INDICES &)indices).element].input->source.bitField = 0x05;
+}
+
 // Highlight .textEntry according to pointer position
 void __Passive_Default_Array(cptrc indices) {
    cGUI_INDICES &data = (GUI_INDICES &)indices;
 
-   GUI_ELEMENT &element     = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
-   GUI_EL_DGS *const vertex = (GUI_EL_DGS *const)&(*(cCLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
+   GUI_ELEMENT   &element = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
+   GUI_EL_DGSptrc vertex  = (GUI_EL_DGSptrc)&(*(cCLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
 
 
 }
@@ -289,8 +289,8 @@ void __Passive_Default_Array(cptrc indices) {
 void __Activate0_0_Default_Array(cptrc indices) {
    cGUI_INDICES &data = (GUI_INDICES &)indices;
 
-   GUI_ELEMENT &element     = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
-   GUI_EL_DGS *const vertex = (GUI_EL_DGS *const)&(*(cCLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
+   GUI_ELEMENT   &element = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
+   GUI_EL_DGSptrc vertex  = (GUI_EL_DGSptrc)&(*(cCLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
 
 
 }
@@ -299,8 +299,8 @@ void __Activate0_0_Default_Array(cptrc indices) {
 void __Activate0_1_Default_Array(cptrc indices) {
    cGUI_INDICES &data = (GUI_INDICES &)indices;
 
-   GUI_ELEMENT &element     = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
-   GUI_EL_DGS *const vertex = (GUI_EL_DGS *const)&(*(cCLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
+   GUI_ELEMENT   &element = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
+   GUI_EL_DGSptrc vertex  = (GUI_EL_DGSptrc)&(*(cCLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
 
 
 }
@@ -309,8 +309,8 @@ void __Activate0_1_Default_Array(cptrc indices) {
 void __Activate1_0_Default_Array(cptrc indices) {
    cGUI_INDICES &data = (GUI_INDICES &)indices;
 
-   GUI_ELEMENT &element     = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
-   GUI_EL_DGS *const vertex = (GUI_EL_DGS *const)&(*(cCLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
+   GUI_ELEMENT   &element = (*(cCLASS_GUI *)ptrLib[4]).element[data.element];
+   GUI_EL_DGSptrc vertex  = (GUI_EL_DGSptrc)&(*(cCLASS_GUI *)ptrLib[4]).element_dgs[data.vertex];
 
 
 }
@@ -347,25 +347,27 @@ void MainMenu(cptrc argList) {
    if(firstRun) {
       GUI_EL_DESC elementDesc;
 
-      elementDesc.viewPos     = { 0.0f, -0.25f };
-      elementDesc.index       = { index.soundBank, index.alphabet, index.spriteLib, index.panelSprite };
-      elementDesc.size        = { { 0.125f, 0.125f }, { 1.0f, 1.0f } };
-      elementDesc.tint        = { c4_white, c4_white };
-      elementDesc.textPtr     = (chptr)"Options";
-      elementDesc.charCount   = 7;
+      elementDesc.viewPos = { 0.0f, -0.25f };
+      elementDesc.index   = { index.soundBank, index.alphabet, index.spriteLib, index.panelSprite };
+      elementDesc.panel.tint  = c4_white;
+      elementDesc.panel.size  = { 0.125f, 0.125f };
       elementDesc.panel.align = UI_ALIGN_L;
       elementDesc.panel.mods  = UI_NONE;
+      elementDesc.text.tint   = c4_white;
+      elementDesc.text.size   = { 1.0f, 1.0f };
+      elementDesc.text.cPtr   = (chptr)"Options";
+      elementDesc.text.cCount = 7;
       elementDesc.text.align  = UI_ALIGN_C;
       elementDesc.text.mods   = UI_ROT | UI_TRANS | UI_SCALE_X;
       buttonOptions = gui.CreateTextButton(elementDesc);
 
       elementDesc.viewPos = { 0.0f, -0.5f };
-      elementDesc.textPtr = (chptr)"Editors";
+      elementDesc.text.cPtr = (chptr)"Editors";
       buttonEditors = gui.CreateTextButton(elementDesc);
 
-      elementDesc.viewPos     = { 0.0f, 0.0f };
-      elementDesc.textPtr     = (chptr)"Exit";
-      elementDesc.charCount   = 4;
+      elementDesc.viewPos = { 0.0f, 0.0f };
+      elementDesc.text.cPtr   = (chptr)"Exit";
+      elementDesc.text.cCount = 4;
       elementDesc.panel.align = UI_ALIGN_L | UI_ALIGN_B;
       buttonExit = gui.CreateTextButton(elementDesc);
 

@@ -1,6 +1,6 @@
 /************************************************************
  * File: common.hlsli                   Created: 2023/01/18 *
- *                                    Last mod.: 2024/06/10 *
+ *                                    Last mod.: 2024/06/26 *
  *                                                          *
  * Desc: Common shader presets.                             *
  *                                                          *
@@ -94,6 +94,7 @@ static const float rcp32768 = 0.000030517578125f;
 static const float rcp65534 = 0.000015259254737998596148564104129154f;
 static const float rcp65535 = 0.000015259021896696421759365224689097f;
 static const float rcp65536 = 0.0000152587890625f;
+static const float rcp2p23  = 0.00000011920928955078125f;
 
 static const float  PIf     = 3.1415926535897932384626433832795f;
 static const double PId     = 3.1415926535897932384626433832795;

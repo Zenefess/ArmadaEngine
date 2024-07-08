@@ -35,7 +35,7 @@ struct GOut { // 48 bytes (3 vectors) <-- Add data for texture blending with adj
 #include "common.hlsli"
 #include "gs.mesh displacement functions.hlsli"
 
-cbuffer CB_VIEW : register(b0) { // 160 bytes (10 vectors)
+cbuffer CB_VIEW : register(b1) { // 160 bytes (10 vectors)
    const matrix perspective;  // Perspective transformation
    const matrix orthographic; // Orthographic transformation
    const float2 guiScale;     // Final X & Y scaling factors for GUI
@@ -43,7 +43,7 @@ cbuffer CB_VIEW : register(b0) { // 160 bytes (10 vectors)
    const uint4  RES;
 };
 
-cbuffer CB_MAIN : register(b1) { // 96 bytes (6 vectors)
+cbuffer CB_MAIN : register(b2) { // 96 bytes (6 vectors)
    const matrix camera;     // Camera transformation
    const uint   frameCount; // Total number of frames presented
    const float  frameTime;  // Duration of last frame
@@ -64,7 +64,7 @@ cbuffer MAPDIMS_ICB : register(b2) { // 32 bytes (2 vectors)
    const uint  oobDens;
 }
 */
-cbuffer MAPDIMS_ICB : register(b2) { // 32 bytes (2 vectors)
+cbuffer MAPDIMS_ICB : register(b3) { // 32 bytes (2 vectors)
    // Map dimensions: X, Y, Z cell counts - 1     --- 30 bits -- [..][..][..][30]
    // Chunk dimensions: X, Y, Z cell counts - 1   --- 18 bits -- [..][..][16][32]
    // Map Cells: Total cells per map - 1          --- 30 bits -- [..][14][32][..] --- No longer used

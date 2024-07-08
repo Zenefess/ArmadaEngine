@@ -13,7 +13,7 @@
 
 #include "common.hlsli"
 
-cbuffer CB_VIEW : register(b0) { // 160 bytes (10 vectors)
+cbuffer CB_VIEW : register(b1) { // 160 bytes (10 vectors)
    const matrix perspective;  // Perspective transformation
    const matrix orthographic; // Orthographic transformation
    const float2 guiScale;     // Final X & Y scaling factors for GUI
@@ -21,7 +21,7 @@ cbuffer CB_VIEW : register(b0) { // 160 bytes (10 vectors)
    const uint4  RES;
 };
 
-cbuffer CB_MAIN : register(b1) { // 96 bytes (6 vectors)
+cbuffer CB_MAIN : register(b2) { // 96 bytes (6 vectors)
    const matrix camera;     // Camera transformation
    const uint   frameCount; // Total number of frames presented
    const float  frameTime;  // Duration of last frame

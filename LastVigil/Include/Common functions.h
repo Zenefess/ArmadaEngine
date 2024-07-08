@@ -1,10 +1,10 @@
 /************************************************************
  * File: Common functions.h             Created: 2023/02/02 *
- *                                    Last mod.: 2024/06/25 *
+ *                                    Last mod.: 2024/07/07 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
- *                         Copyright (c) David William Bull *
+ * MIT license             Copyright (c) David William Bull *
  ************************************************************/
 #pragma once
 
@@ -13,23 +13,25 @@
 
 #define _COMMON_FUNCTIONS_
 
-constexpr fl32 rcp1p5f   = 2.0f / 3.0f;
-constexpr fl32 rcp3f     = 1.0f / 3.0f;
-constexpr fl32 rcp6f     = 1.0f / 6.0f;
-constexpr fl32 rcp32767f = 1.0f / 32767.0f;
-constexpr fl32 rcp32768f = 1.0f / 32768.0f;
-constexpr fl32 rcp65535f = 1.0f / 65535.0f;
-constexpr fl32 rcp65536f = 1.0f / 65536.0f;
+constexpr cfl32 rcp1p5f   = 2.0f / 3.0f;
+constexpr cfl32 rcp3f     = 1.0f / 3.0f;
+constexpr cfl32 rcp6f     = 1.0f / 6.0f;
+constexpr cfl32 rcp32767f = 1.0f / 32767.0f;
+constexpr cfl32 rcp32768f = 1.0f / 32768.0f;
+constexpr cfl32 rcp65535f = 1.0f / 65535.0f;
+constexpr cfl32 rcp65536f = 1.0f / 65536.0f;
 
-constexpr fl64 rcp1p5d   = 2.0 / 3.0;
-constexpr fl64 rcp3d     = 1.0 / 3.0;
-constexpr fl64 rcp6d     = 1.0 / 6.0;
-constexpr fl64 rcp32767d = 1.0 / 32767.0;
-constexpr fl64 rcp32768d = 1.0 / 32768.0;
-constexpr fl64 rcp65535d = 1.0 / 65535.0;
-constexpr fl64 rcp65536d = 1.0 / 65536.0;
+constexpr cfl64 rcp1p5d   = 2.0 / 3.0;
+constexpr cfl64 rcp3d     = 1.0 / 3.0;
+constexpr cfl64 rcp6d     = 1.0 / 6.0;
+constexpr cfl64 rcp32767d = 1.0 / 32767.0;
+constexpr cfl64 rcp32768d = 1.0 / 32768.0;
+constexpr cfl64 rcp65535d = 1.0 / 65535.0;
+constexpr cfl64 rcp65536d = 1.0 / 65536.0;
 
-constexpr VEC3Df null3Df = { 0.0f, 0.0f, 0.0f };
+constexpr cui64 null64 = 0;
+
+constexpr cVEC3Df null3Df = { 0.0f, 0.0f, 0.0f };
 
 static cfl32x4 null128f     = _mm_setzero_ps();
 static cfl32x4 ones32x4f    = _mm_set_ps1(1.0f);
@@ -45,6 +47,14 @@ static cfl32x8 negOnes32x8f = _mm256_set1_ps(-1.0f);
 static cui256  null256      = _mm256_setzero_si256();
 static cui256  ones32x8     = _mm256_set1_epi32(1u);
 static cui256  max256       = _mm256_set1_epi32(-1);
+#endif
+#ifdef __AVX512__
+static cfl32x16 null512f      = _mm512_setzero_ps();
+static cfl32x16 ones32x16f    = _mm512_set1_ps(1.0f);
+static cfl32x16 negOnes32x16f = _mm512_set1_ps(-1.0f);
+static cui512   null512       = _mm512_setzero_si512();
+static cui512   ones32x16     = _mm512_set1_epi32(1u);
+static cui512   max512        = _mm512_set1_epi32(-1);
 #endif
 
 inline void swap(ui8 &a, ui8 &b) { a ^= b; b ^= a; a ^= b; }
@@ -240,6 +250,10 @@ inline csi32 RoundUpToNearest4(csi32 input)  { return (input + 3)     & 0x0FFFFF
 inline cui32 RoundUpToNearest4(cui32 input)  { return (input + 3u)    & 0x0FFFFFFFCu; }
 inline csi64 RoundUpToNearest4(csi64 input)  { return (input + 3ll)   & 0x0FFFFFFFFFFFFFFFC; }
 inline cui64 RoundUpToNearest4(cui64 input)  { return (input + 3ull)  & 0x0FFFFFFFFFFFFFFFCu; }
+inline csi32 RoundUpToNearest8(csi32 input)  { return (input + 7)     & 0x0FFFFFFF7; }
+inline cui32 RoundUpToNearest8(cui32 input)  { return (input + 7u)    & 0x0FFFFFFF7u; }
+inline csi64 RoundUpToNearest8(csi64 input)  { return (input + 7ll)   & 0x0FFFFFFFFFFFFFFF7; }
+inline cui64 RoundUpToNearest8(cui64 input)  { return (input + 7ull)  & 0x0FFFFFFFFFFFFFFF7u; }
 inline csi32 RoundUpToNearest16(csi32 input) { return (input + 15)    & 0x0FFFFFFF0; }
 inline cui32 RoundUpToNearest16(cui32 input) { return (input + 15u)   & 0x0FFFFFFF0u; }
 inline csi64 RoundUpToNearest16(csi64 input) { return (input + 15ll)  & 0x0FFFFFFFFFFFFFFF0; }

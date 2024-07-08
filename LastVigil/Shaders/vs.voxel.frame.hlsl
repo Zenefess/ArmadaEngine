@@ -1,6 +1,6 @@
 /************************************************************
  * File: vs.voxel.frame.hlsl            Created: 2023/01/16 *
- * Type: Vertex shader            Last modified: 2023/01/17 *
+ * Type: Vertex shader            Last modified: 2024/06/28 *
  *                                                          *
  * Notes: 1)Add junction highlighting option                *
  *        2)Add plane highlight option                      *
@@ -8,14 +8,14 @@
  *  Copyright (c) David William Bull. All rights reserved.  *
  ************************************************************/
 
-cbuffer CB_VIEW : register(b0) {   // 160 bytes (10 vectors)
+cbuffer CB_VIEW : register(b1) {   // 160 bytes (10 vectors)
    const matrix projection;   // Perspective transformation
    const matrix orthographic; // Orthographic transformation
    const float2 guiScale;     // Final X, Y scaling factors for GUI
    const uint2  bitField;     // 0-63==???
 };
 
-cbuffer CB_MAIN : register(b1) {   // 96 bytes (6 vectors)
+cbuffer CB_MAIN : register(b2) {   // 96 bytes (6 vectors)
    const matrix camera;     // Camera transformation
    const uint   frameCount; // Total number of frames presented
    const float  frameTime;  // Duration of last frame
