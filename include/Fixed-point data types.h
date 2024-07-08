@@ -1,6 +1,6 @@
 /**********************************************************************
  * File: Fixed-point data types.h                 Created: 2024/05/11 *
- *                                          Last modified: 2024/06/25 *
+ *                                          Last modified: 2024/06/26 *
  *                                                                    *
  * Desc: Provides sizes of 8, 16, 24, and 32 bits. All sizes have     *
  *       support for fixed, normalised, and custom value ranges.      *
@@ -22,76 +22,34 @@
 #include <immintrin.h>
 #include "typedefs.h"
 
-// External _FPDT_DATA_ to be declared in a main .c/.cpp file, required for data types with a user-definable range
+// External __FPDT_DATA__ to be declared in a main .c/.cpp file, required for data types with a user-definable range
 #define fpdtInitCustom __declspec(align(16)) __FPDT_DATA__ __fpdt_data__
 
-// For 2-scalar return values
-typedef
 #ifdef _VECTOR_STRUCTURES_
-SSE2Df32
+typedef SSE2Df32  f32x2;  // For 2-scalar return value
+typedef VEC3Du16  i16x3;  // For 3-scalar return value
+typedef AVX4Du64  i64x4;  // For 32-byte return vaule
+typedef AVX8Df32  f32x8;  // For 32-byte return value
+typedef AVX16Du16 i16x16; // For 32-byte return value
+typedef AVX16Df32 f32x16; // For 64-byte return value
+typedef AVX16Ds32 i32x16; // For 64-byte return value
 #else
-al8 union { struct { fl32 u, v; } struct { fl32 x, y; }; fl32 _fl[2]; }
+typedef al8 union { struct { fl32, u, v; } struct { fl32 x, y; }; fl32 _fl[2]; }              f32x2;  // For 2-scalar return value
+typedef     union { struct { ui16 x, y, z; } struct { ui16 r, g, b; }; ui16 _ui[3]; }         i16x3;  // For 3-scalar return value
+typedef     union { csi256 ymm; csi128 xmm[2]; csi64 _si[4]; cui64 _ui[4]; }                  i64x4;  // For 32-byte return value
+typedef     union { fl32x8 ymm; fl32x4 xmm[2]; fl32 _fl[8]; }                                 f32x8;  // For 32-byte return value
+typedef     union { csi256 ymm; csi128 xmm[2]; cui16 _ui[16]; }                               i16x16; // For 32-byte return value
+typedef     union { fl32x16 zmm; fl32x8 ymm[2]; fl32x4 xmm[4]; fl32 _fl[16]; }                f32x16; // For 64-byte return value
+typedef     union { csi512 zmm; csi256 ymm[2]; csi128 xmm[4]; csi64 _si[16]; cui64 _ui[16]; } i32x16; // For 64-byte return value
 #endif
-f32x2;
 
-// For 3-scalar return values
-typedef
-#ifdef _VECTOR_STRUCTURES_
-VEC3Du16
-#else
-union { struct { fs7p8 x, y, z; } struct { fs7p8 r, g, b; }; }
-#endif
-i16x3;
-
-// For 32-byte return values
-typedef
-#ifdef _VECTOR_STRUCTURES_
-AVX8Df32
-#else
-union { fl32x8 ymm; fl32x4 xmm[2]; fl32 _fl[8]; }
-#endif
-f32x8;
-
-typedef
-#ifdef _VECTOR_STRUCTURES_
-AVX16Du16
-#else
-union { csi256 ymm; csi128 xmm[2]; cui16 _u16[16]; }
-#endif
-i16x16;
-
-typedef
-#ifdef _VECTOR_STRUCTURES_
-AVX4Du64
-#else
-union { csi256 ymm; csi128 xmm[2]; cui64 _u64[4]; }
-#endif
-i64x4;
-
-// For 64-byte return values
-typedef
-#ifdef _VECTOR_STRUCTURES_
-AVX16Df32
-#else
-union { fl32x16 zmm; fl32x8 ymm[2]; fl32x4 xmm[4]; fl32 _fl[16]; }
-#endif
-f32x16;
-
-typedef
-#ifdef _VECTOR_STRUCTURES_
-AVX16Ds32
-#else
-union { csi512 zmm; csi256 ymm[2]; csi128 xmm[4]; csi64 _s64[16]; cui64 _u64[16]; }
-#endif
-i32x16;
-
-typedef const f32x2  cf32x2;  // For 2-scalar return values
-typedef const i16x3  ci16x3;  // For 3-scalar return values
-typedef const i64x4  ci64x4;  // For 32-byte packed integer return values
-typedef const f32x8  cf32x8;  // For 32-byte packed floating-point return values
-typedef const i16x16 ci16x16; // For 32-byte packed integer return values
-typedef const i32x16 ci32x16; // For 64-byte packed integer return values
-typedef const f32x16 cf32x16; // For 64-byte packed floating-point return values
+typedef const f32x2  cf32x2;  // For 2-scalar return value
+typedef const i16x3  ci16x3;  // For 3-scalar return value
+typedef const i64x4  ci64x4;  // For 32-byte packed integer return value
+typedef const f32x8  cf32x8;  // For 32-byte packed floating-point return value
+typedef const i16x16 ci16x16; // For 32-byte packed integer return value
+typedef const i32x16 ci32x16; // For 64-byte packed integer return value
+typedef const f32x16 cf32x16; // For 64-byte packed floating-point return value
 
 #define _FIXED_POINT_DATA_TYPES_
 

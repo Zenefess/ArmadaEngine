@@ -1,6 +1,6 @@
 /************************************************************
 * File: Data tracking.h                Created: 2024/03/30 *
-*                                Last modified: 2024/06/15 *
+*                                Last modified: 2024/07/04 *
 *                                                          *
 * Desc:                                                    *
 *                                                          *
@@ -12,14 +12,23 @@
 #include "Shlobj.h"
 
 // Input: Maxmimum memory allocations
-al64 struct SYSTEM_DATA {
+al16 struct SYSTEM_DATA {
    ///--- APU read-outs?
    ///--- Network read-outs
    ///--- CPU read-outs
    struct { // Hardware information
       ui64 processorMask;
       ui32 processorCount; // Number of virtual CPU cores
+      // 4 bytes padding
    } cpu;
+   ///--- RAM read-outs
+   struct {
+      vptrptr  location;
+      vui64ptr byteCount;
+      vui64    allocated      = 0;
+      vui32    allocations    = 0;
+      vui32    maxAllocations = 0;
+   } mem;
    ///--- GPU read-outs
    struct {
       struct {
@@ -33,14 +42,6 @@ al64 struct SYSTEM_DATA {
          vui64 drawCalls = 0;
       } total;
    } gpu;
-   ///--- RAM read-outs
-   struct {
-      vptrptr  location       = NULL;
-      vui64ptr byteCount      = NULL;
-      vui64    allocated      = 0;
-      vui32    allocations    = 0;
-      vui32    maxAllocations = 0;
-   } mem;
    ///--- Storage read-outs
    struct {
       vui64 bytesRead    = 0;
@@ -48,6 +49,9 @@ al64 struct SYSTEM_DATA {
       vui32 filesOpened  = 0;
       vui32 filesClosed  = 0;
    } storage;
+
+   ui64 _PADDING_;
+
    ///--- Input read-outs
    struct {
       vfl64 ticRate  = 0.0;
@@ -69,20 +73,20 @@ al64 struct SYSTEM_DATA {
       // More?
    } culling;
 
-   wchar folderProgramData[256];
-   wchar folderAppData[256];
+   wchptrc folderProgramData = (wchptr)_aligned_malloc(sizeof(wchar) * 1024u, 64u);
+   wchptrc folderAppData     = folderProgramData + 512u;
 
-   SYSTEM_DATA(cui32 maxMemAllocations) {
+   SYSTEM_DATA(cui64 maxMemAllocations) {
       SYSTEM_INFO sysInfo;
       wchptr      stPath;
 
-      mem.location  = (vptrptr)_aligned_malloc(maxMemAllocations << 3, 32);
-      mem.byteCount = (vui64ptr)_aligned_malloc(maxMemAllocations << 3, 32);
-      for(ui32 i = 0; i < maxMemAllocations; i++) {
+      mem.location  = (vptrptr)_aligned_malloc(maxMemAllocations << 3u, 32u);
+      mem.byteCount = (vui64ptr)_aligned_malloc(maxMemAllocations << 3u, 32u);
+      for(ui64 i = 0; i < maxMemAllocations; ++i) {
          mem.location[i]  = 0;
          mem.byteCount[i] = 0;
       }
-      mem.maxAllocations = maxMemAllocations;
+      mem.maxAllocations = (ui32)maxMemAllocations;
 
       SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, 0, &stPath);
       wcscpy(folderAppData, stPath);
@@ -97,12 +101,7 @@ al64 struct SYSTEM_DATA {
    }
 
    ~SYSTEM_DATA(void) {
-      cpu.processorCount = 0;
-      cpu.processorMask  = 0;
-
-      // Clear file path strings
-      for(ui32 i = 0; i < 256; i++)
-         folderProgramData[i] = folderAppData[i] = 0;
+      _aligned_free(folderProgramData);
 
       // Free all memory still allocated
       for(ui32 i = 0; i < mem.allocations; i++)

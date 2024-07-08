@@ -41,7 +41,7 @@ struct ui24 {
    ui24(cfl32 value) { cui32 temp = (ui32)value; (ui16 &)data = (ui16 &)temp; data[2] = ((ui8_3)temp)[2]; }
    ui24(cfl64 value) { cui32 temp = (ui32)value; (ui16 &)data = (cui16 &)temp; data[2] = ((ui8_3)temp)[2]; }
 
-   operator ptr(void) const { return *this; }
+   operator ptrc(void) const { return *this; }
    operator cbool(void) const { return ((ui32 &)data & 0x0FFFFFFu) != 0; }
    operator cui8(void) const { return (ui8 &)data; }
    operator csi8(void) const { return (si8 &)data; }
