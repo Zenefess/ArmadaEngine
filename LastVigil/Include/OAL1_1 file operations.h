@@ -1,6 +1,6 @@
 /************************************************************
  * File: OAL1_1 file operations.h       Created: 2022/11/12 *
- *                                Last modified: 2024/06/15 *
+ *                                Last modified: 2024/07/10 *
  *                                                          *
  * Notes: 2024/05/06: Added support for data tracking       *
  *                                                          *
@@ -55,15 +55,15 @@ al8 struct CLASS_OAL11FILEOPS {
    CLASS_OAL11FILEOPS(CLASS_FILEOPS &fileOps) : files(fileOps) {}
 
    si32 LoadWAV(cwchptrc filename, cwchptrc folder) {
-      hSound = files.OpenFileForReading(filename, folder);
+      hSound = files.OpenForReading(filename, folder);
       // Read .WAV header data
-      files.ReadFromFile(hSound, &rhWAV, sizeof(rhWAV));
-      files.ReadFromFile(hSound, &wcWAV, sizeof(wcWAV));
-      files.ReadFromFile(hSound, &dcWAV, sizeof(dcWAV));
+      files.Read(hSound, &rhWAV, sizeof(rhWAV));
+      files.Read(hSound, &wcWAV, sizeof(wcWAV));
+      files.Read(hSound, &dcWAV, sizeof(dcWAV));
 
       pAudioData[siSoundCount] = malloc16(dcWAV.len);
 
-      files.ReadFromFile(hSound, pAudioData[siSoundCount], dcWAV.len);
+      files.Read(hSound, pAudioData[siSoundCount], dcWAV.len);
 #ifdef DATA_TRACKING
       sysData.storage.bytesRead += files.bytesProcessed;
 #endif

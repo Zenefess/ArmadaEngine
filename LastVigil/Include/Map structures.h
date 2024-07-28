@@ -36,7 +36,7 @@ al16 struct ELEM_IGS { // 16 bytes
 };
 
 al16 struct ELEM_TYPE { // 48 bytes //56 bytes
-   wchptr  stName; // Name of element
+   chptr   stName; // Name of element
 //   ELEM_IGS   *geometry; // Pointer to element's array entry
    float   tmp;    // Temperature; melting point
    float   tbp;    // Temperature; boiling point
@@ -53,7 +53,7 @@ al16 struct ELEM_TYPE { // 48 bytes //56 bytes
 };
 
 al16 struct ELEM_TABLE { // 32 bytes
-   wchptr     stName;
+   chptr      stName;
    ELEM_TYPE *element;     // Pointer to array of elements
    ELEM_IGS  *pIGS;        // Pointer to array for GPU's geometry shader
    si32       numElements;
@@ -158,8 +158,8 @@ al32 struct WORLD_LIST_RV {
 
 // Critical information for maps, including input return values
 al32 struct MAP_DESC {
-   wchptr stName; // Text label
-   wchptr stInfo; // Extended text
+   chptr stName; // Text label
+   chptr stInfo; // Extended text
    union {
       VEC3Du32 totals;
       struct {

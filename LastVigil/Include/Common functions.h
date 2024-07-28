@@ -1,6 +1,6 @@
 /************************************************************
  * File: Common functions.h             Created: 2023/02/02 *
- *                                    Last mod.: 2024/07/07 *
+ *                                    Last mod.: 2024/07/23 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -40,14 +40,12 @@ static cui128  null128      = _mm_setzero_si128();
 static cui128  ones32x4     = _mm_set1_epi32(1u);
 static cui128  max128       = _mm_set1_epi32(-1);
 
-#ifdef __AVX__
 static cfl32x8 null256f     = _mm256_setzero_ps();
 static cfl32x8 ones32x8f    = _mm256_set1_ps(1.0f);
 static cfl32x8 negOnes32x8f = _mm256_set1_ps(-1.0f);
 static cui256  null256      = _mm256_setzero_si256();
 static cui256  ones32x8     = _mm256_set1_epi32(1u);
 static cui256  max256       = _mm256_set1_epi32(-1);
-#endif
 #ifdef __AVX512__
 static cfl32x16 null512f      = _mm512_setzero_ps();
 static cfl32x16 ones32x16f    = _mm512_set1_ps(1.0f);
@@ -56,6 +54,8 @@ static cui512   null512       = _mm512_setzero_si512();
 static cui512   ones32x16     = _mm512_set1_epi32(1u);
 static cui512   max512        = _mm512_set1_epi32(-1);
 #endif
+
+inline void Idle(cui32 msTime) { if(msTime) Sleep(msTime); else _mm_pause(); }
 
 inline void swap(ui8 &a, ui8 &b) { a ^= b; b ^= a; a ^= b; }
 
@@ -190,8 +190,6 @@ inline cbool AllTrue(cui128 source[3], cui128 compare[3]) {
    return (_mm_testc_si128(source[0], compare[0]) | _mm_testc_si128(source[1], compare[1]) | _mm_testc_si128(source[2], compare[2]));
 }
 
-#ifdef __AVX__
-
 inline cbool AllFalse(cui256 source, cui256 compare) { return _mm256_testz_si256(source, compare); }
 
 inline cbool AllTrue(cui256 source, cui256 compare) { return _mm256_testc_si256(source, compare); }
@@ -213,38 +211,6 @@ inline cbool AllTrue(cui512 &source, cui512 &compare) {
    return (_mm256_testc_si256(((ui256ptr)&source)[0], ((ui256ptr)&compare)[0]) |
            _mm256_testc_si256(((ui256ptr)&source)[1], ((ui256ptr)&compare)[1]));
 }
-
-#else
-
-inline cbool AllFalse(cui128 source[2], cui128 compare[2]) {
-   return (_mm_testz_si128(source[0], compare[0]) | _mm_testz_si128(source[1], compare[1]));
-}
-
-inline cbool AllTrue(cui128 source[2], cui128 compare[2]) {
-   return (_mm_testc_si128(source[0], compare[0]) | _mm_testc_si128(source[1], compare[1]));
-}
-
-inline cbool AllFalse(cui128 source[4], cui128 compare[4]) {
-   return (_mm_testz_si128(source[0], compare[0]) | _mm_testz_si128(source[1], compare[1]) |
-           _mm_testz_si128(source[2], compare[2]) | _mm_testz_si128(source[3], compare[3]));
-}
-
-inline cbool AllTrue(cui128 source[4], cui128 compare[4]) {
-   return (_mm_testc_si128(source[0], compare[0]) | _mm_testc_si128(source[1], compare[1]) |
-           _mm_testc_si128(source[2], compare[2]) | _mm_testc_si128(source[3], compare[3]));
-}
-
-inline cbool AllFalse(cui512 &source, cui512 &compare) {
-   return (_mm_testz_si128(((ui128ptr)&source)[0], ((ui128ptr)&compare)[0]) | _mm_testz_si128(((ui128ptr)&source)[1], ((ui128ptr)&compare)[1]) |
-           _mm_testz_si128(((ui128ptr)&source)[2], ((ui128ptr)&compare)[2]) | _mm_testz_si128(((ui128ptr)&source)[3], ((ui128ptr)&compare)[3]));
-}
-
-inline cbool AllTrue(cui512 &source, cui512 &compare) {
-   return (_mm_testc_si128(((ui128ptr)&source)[0], ((ui128ptr)&compare)[0]) | _mm_testc_si128(((ui128ptr)&source)[1], ((ui128ptr)&compare)[1]) |
-           _mm_testc_si128(((ui128ptr)&source)[2], ((ui128ptr)&compare)[2]) | _mm_testc_si128(((ui128ptr)&source)[3], ((ui128ptr)&compare)[3]));
-}
-
-#endif
 
 inline csi32 RoundUpToNearest4(csi32 input)  { return (input + 3)     & 0x0FFFFFFFC; }
 inline cui32 RoundUpToNearest4(cui32 input)  { return (input + 3u)    & 0x0FFFFFFFCu; }

@@ -25,6 +25,11 @@ al8 struct CLASS_TEXTURES {
    D3D11_TEXTURE2D_DESC       td;
    si32                       index = 0;
 
+   ~CLASS_TEXTURES(void) {
+      for(si32 i = index - 1; i >= 0; --i) Unload2D(i);
+      mfree(pSRV, pTexture);
+   }
+
    void ConfigData(cDWORD width, cDWORD height, cDWORD depth, cDWORD mipLevels, cDWORD usage, cbool cpuRead, cbool cpuWrite, cbool shaderResource, cbool renderTarget, cbool unorderedAccess) {
       ilo.Width          = width;
       ilo.Height         = height;
@@ -56,7 +61,7 @@ al8 struct CLASS_TEXTURES {
 
    si32 LoadTextureSet(LPCTSTR atlasName, TEXTYPE type) {
       al16 static cwchar stFilepath[3][20] = { L"textures\\gui\\", L"textures\\terrain\\", L"textures\\sprites\\" };
-                  wchar stFilename[3][128];
+                  wchar  stFilename[3][128];
 
       if(index > MAX_TEXTURES - 3) return -1;
 
@@ -100,5 +105,5 @@ al8 struct CLASS_TEXTURES {
 
    inline void SetPS2D(ui8 context, ui16 index, ui16 slot, ui16 count) { devcon[context]->PSSetShaderResources(slot, count, &pSRV[index]); }
 
-   inline void Unload2D(si32 index) { pSRV[index]->Release(); pTexture[index]->Release(); }
+   inline void Unload2D(si32 index) { if(pSRV[index]) pSRV[index]->Release(); if(pTexture[index]) pTexture[index]->Release(); pSRV[index] = 0; pTexture[index] = 0; }
 };

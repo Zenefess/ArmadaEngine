@@ -9,12 +9,12 @@
 
 #include "common.hlsli"
  
-cbuffer CB_VIEW : register(b1) { // 160 bytes (10 vectors)
+cbuffer CB_VIEW : register(b1) { // 192 bytes (12 vectors)
    const matrix projection;   // Perspective transformation
    const matrix orthographic; // Orthographic transformation
    const float2 guiScale;     // Final X & Y scaling factors for GUI
    const uint2  bitField;     // 0-63==???
-   const uint4  RES;
+//   const uint4  RES;
 };
 
 struct CHAR_IMM { // 16 bytes (1 vector)
@@ -41,9 +41,9 @@ struct GUI_EL_DYN { // 96 bytes (6 vectors)
    uint   seo_bits;  // 0~15==First sibling element offset, 16~19==Justification (L,R,T,B), 20==Elliptical bounding space, 21~22==???, 23==Invisible
 };                   // 24==Rotate, 25==Translate, 26&27==Scale X&Y, 28==Truncate, 29==Compress, 30==Process control characters, 31==Wide chars
 
-struct GOut { // 44 bytes (2 vectors + 3 scalars)
-   float4 pos   : SV_Position;
-   float4 col   : COLOR;
-   float2 tc    : TEXCOORD;
-   uint2  ai    : ATLAS;       // X: 0~7==Atlas index, 8~31==???, Y: 0~15==Border size, 16~31==Window transparency : 2 float16s
+struct GOut { // 48 bytes (3 vectors)
+   float4 pos : SV_Position;
+   float4 col : COLOR;
+   float2 tc  : TEXCOORD;
+   uint2  ai  : ATLAS;       // X: 0~7==Atlas index, 8~31==???, Y: 0~15==Border size, 16~31==Window transparency : 2 float16s
 };

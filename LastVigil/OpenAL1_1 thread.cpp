@@ -1,6 +1,6 @@
 /************************************************************
  * File: OpenAL1_1 thread.cpp           Created: 2022/11/12 *
- *                           Code last modified: 2024/06/15 *
+ *                           Code last modified: 2024/07/20 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -78,7 +78,7 @@ Reinitialise_:
       alListenerfv(AL_VELOCITY, gcoLocal.v);
       alListenerfv(AL_ORIENTATION, gcoLocal.o);
 
-      Sleep(1);
+      Idle(thread.sleepTime[ss_audio]);
    } while (threadLife & AUDIO_THREAD_ALIVE);
 
    THREAD_LIFE |= AUDIO_THREAD_DIED;

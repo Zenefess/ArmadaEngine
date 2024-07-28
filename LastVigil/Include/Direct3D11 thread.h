@@ -1,6 +1,6 @@
  /************************************************************
   * File: Direct3D11 thread.h            Created: 2022/10/12 *
-  *                                Last modified: 2024/07/06 *
+  *                                Last modified: 2024/07/11 *
   *                                                          *
   * Desc:                                                    *
   *                                                          *
@@ -38,7 +38,7 @@ extern cwchptr    rndrWndTitle;
 extern RESOLUTION ScrRes;
 
 // Defined in "OpenAL1_1 thread.h"
-extern SOUND_BANKptrc soundLibrary;
+extern SOUND_LIB soundLib; // Master sound library
 
 // Defined in "DirectInput8 thread.h"
 extern vGLOBALCTRLVARS gcv;

@@ -1,6 +1,6 @@
 /************************************************************
  * File: LastVigil.cpp                  Created: 2022/10/08 *
- *                           Code last modified: 2024/06/26 *
+ *                           Code last modified: 2024/07/22 *
  *                                                          *
  * Desc: Initial setup, and debug management.               *
  *                                                          *
@@ -22,28 +22,23 @@ extern void OpenAL1_1Thread(ptr);
 extern void DirectInput8Thread(ptr);
 
 #ifdef DATA_TRACKING
-     SYSTEM_DATA   sysData = 1024;
+SYSTEM_DATA sysData = { 1024u, true };
 #endif
-//     COMMAND_MANAGER cmd;
-     cptr          ptrLib[16];
-     CLASS_FILEOPS files     = ptrLib;
-     CLASS_TIMER   mainTimer = &ptrLib[1];
-     vGLOBALCOORDS gco       = {};
-     wchar         stErrorFilename[64];
-     vui64         THREAD_LIFE = 0x0;   // 'Thread active' flags
-     wchptr        stThrdStat;          // Debug output
-     HINSTANCE     hInst;               // Current instance's handle
-     HANDLE        hErrorOutput;        // File handle for error output
-     HRESULT       hr;
+//COMMAND_MANAGER cmd;
+cptr          ptrLib[16];
+CLASS_FILEOPS files       = ptrLib;
+CLASS_TIMER   mainTimer   = &ptrLib[1];
+vGLOBALCOORDS gco         = {};
+THREAD_PROPS  thread      = 5u;    // Thread properties
+vui64         THREAD_LIFE = 0x0u;  // 'Thread active' flags
+wchar         stErrorFilename[64];
+wchptr        stThrdStat;          // Debug output
+HINSTANCE     hInst;               // Current instance's handle
+HANDLE        hErrorOutput;        // File handle for error output
+HRESULT       hr;
 
-/*/
- * _tWinMain
- *
- *   Application's main entry point.
-/*/
 int __cdecl wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPTSTR lpCmdLine, _In_ int nCmdShow) {
-   al16 HANDLE hThread[5] {};
-        ui64   threadLife;
+   ui64         threadLife;
 
    hPrevInstance;
    hInst = hInstance;   // Store instance handle globally
@@ -51,47 +46,65 @@ int __cdecl wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
    FILETIME currentTime;
    GetSystemTimePreciseAsFileTime(&currentTime);
    wsprintfW(stErrorFilename, L"_error logs_/error log %08lX.txt", currentTime.dwLowDateTime);
+   ///--- Replace with files. usage
    hErrorOutput = CreateFile(stErrorFilename, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+   thread.idealProcessor[ss_main]     = 0;
+   thread.priority[ss_main]           = 0;
+   thread.sleepTime[ss_main]          = 1u;
+   thread.idealProcessor[ss_input]    = 1u;
+   thread.priority[ss_input]          = 2;
+   thread.sleepTime[ss_input]         = 1u;
+   thread.idealProcessor[ss_video]    = 2u;
+   thread.priority[ss_video]          = 1;
+   thread.sleepTime[ss_video]         = 1u;
+   thread.idealProcessor[ss_audio]    = 3u;
+   thread.priority[ss_audio]          = 1;
+   thread.sleepTime[ss_audio]         = 1u;
+   thread.idealProcessor[ss_worldgen] = 4u;
+   thread.priority[ss_worldgen]       = 0;
+   thread.sleepTime[ss_worldgen]      = 1u;
 
    // Prevent thread from shutting down (after engine reset)
    THREAD_LIFE &= ~MAIN_THREAD_DIED;
 
    THREAD_LIFE |= MAIN_THREAD_ALIVE;
 
-   hThread[0] = GetCurrentThread();
-   SetThreadIdealProcessor(hThread[0], 4);
-   SetThreadPriority(hThread[0], 0);
+   // Adjust main thread
+   thread.handle[ss_main] = GetCurrentThread();
+   SetThreadIdealProcessor(thread.handle[ss_main], thread.idealProcessor[ss_main]);
+   SetThreadPriority(thread.handle[ss_main], thread.priority[ss_main]);
 
    // Begin video rendering thread
    THREAD_LIFE |= VIDEO_THREAD_ALIVE;
-   hThread[1] = (HANDLE)_beginthread(Direct3D11Thread, 0, NULL);
+   thread.handle[ss_video] = (ptr)_beginthread(Direct3D11Thread, 0, NULL);
    Sleep(100);
-   SetThreadIdealProcessor(hThread[1], 0);
-   SetThreadPriority(hThread[1], 1);
+   SetThreadIdealProcessor(thread.handle[ss_video], thread.idealProcessor[ss_video]);
+   SetThreadPriority(thread.handle[ss_video], thread.priority[ss_video]);
 
    // Begin audio rendering thread
    THREAD_LIFE |= AUDIO_THREAD_ALIVE;
-   hThread[2] = (HANDLE)_beginthread(OpenAL1_1Thread, 0, NULL);
+   thread.handle[ss_audio] = (ptr)_beginthread(OpenAL1_1Thread, 0, NULL);
    Sleep(100);
-   SetThreadIdealProcessor(hThread[2], 2);
-   SetThreadPriority(hThread[2], 1);
+   SetThreadIdealProcessor(thread.handle[ss_audio], thread.idealProcessor[ss_audio]);
+   SetThreadPriority(thread.handle[ss_audio], thread.priority[ss_audio]);
 
    // Begin input processing thread
    THREAD_LIFE |= INPUT_THREAD_ALIVE;
-   hThread[3] = (HANDLE)_beginthread(DirectInput8Thread, 0, NULL);
+   thread.handle[ss_input] = (ptr)_beginthread(DirectInput8Thread, 0, NULL);
    Sleep(100);
-   SetThreadIdealProcessor(hThread[3], 1);
-   SetThreadPriority(hThread[3], 2);
+   SetThreadIdealProcessor(thread.handle[ss_input], thread.idealProcessor[ss_input]);
+   SetThreadPriority(thread.handle[ss_input], thread.priority[ss_input]);
 
    // Begin world generation thread
    THREAD_LIFE |= GEN_THREAD_ALIVE;
-   hThread[4] = (HANDLE)_beginthread(WorldGenThread, 0, NULL);
+   thread.handle[ss_worldgen] = (ptr)_beginthread(WorldGenThread, 0, NULL);
    Sleep(100);
-   SetThreadIdealProcessor(hThread[4], 3);
-   SetThreadPriority(hThread[4], 0);
+   SetThreadIdealProcessor(thread.handle[ss_worldgen], thread.idealProcessor[ss_worldgen]);
+   SetThreadPriority(thread.handle[ss_worldgen], thread.priority[ss_worldgen]);
 
    // Wait for video, audio and input subsystems to finish initialising
-   while((THREAD_LIFE & VAI_THREADS_DONE) != VAI_THREADS_DONE) Sleep(1);
+   while((THREAD_LIFE & VAI_THREADS_DONE) != VAI_THREADS_DONE) _mm_pause();
    THREAD_LIFE &= ~VAI_THREADS_DONE;
 
    ///
@@ -102,7 +115,7 @@ int __cdecl wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 //      mainTimer.Update();
 
-      Sleep(8);
+      Idle(thread.sleepTime[ss_main]);
    } while (threadLife & MAIN_THREAD_ALIVE);
 
    // Request input thread shutdown
@@ -162,10 +175,8 @@ void WriteError(cchptrc text, cbool fatal) {
 }
 
 inline void Try(cchptrc stEvent, cui32 uiResult, cAE_SUBSYSTEM subsystem) {
-   al16 cchptrc ae_subsystem[8] = {
-      "VIDEO:%04X : %s", "AUDIO:%04X : %s", "INPUT:%04X : %s", "GUI:%04X : %s", 0, 0, 0, 0
-   };
-   static char stDescription[64];
+   al16 static cchar ae_subsystem[8][20] = { "MAIN:%04X : %s", "INPUT:%04X : %s", "VIDEO:%04X : %s", "AUDIO:%04X : %s", "GUI:%04X : %s", "WORLDGEN:%04X : %s", 0, 0 };
+        static char  stDescription[64];
 
    if(uiResult & 0x080000000) {
       sprintf(stDescription, ae_subsystem[subsystem], uiResult & 0x03FFFFFFF, stEvent);

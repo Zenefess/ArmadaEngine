@@ -1,8 +1,10 @@
 /************************************************************
  * File: File operations.h              Created: 2022/11/06 *
- *                                Last modified: 2024/07/07 *
+ *                                Last modified: 2024/07/10 *
  *                                                          *
  * Notes: 2024/05/06: Added support for data tracking       *
+ *                                                          *
+ * To do: Add WriteLine functions                           *
  *                                                          *
  *                         Copyright (c) David William Bull *
  ************************************************************/
@@ -36,45 +38,54 @@ al32 struct CLASS_FILEOPS {
    DWORD bytesProcessed = 0;
 
    CLASS_FILEOPS(void) {}
-   CLASS_FILEOPS(cptrptr globalPointer) { if(globalPointer) *globalPointer = this; }
+   CLASS_FILEOPS(cptrptrc globalPointer) { if(globalPointer) *globalPointer = this; }
 
-   inline cHANDLE OpenFileForReading(cwchptrc filename, cwchptrc folder) const {
+   inline cHANDLE OpenForReading(cwchptrc filename, cwchptrc folder) const {
       csize_t folderLength = wcslen(folder);
 
+      ///--- Rewrite to use wsprintf
       wcscpy(wstTemp, folder);
       wcscpy(wstTemp + folderLength, L"\\");
       wcscpy(wstTemp + folderLength + 1, filename);
       cHANDLE hFile = CreateFile(wstTemp, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, 0);
       if(!hFile) return hFile;
 #ifdef DATA_TRACKING
-      sysData.storage.filesOpened++;
+      ++sysData.storage.filesOpened;
 #endif
       return hFile;
    }
 
-   inline cHANDLE OpenFileForWriting(cwchptrc filename, cwchptrc folder) const {
+   inline cHANDLE OpenForWriting(cwchptrc filename, cwchptrc folder) const {
       csize_t folderLength = wcslen(folder);
 
+      ///--- Rewrite to use wsprintf
       wcscpy(wstTemp, folder);
       wcscpy(wstTemp + folderLength, L"\\");
       wcscpy(wstTemp + folderLength + 1, filename);
       cHANDLE hFile = CreateFile(wstTemp, GENERIC_WRITE, FILE_SHARE_WRITE, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
       if(!hFile) return hFile;
 #ifdef DATA_TRACKING
-      sysData.storage.filesOpened++;
+      ++sysData.storage.filesOpened;
 #endif
       return hFile;
    }
 
+   inline cbool CloseFile(cHANDLE file) const {
+      return CloseHandle(file);
+#ifdef DATA_TRACKING
+      ++sysData.storage.filesClosed;
+#endif
+   }
+
    // Returns current position in file
-   inline cui32 GetFilePosition(cHANDLE file) { return SetFilePointer(file, 0, 0, 1u); }
+   inline cui32 GetPosition(cHANDLE file) const { return SetFilePointer(file, 0, 0, file_current); }
 
    // Sets current position in file
-   inline cui32 SetFilePosition(cHANDLE file, cui32 offset, ENUM_FILE_POS startPos) {
+   inline cui32 SetPosition(cHANDLE file, cui32 offset, ENUM_FILE_POS startPos) const {
       return SetFilePointer(file, offset, 0, startPos);
    }
 
-   inline cui32 ReadFromFile(cHANDLE file, ptrc dest, cui32 bytesToRead) {
+   inline cui32 Read(cHANDLE file, ptrc dest, cui32 bytesToRead) {
       ReadFile(file, dest, bytesToRead, &bytesProcessed, 0);
 #ifdef DATA_TRACKING
       sysData.storage.bytesRead += bytesProcessed;
@@ -82,7 +93,7 @@ al32 struct CLASS_FILEOPS {
       return bytesProcessed;
    }
 
-   inline cui32 WriteToFile(cHANDLE file, cptrc data, cui32 bytesToWrite) {
+   inline cui32 Write(cHANDLE file, cptrc data, cui32 bytesToWrite) {
       WriteFile(file, data, bytesToWrite, &bytesProcessed, 0);
 #ifdef DATA_TRACKING
       sysData.storage.bytesWritten += bytesProcessed;
@@ -220,13 +231,6 @@ al32 struct CLASS_FILEOPS {
    inline cbool ReadAndVerify(cHANDLE file, cwchptrc string) const {
       ReadWideLine(file, wstTemp);
       return (wcsncmp(wstTemp, string, wcslen(string)) ? false : true);
-   }
-
-   inline cbool CloseFile(cHANDLE file) const {
-      return CloseHandle(file);
-#ifdef DATA_TRACKING
-      sysData.storage.filesClosed++;
-#endif
    }
 
    // Returns number of shaders loaded. 0x080000001 if shader list file does not exist

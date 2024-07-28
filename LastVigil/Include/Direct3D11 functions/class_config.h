@@ -233,9 +233,11 @@ al32 struct CLASS_CONFIG {   // Rewrite to use files., malloc pointers, and chan
    inline void SetCullingState(cui8 context, cui8 state) const { devcon[context]->RSSetState(pRS[state]); }
 
    void UnloadShaderData(void) const {
-      for(ui8 xx = 0; xx < 8; xx++) if(pVS[xx]) pVS[xx]->Release();
-      for(ui8 xx = 0; xx < 8; xx++) if(pGS[xx]) pGS[xx]->Release();
-      for(ui8 xx = 0; xx < 8; xx++) if(pPS[xx]) pPS[xx]->Release();
+      for(ui8 xx = 0; xx < 8; xx++) {
+         if(pVS[xx]) pVS[xx]->Release();
+         if(pGS[xx]) pGS[xx]->Release();
+         if(pPS[xx]) pPS[xx]->Release();
+      }
    }
 
    void UnloadBlenderStates(cui8 context) const { for(ui8 xx = 0; xx < 8; xx++) if(pBS[xx]) pBS[xx]->Release(); }

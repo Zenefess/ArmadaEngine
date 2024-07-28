@@ -1,6 +1,6 @@
 /************************************************************
  * File: DirectInput8 thread.h          Created: 2022/11/01 *
- *                                Last modified: 2024/06/18 *
+ *                                Last modified: 2024/07/24 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -8,7 +8,7 @@
  ************************************************************/
 #pragma once
 
-#define DIRECTINPUT_VERSION  0x0800
+#define DIRECTINPUT_VERSION 0x0800
 
 #include "master header.h"
 #include "typedefs.h"
@@ -16,7 +16,6 @@
 #include "class_timers.h"
 #include <dinput.h>
 #include "DirectInput8 keyboard scan codes.h"
-#include "DI8 scan code text labels.h"
 #include "DI8 error testing.h"
 
 #ifdef _DEBUG
@@ -24,8 +23,7 @@
 #include "comdef.h"
 #endif
 
-al4 struct DIMOUSESTATE38 { // 20/28 bytes
-   ui32 RES[2];
+al4 struct DIMOUSESTATE38 { // 20 bytes
    union {
       ui8  b[8];
       ui32 buttons[2];
@@ -64,26 +62,24 @@ typedef al32 union DIJOYSTATEAE { // 80/96 bytes
       ui32 pov[4];
       ui8  button[32];
    };
-#ifdef __AVX__
    si256  ymm[2];
    fl32x8 ymmf[2];
-#endif
    si128  xmm[4];
    fl32x4 xmmf[4];
 } DIJOYSTATEAE, *LPDIJOYSTATEAE;
 
 DIOBJECTDATAFORMAT ofMouse38[] = {
-   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE48, b[0]), 0x000FFFF0C, 0 },
-   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE48, b[1]), 0x000FFFF0C, 0 },
-   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE48, b[2]), 0x080FFFF0C, 0 },
-   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE48, b[3]), 0x080FFFF0C, 0 },
-   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE48, b[4]), 0x080FFFF0C, 0 },
-   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE48, b[5]), 0x080FFFF0C, 0 },
-   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE48, b[6]), 0x080FFFF0C, 0 },
-   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE48, b[7]), 0x080FFFF0C, 0 },
-   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE48, x),    0x000FFFF03, 0 },
-   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE48, y),    0x000FFFF03, 0 },
-   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE48, z),    0x000FFFF03, 0 }
+   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE38, b[0]), 0x000FFFF0C, 0 },
+   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE38, b[1]), 0x000FFFF0C, 0 },
+   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE38, b[2]), 0x080FFFF0C, 0 },
+   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE38, b[3]), 0x080FFFF0C, 0 },
+   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE38, b[4]), 0x080FFFF0C, 0 },
+   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE38, b[5]), 0x080FFFF0C, 0 },
+   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE38, b[6]), 0x080FFFF0C, 0 },
+   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE38, b[7]), 0x080FFFF0C, 0 },
+   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE38, x),    0x000FFFF03, 0 },
+   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE38, y),    0x000FFFF03, 0 },
+   { 0, (DWORD)FIELD_OFFSET(DIMOUSESTATE38, z),    0x000FFFF03, 0 }
 };
 
 DIOBJECTDATAFORMAT ofGamepadAE[] = {
@@ -144,7 +140,7 @@ vol GLOBALCTRLVARS gcv;
 
 TEXTBUFFER *activeTextBuffer = 0; // Text buffer to be processed by ModifyCharBuffer(void)
 
-DIDATAFORMAT dfMouse38   = { 32, 24, 2, 28, 11, ofMouse38};
+DIDATAFORMAT dfMouse38   = { 32, 24, 2, 20, 11, ofMouse38};
 DIDATAFORMAT dfGamepadAE = { 32, 24, 1, 96, 44, ofGamepadAE};
 
 IDirectInput8       *di8;
@@ -156,8 +152,8 @@ VEC4Du16       inputsImmediate;
 al64 char      keyState[2][256];
 DIJOYSTATEAE   padState[2][8];
 DIMOUSESTATE48 mseState[2];
+DIMOUSESTATE38 *const mseState38 = (DIMOUSESTATE38 *)(ui8ptr(mseState) + 8u);
 
-#ifdef __AVX__
 fl32x8 padScale[8] = { { .m256_f32 = { 1.0f / 31233.0f, 1.0f / 31233.0f, 1.0f / 31233.0f, 1.0f / 31233.0f, 1.0f / 32255.0f, 1.0f / 32255.0f, 1.0f / 32767.0f, 1.0f / 32767.0f } },
                        { .m256_f32 = { 1.0f / 30720.0f, 1.0f / 30720.0f, 1.0f / 30720.0f, 1.0f / 30720.0f, 1.0f / 30720.0f, 1.0f / 30720.0f, 1.0f / 30720.0f, 1.0f / 30720.0f } },
                        { .m256_f32 = { 1.0f / 30720.0f, 1.0f / 30720.0f, 1.0f / 30720.0f, 1.0f / 30720.0f, 1.0f / 30720.0f, 1.0f / 30720.0f, 1.0f / 30720.0f, 1.0f / 30720.0f } },
@@ -175,25 +171,6 @@ si256 padOS[8] = { { .m256i_i32 = { 32768, 33280, 32767, 32767, 32767, 32767, 32
                    { .m256i_i32 = { 31743, 31743, 32767, 32767, 32767, 32767, 32767, 32767 } },
                    { .m256i_i32 = { 31743, 31743, 32767, 32767, 32767, 32767, 32767, 32767 } },
                    { .m256i_i32 = { 31743, 31743, 32767, 32767, 32767, 32767, 32767, 32767 } } };
-#else
-fl32x4 padScale[8][2] = { { { .m128_f32 = { rcp32767f, rcp32767f, rcp32767f, rcp32767f } }, { .m128_f32 = { rcp32767f, rcp32767f, rcp32767f, rcp32767f } } },
-                          { { .m128_f32 = { rcp32767f, rcp32767f, rcp32767f, rcp32767f } }, { .m128_f32 = { rcp32767f, rcp32767f, rcp32767f, rcp32767f } } },
-                          { { .m128_f32 = { rcp32767f, rcp32767f, rcp32767f, rcp32767f } }, { .m128_f32 = { rcp32767f, rcp32767f, rcp32767f, rcp32767f } } },
-                          { { .m128_f32 = { rcp32767f, rcp32767f, rcp32767f, rcp32767f } }, { .m128_f32 = { rcp32767f, rcp32767f, rcp32767f, rcp32767f } } },
-                          { { .m128_f32 = { rcp32767f, rcp32767f, rcp32767f, rcp32767f } }, { .m128_f32 = { rcp32767f, rcp32767f, rcp32767f, rcp32767f } } },
-                          { { .m128_f32 = { rcp32767f, rcp32767f, rcp32767f, rcp32767f } }, { .m128_f32 = { rcp32767f, rcp32767f, rcp32767f, rcp32767f } } },
-                          { { .m128_f32 = { rcp32767f, rcp32767f, rcp32767f, rcp32767f } }, { .m128_f32 = { rcp32767f, rcp32767f, rcp32767f, rcp32767f } } },
-                          { { .m128_f32 = { rcp32767f, rcp32767f, rcp32767f, rcp32767f } }, { .m128_f32 = { rcp32767f, rcp32767f, rcp32767f, rcp32767f } } } };
-
-si128 padOS[8][2] = { { { .m128i_i32 = { 31743, 31743, 32767, 32767 } }, { { .m128i_i32 = { 32767, 32767, 32767, 32767 } } },
-                      { { .m128i_i32 = { 31743, 31743, 32767, 32767 } }, { { .m128i_i32 = { 32767, 32767, 32767, 32767 } } },
-                      { { .m128i_i32 = { 31743, 31743, 32767, 32767 } }, { { .m128i_i32 = { 32767, 32767, 32767, 32767 } } },
-                      { { .m128i_i32 = { 31743, 31743, 32767, 32767 } }, { { .m128i_i32 = { 32767, 32767, 32767, 32767 } } },
-                      { { .m128i_i32 = { 31743, 31743, 32767, 32767 } }, { { .m128i_i32 = { 32767, 32767, 32767, 32767 } } },
-                      { { .m128i_i32 = { 31743, 31743, 32767, 32767 } }, { { .m128i_i32 = { 32767, 32767, 32767, 32767 } } },
-                      { { .m128i_i32 = { 31743, 31743, 32767, 32767 } }, { { .m128i_i32 = { 32767, 32767, 32767, 32767 } } },
-                      { { .m128i_i32 = { 31743, 31743, 32767, 32767 } }, { { .m128i_i32 = { 32767, 32767, 32767, 32767 } } } };
-#endif
 
 AVX16Ds32 padDeadZone = { ._si32 = { -1535, 1535, -1535, 1535, -1535, 1535, -1535, 1535, -3, 3, -3, 3, -3, 3, -3, 3 } };
 AVX8Df32  padShaping  = { ._fl   = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f } };

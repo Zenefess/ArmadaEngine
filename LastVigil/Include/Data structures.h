@@ -1,6 +1,6 @@
 /************************************************************
  * File: Data structures.h              Created: 2022/10/20 *
- *                                Last modified: 2024/07/08 *
+ *                                Last modified: 2024/07/23 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -8,18 +8,13 @@
  ************************************************************/
 #pragma once
 
-#ifdef DATA_TRACKING
-#include "data tracking.h"
-#endif
-
-#include "typedefs.h"
-#include "Vector structures.h"
-
 enum AE_SUBSYSTEM : ui8 {
+   ss_main,
+   ss_input,
    ss_video,
    ss_audio,
-   ss_input,
-   ss_gui
+   ss_gui,
+   ss_worldgen
 };
 
 enum AE_BUFFER_USAGE : ui8 {
@@ -55,6 +50,11 @@ enum AE_WINDOW_STATE : ui8 {
    ae_fullscreen
 };
 
+enum AE_SOUND_TYPE : ui16 {
+   snd_null,
+   snd_
+};
+
 al4 union ID32 {
    struct {
       ui16 index;
@@ -69,22 +69,6 @@ al8 union ID64 {
       ui32 group;
    };
    ui64 id;
-};
-
-al4 union ID32c {
-   struct {
-      cui16 index;
-      cui16 group;
-   };
-   cui32 id;
-};
-
-al8 union ID64c {
-   struct {
-      cui32 index;
-      cui32 group;
-   };
-   cui64 id;
 };
 
 al8 union UNIPTR {
@@ -114,6 +98,41 @@ al8 union UNIPTR {
    fl32x4ptr  pf128;
    fl32x8ptr  pf256;
    fl32x16ptr pf512;
+
+   UNIPTR(void) {}
+   UNIPTR(ptrc address) : p(address) {}
+};
+
+al8 union UNIPTRc {
+   cptr        p;
+   cchptr      pCH;
+   cwchptr     pWC;
+   cui8ptr     pu8;
+   csi8ptr     ps8;
+   cui16ptr    pu16;
+   csi16ptr    ps16;
+#ifdef _24BIT_INTEGERS_
+   cui24ptr    pu24;
+   csi24ptr    ps24;
+#endif
+   cui32ptr    pu32;
+   csi32ptr    ps32;
+   cui64ptr    pu64;
+   csi64ptr    ps64;
+   cui128ptr   pu128;
+   csi128ptr   pi128;
+   cui256ptr   pu256;
+   csi256ptr   pi256;
+   cui512ptr   pu512;
+   csi512ptr   pi512;
+   cfl32ptr    pf32;
+   cfl64ptr    pf64;
+   cfl32x4ptr  pf128;
+   cfl32x8ptr  pf256;
+   cfl32x16ptr pf512;
+
+   UNIPTRc(void) {}
+   UNIPTRc(cptrc address) : p(address) {}
 };
 
 al8 struct BUFFER16 {
@@ -269,13 +288,72 @@ al16 struct FUNCTION {
    };
 };
 
+struct SOUND_DESC {
+   union {
+      cchptr cLabel; // Display name of sound (constant string)
+      chptr  label;  // Display name of sound
+   };
+   ui16 apiIndex;  // "Hardware" index via the current sound api
+   si16 loopCount; // Repeat count; 0=No loop, -1=Infinite loop
+   fl32 amplitude; // Volume modifier
+};
+
 struct SOUND_BANK {
    union {
       cchptr cLabel; // Display name of sound bank (constant string)
       chptr  label;  // Display name of sound bank
    };
+   union { SOUND_DESC *const sound; SOUND_DESC *_sound; }; // Array of sounds
+   union { ui32ptrc mainSounds; ui32ptr _mainSounds; }; // Indicies for default sound set
+   ui32 maxSounds;
+   ui32 soundCount;
 
-   /// To do...
+   SOUND_BANK(void) {}
+   SOUND_BANK(cui32 maxSoundCount) : sound(zalloc1d64(SOUND_DESC, maxSoundCount)),
+                                     mainSounds(zalloc1d16(ui32, DEFAULT_SOUND_SET)) {}
+
+   ~SOUND_BANK() { mfree1(sound); }
+};
+
+struct SOUND_LIB {
+   union {
+      cchptr cLabel; // Display name of sound library (constant string)
+      chptr  label;  // Display name of sound library
+   };
+   union { SOUND_BANK *const bank; SOUND_BANK *_bank; }; // Array of sound banks
+   ui32 maxBanks;
+   ui32 maxSounds = 0u;
+   ui32 bankCount = 0u;
+   ui32 soundCount = 0u;
+
+   SOUND_LIB(cui32 maxSoundBanks) : bank(zalloc1d64(SOUND_BANK, maxSoundBanks)) {
+      maxBanks = maxSoundBanks;
+      CreateBank(0u);
+      bank[0].cLabel = stNone;
+      bank[0]._sound[0].cLabel = stNone;
+      for(ui8 i = 0; i < DEFAULT_SOUND_SET; ++i)
+         bank[0]._mainSounds[i] = 0;
+   }
+   SOUND_LIB(cui32 maxSoundBanks, cui32 firstBankSize) : bank(zalloc1d64(SOUND_BANK, maxSoundBanks)) {
+      maxBanks = maxSoundBanks;
+      CreateBank(firstBankSize);
+   }
+
+   ~SOUND_LIB() { mfree1(bank); }
+
+   cui32 CreateBank(cui32 maximumSounds) {
+      bank[bankCount]._sound      = zalloc1d64(SOUND_DESC, maximumSounds);
+      bank[bankCount]._mainSounds = zalloc1d16(ui32, DEFAULT_SOUND_SET);
+
+      maxSounds += maximumSounds;
+      for(ui8 i = 0; i < DEFAULT_SOUND_SET; ++i)
+         bank[bankCount]._mainSounds[i] = i;
+      bank[bankCount].maxSounds  = maximumSounds;
+      bank[bankCount].soundCount = 0;
+      return bankCount++;
+   }
+
+   SOUND_DESC &Sound(cui32 bankIndex, cui32 soundIndex) const { return bank[bankIndex].sound[soundIndex]; }
 };
 
 // Global control variables
@@ -298,14 +376,13 @@ al64 union GLOBALCTRLVARS {
                fl32 y;
             } pointer[2];
          };
-#ifdef __AVX__
-         fl32x8 faxis32[9];
-         ui256  iaxis32[9];
-#endif
-         fl32x4 faxis16[18];
-         ui128  iaxis16[18];
-         fl32  faxis[72];
-         si32   iaxis[72];
+         fl32x16 faxis64[4];
+         fl32x8  faxis32[9];
+         ui256   iaxis32[9];
+         fl32x4  faxis16[18];
+         ui128   iaxis16[18];
+         fl32    faxis[72];
+         si32    iaxis[72];
       };
       union { // Position of cursor relative to client window
          si32     curCoord[2];
@@ -315,31 +392,19 @@ al64 union GLOBALCTRLVARS {
          ui64 bits;
          ui8  misc[8];
       };
-      ui64 RES[2];
-      union { // Immediate key states
-#ifdef __AVX__
-         struct { ui256 key, button; };
-#else
-         struct { ui128 key[2], button[2]; };
-#endif
-         struct { ui64 k64[4], b64[4]; };
-         struct { ui32 k32[8], b32[8]; };
-         struct { ui8  k[32], b[32]; };
+      VEC2Df scrCoord; // Cursor coordinate in screen space : 0.0~1.0
+      union _GCV_MASK { // Immediate key states
+         struct { ui512 k512,    b512; };
+         struct { ui256 k256[2], b256[2]; };
+         struct { ui64  k64[8],  b64[8]; };
+         struct { ui32  k32[16], b32[16]; };
+         struct { ui8   k[64],   b[64]; };
       } imm;
-      union { // Relative key states
-#ifdef __AVX__
-         struct { ui256 key, button; };
-#else
-         struct { ui128 key[2], button[2]; };
-#endif
-         struct { ui64 k64[4], b64[4]; };
-         struct { ui32 k32[8], b32[8]; };
-         struct { ui8  k[32], b[32]; };
-      } rel;
+      _GCV_MASK rel; // Relative key states
    };
-   fl32x16 zmm[7];
-   fl32x8  ymm[14];
-   fl32x4  xmm[28];
+   fl32x16 zmm[9];
+   fl32x8  ymm[18];
+   fl32x4  xmm[36];
 };
 
 // Global coordinates
@@ -401,39 +466,65 @@ al16 struct RESOLUTION { // 112 bytes
    VEC2Du16 borderlessOS;
    rn3216   refreshRate;
    si8      state;        // 0 == Windowed | 1 == Borderless | 2 = Fullscreen
-   //   ui8      RES;
+//   ui8      RES;
+};
+
+al32 union THREAD_PROPS {
+private:
+   struct {
+      ptrptr  _handle;
+      ui32ptr _idealProcessor;
+      si32ptr _priority;
+      ui8ptr  _sleepTime;
+   };
+public:
+   struct {
+      ptrptrc  handle;
+      ui32ptrc idealProcessor;
+      si32ptrc priority;
+      ui8ptrc  sleepTime;
+   };
+
+   THREAD_PROPS(cui8 maxThreads) {
+      _handle         = zalloc1d16(ptr, (maxThreads << 1u) + ((maxThreads + 7u) >> 3u));
+      _idealProcessor = ui32ptr(_handle + maxThreads);
+      _priority       = si32ptr(_idealProcessor + maxThreads);
+      _sleepTime      = ui8ptr(_priority + maxThreads);
+   };
+
+   ~THREAD_PROPS(void) { mfree1(_handle); };
 };
 
 typedef const ID32               cID32;
-typedef const ID64               cID64;
-typedef const ID32c              cID32c;
-typedef const ID64c              cID64c;
 typedef       ID32       *       ID32ptr;
-typedef       ID64       *       ID64ptr;
-typedef       ID32c      *       ID32cptr;
-typedef       ID64c      *       ID64cptr;
 typedef const ID32       *       cID32ptr;
-typedef const ID64       *       cID64ptr;
-typedef const ID32c      *       cID32cptr;
-typedef const ID64c      *       cID64cptr;
 typedef       ID32       * const ID32ptrc;
-typedef       ID64       * const ID64ptrc;
-typedef       ID32c      * const ID32cptrc;
-typedef       ID64c      * const ID64cptrc;
 typedef const ID32       * const cID32ptrc;
+typedef const ID64               cID64;
+typedef       ID64       *       ID64ptr;
+typedef const ID64       *       cID64ptr;
+typedef       ID64       * const ID64ptrc;
 typedef const ID64       * const cID64ptrc;
-typedef const ID32c      * const cID32cptrc;
-typedef const ID64c      * const cID64cptrc;
+typedef const UNIPTR             cUNIPTR;
+typedef       UNIPTR     *       UNIPTRptr;
+typedef const UNIPTR     *       cUNIPTRptr;
+typedef       UNIPTR     * const UNIPTRptrc;
+typedef const UNIPTR     * const cUNIPTRptrc;
+typedef const UNIPTRc            cUNIPTRc;
+typedef       UNIPTRc    *       UNIPTRcptr;
+typedef const UNIPTRc    *       cUNIPTRcptr;
+typedef       UNIPTRc    * const UNIPTRcptrc;
+typedef const UNIPTRc    * const cUNIPTRcptrc;
 typedef const FUNCTION           cFUNCTION;
 typedef       FUNCTION   *       FUNCTIONptr;
 typedef const FUNCTION   *       cFUNCTIONptr;
 typedef       FUNCTION   * const FUNCTIONptrc;
 typedef const FUNCTION   * const cFUNCTIONptrc;
-typedef const SOUND_BANK         cSOUND_BANK;
-typedef       SOUND_BANK *       SOUND_BANKptr;
-typedef const SOUND_BANK *       cSOUND_BANKptr;
-typedef       SOUND_BANK * const SOUND_BANKptrc;
-typedef const SOUND_BANK * const cSOUND_BANKptrc;
+typedef const SOUND_LIB          cSOUND_LIB;
+typedef       SOUND_LIB  *       SOUND_LIBptr;
+typedef const SOUND_LIB  *       cSOUND_LIBptr;
+typedef       SOUND_LIB  * const SOUND_LIBptrc;
+typedef const SOUND_LIB  * const cSOUND_LIBptrc;
 
 typedef const AE_SUBSYSTEM    cAE_SUBSYSTEM;
 typedef const AE_WINDOW_STATE cAE_WINDOW_STATE;

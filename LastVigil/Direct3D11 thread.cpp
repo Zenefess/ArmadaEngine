@@ -1,6 +1,6 @@
 /************************************************************
  * File: Direct3D11 thread.cpp          Created: 2022/10/12 *
- *                               Code last mod.: 2024/07/04 *
+ *                               Code last mod.: 2024/07/20 *
  *                                                          *
  * Desc: Video rendering via Direct3D 11 API.               *
  *                                                          *
@@ -127,6 +127,10 @@ RESOLUTION ScrRes = { 3600, 1600, 16.0f / 36.0f, 36.0f / 16.0f, 1.0f, DXGI_FORMA
 #include <dxgidebug.h>
 
 void Direct3D11Thread(ptr argList) {
+   // Live debugging for D3D11
+   IDXGIDebug1 *devDebug;;
+   hr = DXGIGetDebugInterface1(0, IID_PPV_ARGS(&devDebug));
+
    CLASS_GPU gpu = { files, &ptrLib[2] };
    CLASS_GUI gui = { files, gpu, &ptrLib[4] };
 
@@ -144,10 +148,6 @@ void Direct3D11Thread(ptr argList) {
 
    // Prevent thread from shutting down (after engine reset)
    THREAD_LIFE &= ~VIDEO_THREAD_DIED;
-
-   // Live debugging for D3D11
-   //IDXGIDebug1 *devDebug;
-   //hr = DXGIGetDebugInterface1(0, IID_PPV_ARGS(&devDebug));
 
    hWnd = hRndrWnd = gpu.CreateRenderWindow();
 
@@ -183,28 +183,28 @@ Reinitialise_:
    CLASS_ENTMAN      entMan;
    CLASS_D3D11HELPER gpuHelper(gpu, mapMan, entMan);
    // Test map
-   mapMan.CreatePeriodicTable((wchptrc)L"Main periodic table", 5, 0);
-   mapMan.SetElementName(0, 0, (wchptrc)L"Air");
+   mapMan.CreatePeriodicTable((chptrc)L"Main periodic table", 5, 0);
+   mapMan.SetElementName(0, 0, (chptrc)L"Air");
    mapMan.SetElementTemps(0, 0, 0.0f, 100.0f, 1000.0f, 1.0f, 10000.0f);
    mapMan.SetElementMiscVars(0, 0, 0.0f, { 0.0f, 0.5f }, { 1.125f, 1.0f }, 0.0f);
    mapMan.SetElementResults(0, 0, 0, 0);
    mapMan.SetElementGeometry(0, 0, { 0.0f, 0.0f, 0.0f, 0.0f }, 1.0f, 1.0f, 1.0f, 0, 0, 16);
-   mapMan.SetElementName(0, 1, (wchptrc)L"Rough rock");
+   mapMan.SetElementName(0, 1, (chptrc)L"Rough rock");
    mapMan.SetElementTemps(0, 1, 0.0f, 100.0f, 1000.0f, 1.0f, 10000.0f);
    mapMan.SetElementMiscVars(0, 1, 0.0f, { 0.0f, 0.5f }, { 0.875f, 1.0f }, 0.0f);
    mapMan.SetElementResults(0, 1, 0, 0);
    mapMan.SetElementGeometry(0, 1, { 0.0f, 0.0f, 0.5f, 0.5f }, 1.0f, 0.0f, 1.0f, 0, 0, 16);
-   mapMan.SetElementName(0, 2, (wchptrc)L"_element_002_");
+   mapMan.SetElementName(0, 2, (chptrc)L"_element_002_");
    mapMan.SetElementTemps(0, 2, 0.0f, 100.0f, 1000.0f, 1.0f, 10000.0f);
    mapMan.SetElementMiscVars(0, 1, 0.0f, { 0.0f, 0.5f }, { 0.875f, 1.0f }, 0.0f);
    mapMan.SetElementResults(0, 2, 0, 0);
    mapMan.SetElementGeometry(0, 2, { 0.5f, 0.0f, 1.0f, 0.5f }, 1.0f, 0.0f, 1.0f, 0, 0, 16);
-   mapMan.SetElementName(0, 3, (wchptrc)L"_element_003_");
+   mapMan.SetElementName(0, 3, (chptrc)L"_element_003_");
    mapMan.SetElementTemps(0, 3, 0.0f, 100.0f, 1000.0f, 1.0f, 10000.0f);
    mapMan.SetElementMiscVars(0, 1, 0.0f, { 0.0f, 0.5f }, { 0.875f, 1.0f }, 0.0f);
    mapMan.SetElementResults(0, 3, 0, 0);
    mapMan.SetElementGeometry(0, 3, { 0.0f, 0.5f, 0.5f, 1.0f }, 1.0f, 0.0f, 1.0f, 0, 0, 16);
-   mapMan.SetElementName(0, 4, (wchptrc)L"_element_004_");
+   mapMan.SetElementName(0, 4, (chptrc)L"_element_004_");
    mapMan.SetElementTemps(0, 4, 0.0f, 100.0f, 1000.0f, 1.0f, 10000.0f);
    mapMan.SetElementMiscVars(0, 1, 0.0f, { 0.0f, 0.5f }, { 0.875f, 1.0f }, 0.0f);
    mapMan.SetElementResults(0, 4, 0, 0);
@@ -213,8 +213,8 @@ Reinitialise_:
    mapMan.CreateWorld(0, 0, 1);
 
    MAP_DESC md;
-   md.stName     = (wchptrc)L"Test map";
-   md.stInfo     = (wchptrc)L"Description text.";
+   md.stName     = (chptrc)L"Test map";
+   md.stInfo     = (chptrc)L"Description text.";
    md.ptIndex    = 0;
    md.chunkDim   = { 16, 16, 1 };
    md.mapDim     = { { 1024, 1024, 8 } }; // 256x144x1 -> 4,718,592 triangles -> Approx. 1.68 billion triangles per second @ 4K
@@ -226,8 +226,8 @@ Reinitialise_:
    csi32 numEntities = 1024;
    csi32 numParts    = 32;
 
-   entMan.CreateObjectGroup((wchptrc)L"Test group", (wchptrc)L"No description", 1, numParts);
-   entMan.CreateEntityGroup((wchptrc)L"Test group", (wchptrc)L"No description", numEntities, numEntities * numParts);
+   entMan.CreateObjectGroup((chptrc)"Test group", (chptrc)"No description", 1, numParts);
+   entMan.CreateEntityGroup((chptrc)"Test group", (chptrc)"No description", numEntities, numEntities * numParts);
    entMan.CreateObject(0, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.5f, 0.5f }, 20, numParts);
    for(si32 k = 1; k < numParts; k++)
       entMan.SetPart(0, k, { (float(k & 7) - 3.5f) * 0.9375f * 0.25f, (float(k >> 3) - 1.5f) * 0.9375f * 0.25f, -0.25f }, { 0.0f, 0.0f, 0.0f },
@@ -251,39 +251,46 @@ Reinitialise_:
 //   gui.SaveSpriteLibrary(L"standard.blue_rust.aesl", GUISprites);
 //   csi16 alphabetIndex = gui.CreateAlphabet("Bogan", 16, 16, { 0.5f, 0.75f }, 0, uiAtlasIndex);
 //   gui.SaveAlphabet(L"main.english.aea", alphabetIndex);
-   csi16 spriteLibIndex = gui.LoadSpriteLibrary(L"standard.blue_rust.aesl", -1);
-   csi16 alphabetIndex  = gui.LoadAlphabet(L"main.english.aea", -1);
+   csi16 spriteLibIndex = gui.LoadSpriteLibrary(L"standard.blue_rust.aeuisl", -1);
+   csi16 alphabetIndex  = gui.LoadAlphabet(L"main.english.aeuia", -1);
 
    gui.UploadAlphabetBuffer(0);
 
-   cchptrc selectionBoxArray[10] = { stOnHoverDefault, stOffHoverDefault, stActivate00DefaultButton, stActivate01DefaultButton, stActivate00DefaultToggle, stActivate01DefaultToggle, stActivate00DefaultScalar, stActivate01DefaultScalar, stActivate10DefaultScalar, stActivate11DefaultScalar };
+   cchptrc selectionBoxArray[12] = { stOnHoverDefault, stOffHoverDefault, stActivate00DefaultButton, stActivate01DefaultButton, stActivate00DefaultToggle, stActivate01DefaultToggle,
+                                     stActivate00DefaultScalar, stActivate01DefaultScalar, stActivate10DefaultScalar, stActivate11Default, stNone, "Adlays unite!"};
 
    al32 char textBuffer[4][128] = { "TR-X \1\2\3\4\5\6\7", "<Input list>", "Ya Mum!", "Eshay, bruh? Let's oge!" };
 
    GUI_EL_DESC elementDesc;
 
    elementDesc.viewPos     = { 0.0f, 0.0f };
-   elementDesc.index       = { -1, alphabetIndex, 0, 13 };
+   elementDesc.index       = { 0, alphabetIndex, 0, 13, 0 };
    elementDesc.panel.tint  = c4_white;
    elementDesc.panel.size  = { 1.0f, 1.0f };
    elementDesc.panel.align = UI_ALIGN_C;
    elementDesc.panel.mods  = UI_PANEL;
-   elementDesc.text.tint   = c4_white;
-   elementDesc.text.size   = { 0.24f, 0.24f };
-   elementDesc.text.cArray = (chptr *)selectionBoxArray;
-   elementDesc.text.sCount = 10;
-   elementDesc.text.align  = UI_ALIGN_TL;
-   elementDesc.text.mods   = UI_TEXTARRAY;
-   cVEC2Du32 panelElement2 = gui.CreateTextSelectionPanel(elementDesc);
+   elementDesc.cursor.tint     = c4_white;
+   elementDesc.cursor.size     = { 1.0f, 1.0f };
+   elementDesc.cursor.bStyle   = 1u;
+   elementDesc.cursor.bSize    = 0.125f;
+   elementDesc.cursor.wOpacity = 0.2929f;
+   elementDesc.text.tint     = c4_white;
+   elementDesc.text.size     = { 0.24f, 0.24f };
+   elementDesc.text.cArray   = (chptr *)selectionBoxArray;
+   elementDesc.text.sCount   = 12;
+   elementDesc.text.lSpacing = 1.375f;
+   elementDesc.text.align    = UI_ALIGN_TL;
+   elementDesc.text.mods     = UI_TEXTARRAY;
+   cVEC3Du32 panelElement2 = gui.CreateTextSelectionPanel(elementDesc);
    elementDesc.viewPos     = { 0.0f, 0.0f };
-   elementDesc.index       = { -1, -1, 0, 35 };
+   elementDesc.index       = { 0, -1, 0, 35 };
    elementDesc.panel.tint  = c4_white;
    elementDesc.panel.size  = { 1.0f, 1.0f };
    elementDesc.panel.align = UI_ALIGN_T;
    elementDesc.panel.mods  = UI_PANEL ^ UI_TRANS;
    cui32 panelElement0 = gui.CreateToggle(elementDesc);
    elementDesc.viewPos      = { 0.0f, 0.5f };
-   elementDesc.index        = { -1, -1, 0, 21, 76 };
+   elementDesc.index        = { 0, -1, 0, 21, 76 };
    elementDesc.panel.tint   = c4_white;
    elementDesc.panel.size   = { 2.0f, 2.0f };
    elementDesc.panel.align  = UI_ALIGN_L | UI_ALIGN_T;
@@ -294,14 +301,14 @@ Reinitialise_:
    elementDesc.cursor.mods  = UI_CURSOR;
    cui32 panelElement1 = gui.CreateScalar(elementDesc);
    elementDesc.viewPos     = { 0.0f, 0.25f };
-   elementDesc.index       = { -1, -1, 0, 35 };
+   elementDesc.index       = { 0, -1, 0, 35 };
    elementDesc.panel.tint  = c4_white;
    elementDesc.panel.size  = { 1.0f, 1.0f };
    elementDesc.panel.align = UI_ALIGN_L | UI_ALIGN_T;
    elementDesc.panel.mods  = UI_PANEL;
    cui32 panelElement3 = gui.CreateButton(elementDesc);
    elementDesc.viewPos     = { 0.0f, 0.0f };
-   elementDesc.index       = { -1, alphabetIndex };
+   elementDesc.index       = { 0, alphabetIndex };
    elementDesc.text.tint   = c4_white;
    elementDesc.text.size   = { 0.0468757f, 0.0468757f };
    elementDesc.text.cPtr   = textBuffer[0];
@@ -310,7 +317,7 @@ Reinitialise_:
    elementDesc.text.mods   = UI_TEXT;
    cui32 textElement = gui.CreateText(elementDesc);
    elementDesc.viewPos     = { 0.0f, 0.0f };
-   elementDesc.index       = { -1, alphabetIndex };
+   elementDesc.index       = { 0, alphabetIndex };
    elementDesc.text.tint   = c4_white;
    elementDesc.text.size   = { 0.0468757f, 0.0468757f };
    elementDesc.text.cPtr   = textBuffer[1];
@@ -319,12 +326,12 @@ Reinitialise_:
    elementDesc.text.mods   = UI_TEXT ^ UI_TRANS;
    cui32 textInputEl = gui.CreateText(elementDesc);
    elementDesc.viewPos        = { 0.0f, 0.0f };
-   elementDesc.index          = { -1, alphabetIndex, 0, 12 };
+   elementDesc.index          = { 0, alphabetIndex, 0, 12 };
    elementDesc.panel.tint     = c4_white;
    elementDesc.panel.size     = { 1.0f, 1.0f };
    elementDesc.panel.bStyle   = 1u;
    elementDesc.panel.bSize    = 0.0125f;
-   elementDesc.panel.wOpacity = 1.0f - sqrtf(0.5f);
+   elementDesc.panel.wOpacity = 0.2929f;
    elementDesc.panel.wIndent  = { 1.0f, 1.0f };
    elementDesc.panel.align    = UI_ALIGN_R;
    elementDesc.panel.mods     = UI_PANEL;
@@ -336,16 +343,19 @@ Reinitialise_:
    elementDesc.text.mods      = UI_ROT | UI_TRANS | UI_SCALE_Y;
    cVEC2Du32 textBox = gui.CreateTextPanel(elementDesc);
    elementDesc.viewPos      = { 0.0f, -0.75f };
-   elementDesc.index        = { -1, alphabetIndex, 0, 21, 53 };
+   elementDesc.index        = { 0, alphabetIndex, 0, 21, 53 };
    elementDesc.panel.tint   = c4_white;
    elementDesc.panel.size   = { 2.0f, 2.0f };
    elementDesc.panel.bStyle = 0;
    elementDesc.panel.align  = UI_ALIGN_C;
    elementDesc.panel.mods   = UI_PANEL;
-   elementDesc.cursor.tint  = c4_white;
-   elementDesc.cursor.size  = { 1.0f, 1.0f };
-   elementDesc.cursor.align = UI_ALIGN_R;
-   elementDesc.cursor.mods  = UI_CURSOR;
+   elementDesc.cursor.tint     = c4_white;
+   elementDesc.cursor.size     = { 1.0f, 1.0f };
+   elementDesc.cursor.bStyle   = 1u;
+   elementDesc.cursor.bSize    = 0.025f;
+   elementDesc.cursor.wOpacity = 0.5f;
+   elementDesc.cursor.align    = UI_ALIGN_R;
+   elementDesc.cursor.mods     = UI_CURSOR;
    elementDesc.text.tint    = c4_white;
    elementDesc.text.size    = { 0.15f, 0.15f };
    elementDesc.text.cPtr    = textBuffer[3];
@@ -355,7 +365,7 @@ Reinitialise_:
    cVEC3Du32 inputBox = gui.CreateInputPanel(elementDesc);
    cui32 textElements[3] = { textElement, textInputEl, textBox.y };
 
-   cui32 interfaceMain = gui.CreateInterface(128, 16);
+   cui16 interfaceMain = gui.CreateInterface("Test", -1, 128u, 16u);
    gui.AddElementToInterface(panelElement0, interfaceMain);
    gui.AddElementToInterface(panelElement1, interfaceMain);
    gui.AddElementToInterface(panelElement2, interfaceMain);
@@ -364,9 +374,17 @@ Reinitialise_:
    gui.AddElementToInterface(inputBox, interfaceMain);
    gui.AddElementToInterface(textElement, interfaceMain);
    gui.AddElementToInterface(textInputEl, interfaceMain);
+
+   gui.AddToInterfaceInput(interfaceMain, 0, "Primary input", aei_mouse_button_1);
+
    gd.interfaceIndex = interfaceMain;
 
-   //   gpu.files.SaveMap(L"test.aemap", mapMan.world[mapID]);
+   gui.SaveInterface(L"test", interfaceMain);
+
+   union { cVEC4Du16 vec; cptrc ptr; } mainArgs = { 0, (ui16 &)alphabetIndex, 0, 36u };
+   TempMenuGen(mainArgs.ptr);
+
+//   gpu.files.SaveMap(L"test.aemap", mapMan.world[mapID]);
 
    gpu.lit.Create(0, 256, 0);
    gpu.lit.SetColour(0, { 0.25f, 0.25f, 0.25f });
@@ -543,15 +561,15 @@ Reinitialise_:
       // Display backbuffer
       gpu.ren.QueuePresentOutputImage(0);
 
-      Sleep(0);
+      Idle(thread.sleepTime[ss_video]);
    } while (threadLife & VIDEO_THREAD_ALIVE);
-
-   //hr = devDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
 
    mapMan.Cull(0, 0, 0, 0, 0);
    gpu.lit.DestroyAll();
    gpu.cfg.UnloadShaderData();
    DestroyWindow(hWnd);
+
+   hr = devDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
 
    Sleep(8);
    THREAD_LIFE |= VIDEO_THREAD_DIED;

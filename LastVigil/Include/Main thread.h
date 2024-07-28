@@ -1,6 +1,6 @@
 /**********************************************************
  * File: Main thread.h                Created: 2008/09/16 *
- *                              Last modified: 2024/07/05 *
+ *                              Last modified: 2024/07/11 *
  *                                                        *
  * Desc:                                                  *
  *                                                        *
@@ -36,6 +36,7 @@ extern cptr ptrLib[16];
 extern SYSTEM_DATA   sysData;      // Automated tracking of system data
 extern CLASS_FILEOPS files;        // File handler
 extern CLASS_TIMER   mainTimer;    // Primary (single) timer
+extern THREAD_PROPS  thread;       // Thread properties
 extern vui64         THREAD_LIFE;  // 'Thread active' flags
 extern wchptr        stThrdStat;   // Debug output
 extern HINSTANCE     hInst;        // Current instance's handle
@@ -46,7 +47,7 @@ extern HRESULT       hr;
 extern wchar         stErrorFilename[64];
 
 // Defined in "OpenAL1_1 thread.h"
-extern SOUND_BANKptrc soundLibrary;
+extern SOUND_LIB soundLib; // Master sound library
 
 // Defined in "DirectInput8 thread.h"
 extern vGLOBALCOORDS gco;

@@ -29,14 +29,17 @@ al32 struct CLASS_RENDER {
 
    IDXGISwapChain2 *swapchain;
 
+   si16 bufVertex = 0;
+   ui8  msaaLevel = 0;
+
+   // 5 byte spare
+
    vui16 jobCount    = 0; // Current number of jobs waiting to complete
    vui16 activeJob   = 0; // Current job being processed
    vui8  threadsBusy = 0; // Flag array of remaining status for current worker threads
    vui8  threadsMax  = 0; // Flag array of active status for current worker threads
-   si16  bufVertex   = 0;
-   ui8   msaaLevel   = 0;
 
-   // 7 bytes spare
+   // 2 bytes spare
 
    al16 struct { VEC3Ds32 pos; fp8n0_1x4 col; } vCube {};
 

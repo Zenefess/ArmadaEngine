@@ -71,15 +71,15 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);X:\!Backups!\Programming\include;X:\!Backups!\Programming\Projects\ArmadaEngine\LastVigil\Include;</IncludePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);X:\!Backups!\Programming\lib\x64;</LibraryPath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);D:\Programming\include;D:\Programming\Projects\ArmadaEngine\LastVigil\Include;</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);D:\Programming\lib\x64;</LibraryPath>
     <OutDir>$(SolutionDir)$(Project)$(Platform).The Last Vigil\</OutDir>
     <CodeAnalysisRuleSet>NativeMinimumRules.ruleset</CodeAnalysisRuleSet>
     <MultiProcFXC>true</MultiProcFXC>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);X:\!Backups!\Programming\include;X:\!Backups!\Programming\Projects\ArmadaEngine\LastVigil\Include;</IncludePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);X:\!Backups!\Programming\lib\x64;</LibraryPath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);D:\Programming\include;D:\Programming\Projects\ArmadaEngine\LastVigil\Include;</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);D:\Programming\lib\x64;</LibraryPath>
     <TargetName>$(ProjectName).debug</TargetName>
     <OutDir>$(SolutionDir)$(Project)$(Platform).The Last Vigil\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
@@ -227,7 +227,7 @@
     <ClInclude Include="Include\Common functions.h" />
     <ClInclude Include="Include\D3D11 error testing.h" />
     <ClInclude Include="Include\DI8 error testing.h" />
-    <ClInclude Include="Include\DI8 scan code text labels.h" />
+    <ClInclude Include="Include\Input codes.h" />
     <ClInclude Include="Include\Direct3D11 functions.h" />
     <ClInclude Include="Include\Direct3D11 functions\class_buffers.h" />
     <ClInclude Include="Include\Direct3D11 functions\class_config.h" />

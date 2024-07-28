@@ -32,6 +32,7 @@
    #include <stdlib.h>
    #include <tchar.h>
    #include <thread flags.h>
+   #include <Input codes.h>
    #include <Data structures.h>
    #include <File operations.h>
    #include <class_timers.h>
@@ -39,7 +40,6 @@
    #include <GUI structures.h>
    #include <Map structures.h>
    #include <Entity structures.h>
-   #include <Common functions.h>
 #endif
 
 #include "resource.h"

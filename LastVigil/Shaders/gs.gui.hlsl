@@ -260,6 +260,9 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       const float2 offset   = (1.0f - float2(uint2(alphabet[chars[0][0]].size & 0x0FFFFu, alphabet[chars[0][0]].size >> 16u)) * rcp65535) * curElement.size * 0.5f;
       const float  adjWidth = (totalChars > 32u ? totalWidth : curElement.width_at0);
 
+      // Adjust to scroll position if textArray
+      if(type==1u) coords.y -= element[curElement.pei + 2u].rot;
+      
       // Justification
       const bool fillView = (curBits & 0x02000u) && ((totalWidth > 1.0f) || (totalChars > 32u));
       [flatten] if(curBits & 0x03u || fillView) {  // Origin relative to left/right of viewport, and wider than viewport
@@ -268,7 +271,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
             coords.x *= -1.0f;
       }
       [flatten] if(curBits & 0x0Cu) {  // Origin relative to top/bottom of viewport
-         coords.y = curElement.size.y * size.w * 0.5f - invScale.y;
+         coords.y += curElement.size.y * size.w * 0.5f - invScale.y;
          [flatten] if(curBits & 0x04u) // Origin relative to top of viewport
             coords.y *= -1.0f;
       }
@@ -276,7 +279,8 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       coords += element[input[0]].coords[0].xy * size.zw;
       float2 coords2 = ((i & 0x01u) ? element[input[0]].coords[i_div2].z : element[input[0]].coords[i_div2].x) - element[input[0]].coords[0].x;
 
-      const float4 rotVals = { coords, sin(curElement.rot), cos(curElement.rot) };
+//      const float4 rotVals = { coords, sin(curElement.rot), cos(curElement.rot) };
+      const float4 rotVals = { coords, (type == 1u ? float2(0.0f, 1.0f) : float2(sin(curElement.rot), cos(curElement.rot))) };
 
       // 'Rotate' && 'translate' bits test: Transrotate around parent's center
       if((curBits & 0x0300u) == 0x0300u) {
@@ -312,10 +316,10 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
             if(curChar == alphaOS) return;
 
             // 'Truncate' bit tests
-            const float2 limit = parScaling.zw * (offset.xy + 1.0f.xx);
+            const float2 limit = parScaling.zw * (offset.xy + 1.00001f.xx);
             if(curBits & 0x01000u) {
                if(!(curBits & 0x02000u) && ((coords.x + size.x > limit.x) || (coords.x < -limit.x))) return;
-               if((coords.y + (size.y * 0.5f) > limit.y) || (coords.y < -limit.y)) return;
+               if((coords.y + size.y > limit.y) || (coords.y < -limit.y)) return;
             }
 
             const float2 os    = float2(uint2(alphabet[curChar].os & 0x0FFFFu, alphabet[curChar].os >> 16u)) * 0.0000305180437933928435187304493782f - 1.0f;

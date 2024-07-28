@@ -153,8 +153,8 @@ al16 struct ENTITY { // 336 bytes
 };
 
 al16 struct OBJECT_GROUP { // 48 bytes
-   wchptr      name;
-   wchptr      text;
+   chptr       name;
+   chptr       text;
    OBJECT_IGS *object;
    PART_IGS   *part;
    si32        totalObjects;
@@ -164,8 +164,8 @@ al16 struct OBJECT_GROUP { // 48 bytes
 };
 
 al16 struct ENTITY_GROUP { // 112 bytes
-   wchptr    name;
-   wchptr    text;
+   chptr     name;
+   chptr     text;
    ENTITY   *entity;
    BONE     *bone;
    BONE_DGS *bone_dgs;

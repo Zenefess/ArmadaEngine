@@ -34,8 +34,8 @@ al16 struct CLASS_MAPMAN {
    ELEM_TYPEptrc  element  = (ELEM_TYPEptr)zalloc64(RoundUpToNearest64(sizeof(ELEM_TYPE[MAX_ELEMENTS])));
    ELEM_IGSptrc   elem_igs = (ELEM_IGSptr)zalloc64(RoundUpToNearest64(sizeof(ELEM_IGS[MAX_ELEMENTS])));
 
-   wchar (*stPeriodicName)[MAX_TABLES];
-   wchar (*stElementName)[MAX_TABLES];
+   char (*stPeriodicName)[MAX_TABLES];
+   char (*stElementName)[MAX_TABLES];
 
    VEC2Ds32 worldXY;            // Current world cell
    VEC3Ds32 mapXYZ;             // Current map cell
@@ -64,7 +64,7 @@ al16 struct CLASS_MAPMAN {
 
    inline MAP_DESC *GetMapDescriptor(cID64 mapID) { return &world[mapID.group].map[mapID.index]->desc; }
 
-   cui32 CreatePeriodicTable(wchptrc name, csi32 maxElements, si32 tableIndex) {
+   cui32 CreatePeriodicTable(chptrc name, csi32 maxElements, si32 tableIndex) {
       ui8 i = 0;
 
       // Find first available slot if index is -1
@@ -92,7 +92,7 @@ al16 struct CLASS_MAPMAN {
 
    inline void SetElement(csi32 tableIndex, csi32 elementIndex, ELEM_TYPE &elementData) const { table[tableIndex].element[elementIndex] = elementData; }
 
-   inline void SetElementName(csi32 tableIndex, csi32 elementIndex, wchptrc name) const { table[tableIndex].element[elementIndex].stName = name; }
+   inline void SetElementName(csi32 tableIndex, csi32 elementIndex, chptrc name) const { table[tableIndex].element[elementIndex].stName = name; }
 
    inline void SetElementTemps(csi32 tableIndex, csi32 elementIndex, cfl32 meltingPoint, cfl32 boilingPoint, cfl32 ignitionPoint, cfl32 propagation, cfl32 fusion) const {
       table[tableIndex].element[elementIndex].tmp = meltingPoint;
@@ -147,7 +147,7 @@ al16 struct CLASS_MAPMAN {
       // Read element data
       table[index].element = (ELEM_TYPE *)malloc32(sizeof(ELEM_TYPE) * table[index].numElements);
       for(i = 0; i < table[index].numElements; i++) {
-         ReadFile(hElementData, stElementName[uiElementName], DWORD(wcslen(table[index].element[i].stName) + 1) * sizeof(wchar), (LPDWORD)&uiBytes, NULL);
+         ReadFile(hElementData, stElementName[uiElementName], DWORD(strlen(table[index].element[i].stName) + 1) * sizeof(char), (LPDWORD)&uiBytes, NULL);
          table[index].element[i].stName = stElementName[uiElementName++];
          ReadFile(hElementData, &table[index].element[i].tmp, sizeof(float), (LPDWORD)&uiBytes, NULL);
          ReadFile(hElementData, &table[index].element[i].tbp, sizeof(float), (LPDWORD)&uiBytes, NULL);
@@ -178,11 +178,11 @@ al16 struct CLASS_MAPMAN {
       // Write tag line: 2[Engine].Elements.2[Format version]1[Compression method]
       WriteFile(hElementData, "AE.Elements.01u\0", 16, (LPDWORD)&uiBytes, NULL);
       // Write primary data
-      WriteFile(hElementData, table[index].stName, DWORD(wcslen(table[index].stName) + 1) * sizeof(wchar), (LPDWORD)&uiBytes, NULL);
+      WriteFile(hElementData, table[index].stName, DWORD(strlen(table[index].stName) + 1) * sizeof(char), (LPDWORD)&uiBytes, NULL);
       WriteFile(hElementData, &table[index].numElements, sizeof(ui32), (LPDWORD)&uiBytes, NULL);
       // Write element data
       for(si32 i = 0; i < table[index].numElements; i++) {
-         WriteFile(hElementData, table[index].element[i].stName, DWORD(wcslen(table[index].element[i].stName) + 1) * sizeof(wchar), (LPDWORD)&uiBytes, NULL);
+         WriteFile(hElementData, table[index].element[i].stName, DWORD(strlen(table[index].element[i].stName) + 1) * sizeof(char), (LPDWORD)&uiBytes, NULL);
          WriteFile(hElementData, &table[index].element[i].tmp, sizeof(float), (LPDWORD)&uiBytes, NULL);
          WriteFile(hElementData, &table[index].element[i].tbp, sizeof(float), (LPDWORD)&uiBytes, NULL);
          WriteFile(hElementData, &table[index].element[i].tip, sizeof(float), (LPDWORD)&uiBytes, NULL);
@@ -270,18 +270,18 @@ al16 struct CLASS_MAPMAN {
       HANDLE hMapData = CreateFile(files.wstTemp, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
 
       // Read & process tagline
-      files.ReadLine(hMapData, files.wstTemp);
+      files.ReadLine(hMapData, files.stTemp);
 //--- To do...
       // Read critical map information
-      files.ReadLine(hMapData, files.wstTemp);
-      curMap.desc.stName = (wchptr)malloc32(wcslen(files.wstTemp) + 1);
-      wcscpy(curMap.desc.stName, files.wstTemp);
-      files.ReadLine(hMapData, files.wstTemp);
-      curMap.desc.stInfo = (wchptr)malloc32(wcslen(files.wstTemp) + 1);
-      wcscpy(curMap.desc.stInfo, files.wstTemp);
+      files.ReadLine(hMapData, files.stTemp);
+      curMap.desc.stName = (chptr)malloc32(strlen(files.stTemp) + 1u);
+      strcpy(curMap.desc.stName, files.stTemp);
+      files.ReadLine(hMapData, files.stTemp);
+      curMap.desc.stInfo = (chptr)malloc32(strlen(files.stTemp) + 1u);
+      strcpy(curMap.desc.stInfo, files.stTemp);
       // Search periodic table array for match
-      files.ReadLine(hMapData, files.wstTemp);
-      for(i = 0; !wcscmp(files.wstTemp, table[i].stName) || i < MAX_TABLES; i++);
+      files.ReadLine(hMapData, files.stTemp);
+      for(i = 0; !strcmp(files.stTemp, table[i].stName) || i < MAX_TABLES; i++);
       if(i < MAX_TABLES)
          curMap.desc.ptIndex = i;
       // Not present; attempt to load
@@ -349,9 +349,9 @@ al16 struct CLASS_MAPMAN {
       // Write tag line: 2[Engine].4[Frontend].2[Data type].3[Format version]1[Compression method]
       WriteFile(hMapData, "AE.LV01.MD.001u\0", 16, (LPDWORD)&uiBytes, NULL);
       // Write critical map information
-      WriteFile(hMapData, curMap.desc.stName, DWORD(wcslen(curMap.desc.stName) + 1) * sizeof(wchar), (LPDWORD)&uiBytes, NULL);
-      WriteFile(hMapData, curMap.desc.stInfo, DWORD(wcslen(curMap.desc.stInfo) + 1) * sizeof(wchar), (LPDWORD)&uiBytes, NULL);
-      WriteFile(hMapData, table[curMap.desc.ptIndex].stName, DWORD(wcslen(table[curMap.desc.ptIndex].stName) + 1) * sizeof(wchar), (LPDWORD)&uiBytes, NULL);
+      WriteFile(hMapData, curMap.desc.stName, DWORD(strlen(curMap.desc.stName) + 1u) * sizeof(char), (LPDWORD)&uiBytes, NULL);
+      WriteFile(hMapData, curMap.desc.stInfo, DWORD(strlen(curMap.desc.stInfo) + 1u) * sizeof(char), (LPDWORD)&uiBytes, NULL);
+      WriteFile(hMapData, table[curMap.desc.ptIndex].stName, DWORD(strlen(table[curMap.desc.ptIndex].stName) + 1) * sizeof(char), (LPDWORD)&uiBytes, NULL);
       WriteFile(hMapData, &curMap.desc.mapDim, sizeof(VEC3Ds16), (LPDWORD)&uiBytes, NULL);
       WriteFile(hMapData, &curMap.desc.chunkDim, sizeof(VEC3Ds16), (LPDWORD)&uiBytes, NULL);
       WriteFile(hMapData, &curMap.desc.zso, sizeof(si16), (LPDWORD)&uiBytes, NULL);

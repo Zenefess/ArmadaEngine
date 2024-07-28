@@ -1,6 +1,6 @@
 /************************************************************
  * File: Direct3D11 functions.h         Created: 2022/10/20 *
- *                                Last modified: 2024/07/02 *
+ *                                Last modified: 2024/07/24 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -8,7 +8,7 @@
  ************************************************************/
 #pragma once
 
-#include "typedefs.h"
+#include "..\master header.h"
 #include "Data structures.h"
 #include "File operations.h"
 #include "class_render.h"
@@ -40,20 +40,21 @@ al64 struct CLASS_GPU {
    CLASS_TEXTURES tex;
 
    al16 struct _D3D_DATA_BLOCK_ {
-      ui32 msaaQlevel[32];
+      ui32                            msaaQlevel[32];
       DXGI_SWAP_CHAIN_DESC1           scd1;
       DXGI_SWAP_CHAIN_FULLSCREEN_DESC scfd;
-      DXGI_FORMAT    bbFormat;
-      D3D11_VIEWPORT viewport;
-      union { D3D_FEATURE_LEVEL d3DFL[4]; struct { D3D_FEATURE_LEVEL x, y, z, w; } vecD3DFL; };
-      D3D11_DEPTH_STENCIL_VIEW_DESC dsvd;
-      DXGI_MODE_DESC       md;
-      D3D11_TEXTURE2D_DESC td;
+      DXGI_FORMAT                     bbFormat;
+      D3D11_VIEWPORT                  viewport;
+      union { D3D_FEATURE_LEVEL       d3DFL[4]; struct { D3D_FEATURE_LEVEL x, y, z, w; } vecD3DFL; };
+      D3D11_DEPTH_STENCIL_VIEW_DESC   dsvd;
+      DXGI_MODE_DESC                  md;
+      D3D11_TEXTURE2D_DESC            td;
    } &data = *(_D3D_DATA_BLOCK_ *)zalloc16(sizeof(_D3D_DATA_BLOCK_));
 
-   si8 curWinState;
+   VEC2Du16 backBufRes;
+   si8      curWinState;
 
-   // 7 bytes spare
+   // 3 bytes spare
 
    IDXGIFactory5 *factory;
 
@@ -86,6 +87,8 @@ private:
 public:
    CLASS_GPU(CLASS_FILEOPS &fileOps) : files(fileOps) { _CLASS_GPU_INIT(); }
    CLASS_GPU(CLASS_FILEOPS &fileOps, cptrptr globalPointer) : files(fileOps) { _CLASS_GPU_INIT(); if(globalPointer) *globalPointer = this; }
+
+//   ~CLASS_GPU(void) {}
 
    HWND CreateRenderWindow(void) const {
       al8  HWND       hWindow;
@@ -181,6 +184,8 @@ public:
       data.bbFormat      = (DXGI_FORMAT)formatBackBuffer;
       ren.msaaLevel = msaa;
 
+      backBufRes = { ui16(width), ui16(height) };
+
       return ren.swapchain->GetFrameLatencyWaitableObject();
    };
 
@@ -244,6 +249,8 @@ public:
 
       resData.state = windowState;
 
+      backBufRes = { ui16(curDimData.width), ui16(curDimData.height) };
+
       return ren.swapchain->GetFrameLatencyWaitableObject();
    };
 
@@ -286,8 +293,10 @@ public:
 
       devcon[0]->OMSetRenderTargets(1, &ren.rtvBackBuffer, ren.pDSV);
 
-      data.bbFormat      = (DXGI_FORMAT)curDimData.fmtBB;
+      data.bbFormat = (DXGI_FORMAT)curDimData.fmtBB;
       ren.msaaLevel = curDimData.msaa;
+
+      backBufRes = { ui16(curDimData.width), ui16(curDimData.height) };
    }
 
    void SetBorderedWindow(cHWND hWindow, RESOLUTION &resData) {

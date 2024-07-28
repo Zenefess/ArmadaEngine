@@ -1,6 +1,6 @@
 /*******************************************************************************  
  * File: class_gui.h                                       Created: 2023/01/26 *
- *                                                   Last modified: 2024/07/08 *
+ *                                                   Last modified: 2024/07/25 *
  *                                                                             *
  * Desc:                                                                       *
  *                                                                             *
@@ -23,37 +23,34 @@
 al32 struct CLASS_GUI {
    const struct GUI_IO_DATA {
       ui16ptrc soundBank;
+      ui16ptrc alphabet;
       ui8ptrc  atlas;
       ui32ptrc function;
       ui32ptrc charBankOS;
 
-//      GUI_IO_DATA(cui32 maxSoundBanks, cui32 maxAtlas, cui32 maxFunctions) :
-//         soundBank(salloc1d16(ui16, (maxSoundBanks * 2u) + maxAtlas + (maxFunctions * 8u), max128)),
-//         atlas((ui8ptr)soundBank + maxSoundBanks),
-//         function((ui32ptr)atlas + maxAtlas)
-//      {}
       GUI_IO_DATA(cui32 maxElements, cui32 maxTextBlocks) :
-         soundBank(salloc1d16(ui16, (maxElements * 2u) + maxElements + (maxElements * 4u * 6u) + (maxTextBlocks * 4u), max128)),
-         atlas((ui8ptr)soundBank + maxElements),
-         function((ui32ptr)atlas + maxElements),
-         charBankOS((ui32ptr)function + maxElements)
+         soundBank(salloc1d16(ui16, maxElements * 33u, max128)),
+         alphabet(soundBank + maxElements),
+         atlas(ui8ptr(alphabet + maxElements)),
+         function(ui32ptr(atlas + maxElements)),
+         charBankOS(ui32ptr(maxElements * 6u + function))
       {}
 
-      ~GUI_IO_DATA() { mfree(soundBank, atlas, function); }
+      ~GUI_IO_DATA() { mfree1(soundBank); }
    };
 
    CLASS_GPU     &gpu;
    CLASS_FILEOPS &files;
 
-   declare1d64z(FUNCTION,       funcLib,          MAX_GUI_FUNCTIONS);              // Master library of functions & their display name
+   declare1d64z(FUNCTION,       funcLib,          MAX_GUI_FUNCTIONS);              // Master library of functions & their display name; first entry is void
    declare1d64z(ALPHABET,       alphabet,         MAX_ALPHABETS);                  // 32KB per 1,024 characters
    declare1d64z(CHAR_IMM,       alphabet_pIMM,    MAX_ALPHABETS * MAX_CHARACTERS); // GPU-bound alphabet data
    declare1d64z(GUI_SPRITE_LIB, spriteLib,        MAX_GUI_SPRITE_LIBS);            // Master array of sprite libraries
    declare1d64z(GUI_INTERFACE,  interfaceProfile, MAX_INTERFACES);                 // Master array of interface profiles
    declare1d64s(GUI_ELEMENT,    element,          MAX_GUI_ELEMENTS, max128);       // 96K per 1,024 elements
-   declare1d64z(GUI_EL_DGS,     element_dgs,      MAX_GUI_ENTRIES);                // GPU-bound element data
+   declare1d64z(GUI_EL_DGS,     element_dgs,      MAX_GUI_VERTICES);                // GPU-bound element data
 
-   declare1d64z(ui32, totalVertexList, MAX_GUI_ENTRIES);
+   declare1d64z(ui32, totalVertexList, MAX_GUI_VERTICES);
    declare1d64s(ui32, curVertexCount,  MAX_INTERFACES, max128);
    declare1d64z(ui16, uiAtlasTexIndex, MAX_ATLAS);
    declare1d64z(char, textBuffer,      MAX_TEXT_BUFFER);
@@ -85,54 +82,63 @@ al32 struct CLASS_GUI {
 
 private:
    inline void _CLASS_GUI_INIT(void) {
-      _bufDGS      = gpu.buf.CreateStructured(0, element_dgs, sizeof(GUI_EL_DGS), MAX_GUI_ENTRIES, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS, ae_buf_default);
+      _bufDGS      = gpu.buf.CreateStructured(0, element_dgs, sizeof(GUI_EL_DGS), MAX_GUI_VERTICES, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS, ae_buf_default);
       _bufAlphabet = gpu.buf.CreateStructured(0, alphabet_pIMM, sizeof(CHAR_IMM), MAX_ALPHABETS * MAX_CHARACTERS, ae_buf_dynamic);
       _bufText     = gpu.buf.CreateStructured(0, textBuffer, 16, MAX_TEXT_BUFFER >> 4, ae_buf_dynamic);
-      _bufVertex   = gpu.buf.CreateVertex(curVertexList, sizeof(ui32), MAX_GUI_ENTRIES, 1);
+      _bufVertex   = gpu.buf.CreateVertex(curVertexList, sizeof(ui32), MAX_GUI_VERTICES, 1);
 
       // Add default UI functions to master library
-      funcLib[0]  = { 0,                            "Null" };
-      funcLib[1]  = { __OnHover_Default,            stOnHoverDefault };
-      funcLib[2]  = { __OffHover_Default,           stOffHoverDefault };
-      funcLib[3]  = { __Activate0_0_Default_Button, stActivate00DefaultButton };
-      funcLib[4]  = { __Activate0_1_Default_Button, stActivate01DefaultButton };
-      funcLib[5]  = { __Activate0_0_Default_Toggle, stActivate00DefaultToggle };
-      funcLib[6]  = { __Activate0_1_Default_Toggle, stActivate01DefaultToggle };
-      funcLib[7]  = { __Activate0_0_Default_Scalar, stActivate00DefaultScalar };
-      funcLib[8]  = { __Activate0_1_Default_Scalar, stActivate01DefaultScalar };
-      funcLib[9]  = { __Activate1_0_Default_Scalar, stActivate10DefaultScalar };
-      funcLib[10] = { __Activate1_1_Default_Scalar, stActivate11DefaultScalar };
-      funcLib[11] = { __Passive_Default_Input,      stPassiveDefaultInput };
-      funcLib[12] = { __Activate0_0_Default_Input,  stActivate00DefaultInput };
-      funcLib[13] = { __Activate0_1_Default_Input,  stActivate01DefaultInput };
-      funcLib[14] = { __Activate1_0_Default_Input,  stActivate10DefaultInput };
-      funcLib[15] = { __Passive_Default_Array,      stActivate10DefaultArray };
-      funcLib[16] = { __Activate0_0_Default_Array,  stActivate00DefaultArray };
-      funcLib[17] = { __Activate0_1_Default_Array,  stActivate01DefaultArray };
-      funcLib[18] = { __Activate1_0_Default_Array,  stActivate10DefaultArray };
+      ui32 index = 0;
+      funcLib[index++] = { 0,                              stNone };
+      funcLib[index++] = { __OnHover_Default,              stOnHoverDefault };
+      funcLib[index++] = { __OffHover_Default,             stOffHoverDefault };
+      funcLib[index++] = { __Activate0_0_Default_Button,   stActivate00DefaultButton };
+      funcLib[index++] = { __Activate0_1_Default_Button,   stActivate01DefaultButton };
+      funcLib[index++] = { __Activate0_0_Default_Toggle,   stActivate00DefaultToggle };
+      funcLib[index++] = { __Activate0_1_Default_Toggle,   stActivate01DefaultToggle };
+      funcLib[index++] = { __Activate0_0_Default_Scalar,   stActivate00DefaultScalar };
+      funcLib[index++] = { __Activate0_1_Default_Scalar,   stActivate01DefaultScalar };
+      funcLib[index++] = { __Activate1_0_Default_Scalar,   stActivate10DefaultScalar };
+      funcLib[index++] = { __Activate1_1_Default,          stActivate11Default };
+      funcLib[index++] = { __Passive_Default_Input,        stPassiveDefaultInput };
+      funcLib[index++] = { __Activate0_0_Default_Input,    stActivate00DefaultInput };
+      funcLib[index++] = { __Activate0_1_Default_Input,    stActivate01DefaultInput };
+      funcLib[index++] = { __Activate1_0_Default_Input,    stActivate10DefaultInput };
+      funcLib[index++] = { __OnHover_Default_Array,        stOnHoverDefaultArray };
+      funcLib[index++] = { __OffHover_Default_Array,       stOffHoverDefaultArray };
+      funcLib[index++] = { __Activate0_0_Default_Array,    stActivate00DefaultArray };
+      funcLib[index++] = { __Activate0_1_Default_Array,    stActivate01DefaultArray };
+      funcLib[index++] = { __Activate1_0_Default_Array,    stActivate10DefaultArray };
+
+      funcLib[index++] = { __Activate0_1_New_Button,       stActivate01NewButton };
+      funcLib[index++] = { __Activate0_1_Save_Button,      stActivate01SaveButton };
+      funcLib[index++] = { __Activate0_1_Load_Button,      stActivate01LoadButton };
+      funcLib[index++] = { __Activate0_1_Options_Button,   stActivate01OptionsButton };
+      funcLib[index++] = { __Activate0_1_Editors_Button,   stActivate01EditorsButton };
+      funcLib[index++] = { __Activate0_1_Exit_Button,      stActivate01ExitButton };
+
+      funcLib[index++] = { __Activate0_1_UI_Editor_Button, stActivate01ExitButton };
+
+      uiFunctions = index;
    }
 public:
 
    CLASS_GUI(CLASS_FILEOPS &fileOps, CLASS_GPU &gpuClass) : files(fileOps), gpu(gpuClass) { _CLASS_GUI_INIT(); }
    CLASS_GUI(CLASS_FILEOPS &fileOps, CLASS_GPU &gpuClass, cptrptr globalPointer) : files(fileOps), gpu(gpuClass) { _CLASS_GUI_INIT(); if(globalPointer) *globalPointer = this; }
 
-   ~CLASS_GUI(void) {
-      ui32 i;
-
-      if(element) mdealloc(element);
-      if(element_dgs) mdealloc(element_dgs);
-//      if(vertexRunLength) mfree(element_dgs);
-      if(textBuffer) mdealloc(textBuffer);
-      for(i = MAX_ATLAS - 1; i; --i)
+   void UnloadAll(void) {
+      si32 i;
+      for(i = MAX_ATLAS - 1; i >= 0; --i)
          if(uiAtlasTexIndex[i])
             gpu.tex.Unload2D(uiAtlasTexIndex[i]);
-//      mfree(vertex_index);
-      for(i = siInterfaces - 1; i; --i)
-         if(interfaceProfile[i].vertex)
-            mdealloc(interfaceProfile[i].vertex);
-      mfree(interfaceProfile, stAtlas, stLanguage, alphabet, alphabet_pIMM, spriteLib);
+      for(i = siInterfaces - 1; i >= 0; --i)
+         mfree(interfaceProfile[i].vertex, interfaceProfile[i].inputs, interfaceProfile[i].inputLabel, interfaceProfile[i]._mod);
+      mfree(element, element_dgs, textBuffer, interfaceProfile, stAtlas, stLanguage, alphabet, alphabet_pIMM, spriteLib);
       uiLanguages = uiAtlas = 0;
+      siInterfaces = -1;
    }
+
+   ~CLASS_GUI(void) { if(siInterfaces != -1) UnloadAll(); }
 
    // Returns index of function
    cui32 AddFunctionToLibrary(FUNCTION funcInfo) {
@@ -231,16 +237,16 @@ public:
          libIndex = index;
       }
 
-      cHANDLE hSpriteLibData = files.OpenFileForReading(filename, stGUIDir);
+      cHANDLE hSpriteLibData = files.OpenForReading(filename, stGUIDir);
 
       // Read (and discard) tag line
       if(!files.ReadAndVerify(hSpriteLibData, "AE.SpriteLibrary.01u")) Try("Invalid sprite library file", -4, ss_gui);
       // Read atlas filename then locate/load texture
       index = ReadAndLoadAtlas(hSpriteLibData);
       // Read current & maxmimum counts
-      files.ReadFromFile(hSpriteLibData, &spriteLib[libIndex].numSprites, sizeof(ui16[2]));
+      files.Read(hSpriteLibData, &spriteLib[libIndex].numSprites, sizeof(ui16[2]));
       // Read total character count of sprite strings
-      files.ReadFromFile(hSpriteLibData, &stringCount, 4u);
+      files.Read(hSpriteLibData, &stringCount, 4u);
 
       spriteLib[libIndex] = { (GUI_SPRITE *)zalloc32(sizeof(GUI_SPRITE) * spriteLib[libIndex].maxSprites), index, spriteLib[libIndex].numSprites, spriteLib[libIndex].maxSprites };
       spriteLib[libIndex].sprite[0].name = (chptr)zalloc32(RoundUpToNearest32(stringCount));
@@ -249,7 +255,7 @@ public:
       for(textArrayOS = spriteLib[libIndex].sprite[0].name, index = 0; index < spriteLib[libIndex].numSprites; ++index) {
          spriteLib[libIndex].sprite[index].name = textArrayOS;
          textArrayOS += files.ReadLine(hSpriteLibData, spriteLib[libIndex].sprite[index].name) + 1u;
-         files.ReadFromFile(hSpriteLibData, &spriteLib[libIndex].sprite[index].aa, sizeof(fl32[6]));
+         files.Read(hSpriteLibData, &spriteLib[libIndex].sprite[index].aa, sizeof(fl32[6]));
       };
 
       files.CloseFile(hSpriteLibData);
@@ -264,26 +270,26 @@ public:
 
       ui32 bytesWritten, charsWritten = 0;
 
-      cHANDLE hSpriteLibData = files.OpenFileForWriting(filename, stGUIDir);
+      cHANDLE hSpriteLibData = files.OpenForWriting(filename, stGUIDir);
       
       // Write tag line: 2[Engine].SpriteLibrary.2[Format version]1[Compression method]
-      bytesWritten = files.WriteToFile(hSpriteLibData, "AE.SpriteLibrary.01u", 21);
+      bytesWritten = files.Write(hSpriteLibData, "AE.SpriteLibrary.01u", 21);
       // Write atlas filename to avoid misindexing upon load
-      bytesWritten += files.WriteToFile(hSpriteLibData, stAtlas[spriteLib[libIndex].atlasIndex], ui32(wcslen(stAtlas[spriteLib[libIndex].atlasIndex]) << 1u) + 2u);
+      bytesWritten += files.Write(hSpriteLibData, stAtlas[spriteLib[libIndex].atlasIndex], ui32(wcslen(stAtlas[spriteLib[libIndex].atlasIndex]) << 1u) + 2u);
       // Write current & maximum counts
-      bytesWritten += files.WriteToFile(hSpriteLibData, &spriteLib[libIndex].numSprites, sizeof(ui16[2]));
+      bytesWritten += files.Write(hSpriteLibData, &spriteLib[libIndex].numSprites, sizeof(ui16[2]));
       // Reserved for total character count of sprite strings
-      files.WriteToFile(hSpriteLibData, &hSpriteLibData, 4u);
+      files.Write(hSpriteLibData, &hSpriteLibData, 4u);
       // Write sprite data
       for(ui32 i = 0; i < spriteLib[libIndex].numSprites; ++i) {
          cui32 stringLength = ui32(strlen(spriteLib[libIndex].sprite[i].name) + 1u);
          charsWritten += stringLength;
-         files.WriteToFile(hSpriteLibData, spriteLib[libIndex].sprite[i].name, stringLength);
-         files.WriteToFile(hSpriteLibData, &spriteLib[libIndex].sprite[i].aa, sizeof(fl32[6]));
+         files.Write(hSpriteLibData, spriteLib[libIndex].sprite[i].name, stringLength);
+         files.Write(hSpriteLibData, &spriteLib[libIndex].sprite[i].aa, sizeof(fl32[6]));
       };
       // Write total character count of sprite strings
       SetFilePointer(hSpriteLibData, bytesWritten, 0, 0);
-      files.WriteToFile(hSpriteLibData, &charsWritten, 4u);
+      files.Write(hSpriteLibData, &charsWritten, 4u);
 
       files.CloseFile(hSpriteLibData);
 
@@ -345,13 +351,13 @@ public:
          spriteIndex = i;
       }
 
-      cHANDLE hSpriteData = files.OpenFileForReading(filename, stGUIDir);
+      cHANDLE hSpriteData = files.OpenForReading(filename, stGUIDir);
 
       // Read (and discard) tag line
       if(!files.ReadAndVerify(hSpriteData, L"AE.Sprite.01u")) Try("Invalid sprite file", -3, ss_gui);
       // Read data
       files.ReadLine(hSpriteData, spriteLib[libIndex].sprite[spriteIndex].name);
-      files.ReadFromFile(hSpriteData, &spriteLib[libIndex].sprite[spriteIndex].tc, sizeof(fl32[6]));
+      files.Read(hSpriteData, &spriteLib[libIndex].sprite[spriteIndex].tc, sizeof(fl32[6]));
 
       files.CloseFile(hSpriteData);
 
@@ -363,13 +369,13 @@ public:
       // Sprite slot is empty
       if(!spriteLib[libIndex].sprite[spriteIndex].name) return false;
 
-      cHANDLE hSpriteData = files.OpenFileForWriting(filename, stGUIDir);
+      cHANDLE hSpriteData = files.OpenForWriting(filename, stGUIDir);
 
       // Write tag line: 2[Engine].Sprite.2[Format version]1[Compression method]
-      files.WriteToFile(hSpriteData, "AE.Sprite.01u", 14);
+      files.Write(hSpriteData, "AE.Sprite.01u", 14);
       // Write data
-      files.WriteToFile(hSpriteData, spriteLib[libIndex].sprite[spriteIndex].name, ui32(strlen(spriteLib[libIndex].sprite[spriteIndex].name)));
-      files.WriteToFile(hSpriteData, &spriteLib[libIndex].sprite[spriteIndex].tc, sizeof(fl32[6]));
+      files.Write(hSpriteData, spriteLib[libIndex].sprite[spriteIndex].name, ui32(strlen(spriteLib[libIndex].sprite[spriteIndex].name)));
+      files.Write(hSpriteData, &spriteLib[libIndex].sprite[spriteIndex].tc, sizeof(fl32[6]));
 
       files.CloseFile(hSpriteData);
 
@@ -420,7 +426,7 @@ public:
          index = i;
       }
 
-      cHANDLE hAlphabetData = files.OpenFileForReading(filename, stGUIDir);
+      cHANDLE hAlphabetData = files.OpenForReading(filename, stGUIDir);
 
       // Read (and discard) tag line
       if(!files.ReadAndVerify(hAlphabetData, "AE.Alphabet.01u")) Try("Invalid alphabet file", -2, ss_gui);
@@ -429,10 +435,10 @@ public:
       alphabet[uiLanguages].stLanguage = stLanguage[uiLanguages];
       alphabet[uiLanguages].atlasIndex = ReadAndLoadAtlas(hAlphabetData);
       alphabet[uiLanguages].stAtlasFilename = stAtlas[alphabet[uiLanguages].atlasIndex];
-      files.ReadFromFile(hAlphabetData, &alphabet[uiLanguages].numChars, sizeof(ui16));
+      files.Read(hAlphabetData, &alphabet[uiLanguages].numChars, sizeof(ui16));
       alphabet[uiLanguages].pIMMos = uiLanguages * MAX_CHARACTERS;
       // Read character data
-      files.ReadFromFile(hAlphabetData, &alphabet_pIMM[uiLanguages * MAX_CHARACTERS], sizeof(CHAR_IMM) * alphabet[uiLanguages].numChars);
+      files.Read(hAlphabetData, &alphabet_pIMM[uiLanguages * MAX_CHARACTERS], sizeof(CHAR_IMM) * alphabet[uiLanguages].numChars);
 
       CloseHandle(hAlphabetData);
       ++uiLanguages;
@@ -445,16 +451,16 @@ public:
       // Alphabet slot is empty
       if(!alphabet[index].stLanguage) return false;
 
-      cHANDLE hAlphabetData = files.OpenFileForWriting(filename, stGUIDir);
+      cHANDLE hAlphabetData = files.OpenForWriting(filename, stGUIDir);
 
       // Write tag line: 2[Engine].Alphabet.2[Format version]1[Compression method]
-      files.WriteToFile(hAlphabetData, "AE.Alphabet.01u", 16);
+      files.Write(hAlphabetData, "AE.Alphabet.01u", 16);
       // Write primary data
-      files.WriteToFile(hAlphabetData, alphabet[index].stLanguage, ui32((strlen(alphabet[index].stLanguage) + 1u) * sizeof(char)));
-      files.WriteToFile(hAlphabetData, alphabet[index].stAtlasFilename, ui32((wcslen(alphabet[index].stAtlasFilename) + 1u) * sizeof(wchar)));
-      files.WriteToFile(hAlphabetData, &alphabet[index].numChars, sizeof(ui16));
+      files.Write(hAlphabetData, alphabet[index].stLanguage, ui32((strlen(alphabet[index].stLanguage) + 1u) * sizeof(char)));
+      files.Write(hAlphabetData, alphabet[index].stAtlasFilename, ui32((wcslen(alphabet[index].stAtlasFilename) + 1u) * sizeof(wchar)));
+      files.Write(hAlphabetData, &alphabet[index].numChars, sizeof(ui16));
       // Write character data
-      files.WriteToFile(hAlphabetData, &alphabet_pIMM[index * MAX_CHARACTERS], sizeof(CHAR_IMM) * alphabet[index].numChars);
+      files.Write(hAlphabetData, &alphabet_pIMM[index * MAX_CHARACTERS], sizeof(CHAR_IMM) * alphabet[index].numChars);
 
       CloseHandle(hAlphabetData);
 
@@ -518,7 +524,7 @@ public:
       if(textSize <= 0) textSize = ui32(strlen(desc.text.cPtr));
 
       cui32 firstVertex     = uiGUIVerts;
-      cui32 uiTextBlockSize = max(1u, RoundUpToNearest16(desc.text.cCount <= 0 ? textSize : desc.text.cCount));
+      cui32 uiTextBlockSize = max(1u, RoundUpToNearest32(desc.text.cCount <= 0 ? textSize : desc.text.cCount));
 
       // Insufficient text buffer space
       if(uiTextBlockSize > (MAX_TEXT_BUFFER - siTextBankOS)) return 0x0FFFFFFFFu;
@@ -543,19 +549,14 @@ public:
          element_dgs[uiGUIVerts].width         = 0.0f;
          element_dgs[uiGUIVerts].charBankOS    = ((i + siTextBankOS) >> 4u) | ((textSize - i > 32u ? 32u : textSize - i) << 26u);
          element_dgs[uiGUIVerts].alphabetIndex = alphabet[desc.index.alphabet].pIMMos;
-         element_dgs[uiGUIVerts].atlasIndex    = (ui8 &)alphabet[desc.index.alphabet].atlasIndex * 2u + 80u;
+         element_dgs[uiGUIVerts].atlasIndex    = (ui8 &)alphabet[desc.index.alphabet].atlasIndex * 2u + TEX_REG_OS_GUI;
          element_dgs[uiGUIVerts].elementType   = (forTextArray ? aet_textArray : aet_text);
          element_dgs[uiGUIVerts].sibling       = uiGUIVerts - firstVertex;
          element_dgs[uiGUIVerts].align         = desc.text.align;
          element_dgs[uiGUIVerts].mods          = desc.text.mods;
       }
       for(; i < uiTextBlockSize; ++uiGUIVerts, i += 32u) {
-#ifdef __AVX__
-         element_dgs[uiGUIVerts].coords.ymm    = _mm256_setzero_ps();
-#else
-         element_dgs[uiGUIVerts].coords.xmm[0] = _mm_setzero_ps();
-         element_dgs[uiGUIVerts].coords.xmm[1] = _mm_setzero_ps();
-#endif
+         element_dgs[uiGUIVerts].coords.ymm    = null256f;
          element_dgs[uiGUIVerts].colour        = desc.text.tint;
          element_dgs[uiGUIVerts].size          = desc.text.size;
          element_dgs[uiGUIVerts].rotAngle      = 0.0f;
@@ -563,7 +564,7 @@ public:
          element_dgs[uiGUIVerts].width         = 0.0f;
          element_dgs[uiGUIVerts].charBankOS    = (i + siTextBankOS) >> 4u;
          element_dgs[uiGUIVerts].alphabetIndex = alphabet[desc.index.alphabet].pIMMos;
-         element_dgs[uiGUIVerts].atlasIndex    = (ui8 &)alphabet[desc.index.alphabet].atlasIndex * 2u + 80u;
+         element_dgs[uiGUIVerts].atlasIndex    = (ui8 &)alphabet[desc.index.alphabet].atlasIndex * 2u + TEX_REG_OS_GUI;
          element_dgs[uiGUIVerts].elementType   = (forTextArray ? aet_textArray : aet_text);
          element_dgs[uiGUIVerts].sibling       = uiGUIVerts - firstVertex;
          element_dgs[uiGUIVerts].align         = desc.text.align | 0x080u;
@@ -576,14 +577,14 @@ public:
       return firstVertex;
    }
 
-   // Creates unused element entry
+   // Returns index of blank element entry
    cui32 CreateVoid(void) {
       if(siGUIElements >= MAX_GUI_ELEMENTS) return 0x080000001;
 
-      element[siGUIElements].vertexIndex       = uiGUIVerts;
-      element[siGUIElements].vertexCount[0]    = 1;
-      element[siGUIElements].vertexCount[1]    = 1;
-      element[siGUIElements].soundBankIndex    = -1;
+      element[siGUIElements].vertexIndex       = -1;
+      element[siGUIElements].vertexCount[0]    = 0;
+      element[siGUIElements].vertexCount[1]    = 0;
+      element[siGUIElements].soundBankIndex    = 0;
       element[siGUIElements].elementType       = aet_void;
       element[siGUIElements].stateBits         = 0;
       element[siGUIElements].func.hover[0]     = 0;
@@ -593,12 +594,23 @@ public:
       element[siGUIElements].func.activate1[0] = 0;
       element[siGUIElements].func.activate1[1] = 0;
 
-      element_dgs[uiGUIVerts].parentIndex = uiGUIVerts;
-      element_dgs[uiGUIVerts].elementType = aet_void;
-      element_dgs[uiGUIVerts].width       = 0.0f;
-      element_dgs[uiGUIVerts++].align     = 0x080;
-
       return siGUIElements++;
+   }
+
+   // Returns first vertex
+   cui32 CreateVertices(cui32 vertCount) {
+      if(siGUIElements >= MAX_GUI_VERTICES) return 0x080000001u;
+
+      cui32 firstVert = uiGUIVerts;
+
+      for(ui32 i = 0; i < vertCount; ++i) {
+         element_dgs[uiGUIVerts].parentIndex = firstVert;
+         element_dgs[uiGUIVerts].elementType = aet_void;
+         element_dgs[uiGUIVerts].width       = 0.0f;
+         element_dgs[uiGUIVerts++].align     = 0x080;
+      }
+
+      return firstVert;
    }
 
    cui32 CreateText(cGUI_EL_DESC &desc) {
@@ -623,6 +635,7 @@ public:
       element[siGUIElements].activeCoords      = activeCoords;
       element[siGUIElements].activePos         = { (activeCoords.x1 + activeCoords.x2) * 0.5f, (activeCoords.y1 + activeCoords.y2) * 0.5f };
       element[siGUIElements].viewScale         = { 2.0f / activeSize.x, 2.0f / activeSize.y };
+      element[siGUIElements].parent            = 0x0FFFFFFFFu; // Parentless
       element[siGUIElements].charCount         = siTextSize;
       element[siGUIElements].vertexIndex       = (si32 &)uiFirstVert;
       element[siGUIElements].soundBankIndex    = desc.index.soundBank;
@@ -659,7 +672,7 @@ public:
       element[siGUIElements].textArray = (ui32ptr)malloc16(sizeof(ui32ptr) * desc.text.sCount);
 
       // Generate all text vertices
-      for(i = 0, heightOS = curText.viewPos.y; i < (ui16 &)desc.text.sCount; ++i, heightOS -= curText.text.size.y) {
+      for(i = 0, heightOS = curText.viewPos.y; i < (ui16 &)desc.text.sCount; ++i, heightOS -= curText.text.size.y * 0.5f * curText.text.lSpacing) {
          curText.viewPos     = { 0.0f, heightOS };
          curText.text.cPtr   = desc.text.cArray[i];
          curText.text.cCount = ui16(strlen(desc.text.cArray[i]));
@@ -689,11 +702,11 @@ public:
       //element[siGUIElements].activePos         = { (activeCoords.x1 + activeCoords.x2) * 0.5f, (activeCoords.y1 + activeCoords.y2) * 0.5f };
       //element[siGUIElements].viewScale         = { 2.0f / activeSize.x, 2.0f / activeSize.y };
       element[siGUIElements].textCount         = i;
-      element[siGUIElements].textEntry         = 0;
+      element[siGUIElements].textEntry         = -1;
       element[siGUIElements].vertexIndex       = (si32 &)GUIVertsOrigin;
       element[siGUIElements].soundBankIndex    = desc.index.soundBank;
       element[siGUIElements].elementType       = aet_textArray;
-      element[siGUIElements].stateBits         = 0x040;
+      element[siGUIElements].stateBits         = UIE_VISIBLE;
       element[siGUIElements].func.hover[0]     = desc.func.hover[0];
       element[siGUIElements].func.hover[1]     = desc.func.hover[1];
       element[siGUIElements].func.activate0[0] = desc.func.activate0[0];
@@ -728,7 +741,7 @@ public:
       element[siGUIElements].vertexCount[1]    = 1;
       element[siGUIElements].soundBankIndex    = desc.index.soundBank;
       element[siGUIElements].elementType       = aet_cursor;
-      element[siGUIElements].stateBits         = 0x040;
+      element[siGUIElements].stateBits         = UIE_VISIBLE;
       element[siGUIElements].func.hover[0]     = desc.func.hover[0];
       element[siGUIElements].func.hover[1]     = desc.func.hover[1];
       element[siGUIElements].func.activate0[0] = desc.func.activate0[0];
@@ -745,7 +758,7 @@ public:
       element_dgs[uiGUIVerts].parentIndex  = uiGUIVerts;
       element_dgs[uiGUIVerts].animTime     = { 0.0f, 0.0f };
       element_dgs[uiGUIVerts].animType     = 0;
-      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + 80u;
+      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + TEX_REG_OS_GUI;
       element_dgs[uiGUIVerts].elementType  = aet_cursor;
       element_dgs[uiGUIVerts].sibling      = 0;
       element_dgs[uiGUIVerts].align        = desc.cursor.align;
@@ -768,13 +781,14 @@ public:
       element[siGUIElements].activeCoords      = activeCoords;
       element[siGUIElements].activePos         = { (activeCoords.x1 + activeCoords.x2) * 0.5f, (activeCoords.y1 + activeCoords.y2) * 0.5f };
       element[siGUIElements].viewScale         = { 2.0f / activeSize.x, 2.0f / activeSize.y };
+      element[siGUIElements].scalarPos2D       = { 0, 0 };
       element[siGUIElements].charCount         = 0;
       element[siGUIElements].vertexIndex       = uiGUIVerts;
       element[siGUIElements].vertexCount[0]    = 1;
       element[siGUIElements].vertexCount[1]    = 1;
       element[siGUIElements].soundBankIndex    = desc.index.soundBank;
       element[siGUIElements].elementType       = aet_panel;
-      element[siGUIElements].stateBits         = 0x0C0;
+      element[siGUIElements].stateBits         = UIE_VISIBLE | UIE_ACTIVE;
       element[siGUIElements].func.hover[0]     = desc.func.hover[0];
       element[siGUIElements].func.hover[1]     = desc.func.hover[1];
       element[siGUIElements].func.activate0[0] = desc.func.activate0[0];
@@ -822,7 +836,7 @@ public:
       element[siGUIElements].vertexCount[1]    = 2;
       element[siGUIElements].soundBankIndex    = desc.index.soundBank;
       element[siGUIElements].elementType       = aet_button;   // bit7==Button "down"
-      element[siGUIElements].stateBits         = 0x0C0;
+      element[siGUIElements].stateBits         = UIE_VISIBLE | UIE_ACTIVE;
       element[siGUIElements].func.hover[0]     = desc.func.hover[0];
       element[siGUIElements].func.hover[1]     = desc.func.hover[1];
       element[siGUIElements].func.activate0[0] = (desc.func.activate0[0] ? desc.func.activate0[0] : Activate00DefaultButton);
@@ -839,7 +853,7 @@ public:
       element_dgs[uiGUIVerts].parentIndex  = uiGUIVerts;
       element_dgs[uiGUIVerts].animTime     = { 0.0f, 0.0f };
       element_dgs[uiGUIVerts].animType     = 0;
-      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + 80u;
+      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + TEX_REG_OS_GUI;
       element_dgs[uiGUIVerts].elementType  = aet_button;
       element_dgs[uiGUIVerts].sibling      = 0x08001;
       element_dgs[uiGUIVerts].align        = desc.panel.align;
@@ -853,7 +867,7 @@ public:
       element_dgs[uiGUIVerts].parentIndex  = uiGUIVerts;
       element_dgs[uiGUIVerts].animTime     = { 0.0f, 0.0f };
       element_dgs[uiGUIVerts].animType     = 0;
-      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex;
+      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + TEX_REG_OS_GUI;
       element_dgs[uiGUIVerts].elementType  = aet_button;
       element_dgs[uiGUIVerts].sibling      = 1;
       element_dgs[uiGUIVerts].align        = desc.panel.align | 0x080;
@@ -884,7 +898,7 @@ public:
       element[siGUIElements].vertexCount[1]    = 2;
       element[siGUIElements].soundBankIndex    = desc.index.soundBank;
       element[siGUIElements].elementType       = aet_toggle;
-      element[siGUIElements].stateBits         = 0x0C0;
+      element[siGUIElements].stateBits         = UIE_VISIBLE | UIE_ACTIVE;
       element[siGUIElements].func.hover[0]     = desc.func.hover[0];
       element[siGUIElements].func.hover[1]     = desc.func.hover[1];
       element[siGUIElements].func.activate0[0] = (desc.func.activate0[0] ? desc.func.activate0[0] : Activate00DefaultToggle);
@@ -901,7 +915,7 @@ public:
       element_dgs[uiGUIVerts].parentIndex  = uiGUIVerts;
       element_dgs[uiGUIVerts].animTime     = { 0.0f, 0.0f };
       element_dgs[uiGUIVerts].animType     = 0;
-      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + 80u;
+      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + TEX_REG_OS_GUI;
       element_dgs[uiGUIVerts].elementType  = aet_toggle;
       element_dgs[uiGUIVerts].sibling      = 0x08001;
       element_dgs[uiGUIVerts].align        = desc.panel.align;
@@ -915,7 +929,7 @@ public:
       element_dgs[uiGUIVerts].parentIndex  = uiGUIVerts;
       element_dgs[uiGUIVerts].animTime     = { 0.0f, 0.0f };
       element_dgs[uiGUIVerts].animType     = 0;
-      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + 80u;
+      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + TEX_REG_OS_GUI;
       element_dgs[uiGUIVerts].elementType  = aet_toggle;
       element_dgs[uiGUIVerts].sibling      = 1;
       element_dgs[uiGUIVerts].align        = desc.panel.align | 0x080;
@@ -952,13 +966,13 @@ public:
       element[siGUIElements].vertexCount[1]    = 2;
       element[siGUIElements].soundBankIndex    = desc.index.soundBank;
       element[siGUIElements].elementType       = aet_scalar;
-      element[siGUIElements].stateBits         = 0x0C0;
+      element[siGUIElements].stateBits         = UIE_VISIBLE | UIE_ACTIVE;
       element[siGUIElements].func.hover[0]     = desc.func.hover[0];
       element[siGUIElements].func.hover[1]     = desc.func.hover[1];
       element[siGUIElements].func.activate0[0] = (desc.func.activate0[0] ? desc.func.activate0[0] : Activate00DefaultScalar);
       element[siGUIElements].func.activate0[1] = (desc.func.activate0[1] ? desc.func.activate0[1] : Activate01DefaultScalar);
       element[siGUIElements].func.activate1[0] = (desc.func.activate1[0] ? desc.func.activate1[0] : Activate10DefaultScalar);
-      element[siGUIElements].func.activate1[1] = (desc.func.activate1[1] ? desc.func.activate1[1] : Activate11DefaultScalar);
+      element[siGUIElements].func.activate1[1] = (desc.func.activate1[1] ? desc.func.activate1[1] : Activate11Default);
       element[siGUIElements].ui128Var          = null128;
       element_dgs[uiGUIVerts].viewPos      = desc.viewPos;
       element_dgs[uiGUIVerts].indent       = activeSize[0];
@@ -969,7 +983,7 @@ public:
       element_dgs[uiGUIVerts].parentIndex  = uiGUIVerts;
       element_dgs[uiGUIVerts].animTime     = { 0.0f, 0.0f };
       element_dgs[uiGUIVerts].animType     = 0;
-      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + 80u;
+      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + TEX_REG_OS_GUI;
       element_dgs[uiGUIVerts].elementType  = aet_panel;
       element_dgs[uiGUIVerts].sibling      = 0x08001;
       element_dgs[uiGUIVerts].align        = desc.panel.align;
@@ -983,7 +997,7 @@ public:
       element_dgs[uiGUIVerts].parentIndex  = uiGUIVerts - 1;
       element_dgs[uiGUIVerts].animTime     = { 0.0f, 0.0f };
       element_dgs[uiGUIVerts].animType     = 0;
-      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + 80u;
+      element_dgs[uiGUIVerts].atlasIndex   = (ui8 &)curLib.atlasIndex * 2u + TEX_REG_OS_GUI;
       element_dgs[uiGUIVerts].elementType  = aet_scalar;
       element_dgs[uiGUIVerts].sibling      = 1;
       element_dgs[uiGUIVerts].align        = desc.cursor.align;
@@ -993,14 +1007,13 @@ public:
    }
 
    // Returns indices of panel element and text overlay
-   cVEC2Du32 CreateTextPanel(GUI_EL_DESC &desc) {
+   cVEC2Du32 CreateTextPanel(GUI_EL_DESC desc) {
       if(siGUIElements >= MAX_GUI_ELEMENTS - 1) return { 0x080000001, MAX_GUI_ELEMENTS };
       ui32 i = 0;
 
       cui32 panel = CreatePanel(desc);
 
       cui32 tempPtrs[6] = { desc.function[0], desc.function[1], desc.function[2], desc.function[3], desc.function[4], desc.function[5] };
-      cVEC2Df tempPos     = desc.viewPos;
 
       for(i = 0; i < 6; ++i) desc.function[i] = 0;
 
@@ -1009,24 +1022,24 @@ public:
 
       for(i = 0; i < 6; ++i) desc.function[i] = tempPtrs[i];
 
-      desc.viewPos = tempPos;
       cui32 panelVert = element[panel].vertexIndex;
       cui32 firstVert = element[overlay].vertexIndex;
 
       for(i = 0; i < element[overlay].vertexCount[1]; ++i) element_dgs[firstVert + i].parentIndex = panelVert;
+
+      element[overlay].parent = panel;
 
       return { panel, overlay };
    }
 
    // Returns indices of panel element and text overlay
-   cVEC2Du32 CreateTextButton(GUI_EL_DESC &desc) {
+   cVEC2Du32 CreateTextButton(GUI_EL_DESC desc) {
       if(siGUIElements >= MAX_GUI_ELEMENTS - 1) return { 0x080000001, MAX_GUI_ELEMENTS };
       ui32 i = 0;
 
       cui32 panel = CreateButton(desc);
 
-      cui32   tempPtrs[6] = { desc.function[0], desc.function[1], desc.function[2], desc.function[3], desc.function[4], desc.function[5] };
-      cVEC2Df tempPos     = desc.viewPos;
+      cui32 tempPtrs[6] = { desc.function[0], desc.function[1], desc.function[2], desc.function[3], desc.function[4], desc.function[5] };
 
       for(i = 0; i < 6; ++i) desc.function[i] = 0;
 
@@ -1035,17 +1048,18 @@ public:
 
       for(i = 0; i < 6; ++i) desc.function[i] = tempPtrs[i];
 
-      desc.viewPos = tempPos;
       cui32 panelVert = element[panel].vertexIndex;
       cui32 firstVert = element[overlay].vertexIndex;
 
       for(i = 0; i < element[overlay].vertexCount[1]; ++i) element_dgs[firstVert + i].parentIndex = panelVert;
 
+      element[overlay].parent = panel;
+
       return { panel, overlay };
    }
 
    // Returns indices of panel element, cursor element, and text overlay
-   cVEC3Du32 CreateInputPanel(GUI_EL_DESC &desc) {
+   cVEC3Du32 CreateInputPanel(GUI_EL_DESC desc) {
       if(siGUIElements >= MAX_GUI_ELEMENTS - 2) return { 0x080000001, MAX_GUI_ELEMENTS, 0 };
 
       ui32 i = 0;
@@ -1053,7 +1067,6 @@ public:
       cui32 panel = CreatePanel(desc);
 
       cui32   tempPtrs[6] = { desc.function[0], desc.function[1], desc.function[2], desc.function[3], desc.function[4], desc.function[5] };
-      cVEC2Df tempPos     = desc.viewPos;
 
       for(i = 0; i < 6; ++i) desc.function[i] = 0;
 
@@ -1063,12 +1076,11 @@ public:
 
       for(i = 0; i < 6; ++i) desc.function[i] = tempPtrs[i];
 
-      desc.viewPos = tempPos;
       cui32 panelVert = element[panel].vertexIndex;
       cui32 firstVert = element[overlay].vertexIndex;
 
       element_dgs[element[cursor].vertexIndex].parentIndex  = panelVert;
-      element_dgs[element[cursor].vertexIndex].align       |= 0x080;
+      element_dgs[element[cursor].vertexIndex].align       |= UI_INVIS;
 
       for(i = 0; i < element[overlay].vertexCount[1]; ++i) element_dgs[firstVert + i].parentIndex = panelVert;
 
@@ -1079,43 +1091,54 @@ public:
       element[panel].func.activate0[0] = Activate00DefaultInput;
       element[panel].func.activate0[1] = Activate01DefaultInput;
       element[panel].func.activate1[0] = Activate10DefaultInput;
-
       element[cursor].stateBits = 0;
+      element[overlay].parent = panel;
 
       return { panel, cursor, overlay };
    }
 
    // Returns indices of panel element and text list overlay
-   cVEC2Du32 CreateTextSelectionPanel(GUI_EL_DESC &desc) {
+   cVEC3Du32 CreateTextSelectionPanel(GUI_EL_DESC desc) {
       if(siGUIElements >= MAX_GUI_ELEMENTS) return { 0x080000001, MAX_GUI_ELEMENTS };
 
       ui32 i = 0;
 
       cui32 panel = CreatePanel(desc);
 
-      cui32   tempPtrs[6] = { desc.function[0], desc.function[1], desc.function[2], desc.function[3], desc.function[4], desc.function[5] };
-      cVEC2Df tempPos     = desc.viewPos;
+      cui32 tempPtrs[6] = { desc.function[0], desc.function[1], desc.function[2], desc.function[3], desc.function[4], desc.function[5] };
 
       for(i = 0; i < 6; ++i) desc.function[i] = 0;
 
+      element[panel].lSpacing = desc.text.size.y * 0.5f * desc.text.lSpacing;
+
       desc.viewPos = { 0.0f, 0.0f };
+      desc.index.panelSprite = desc.index.cursorSprite;
+      desc.panel        =  desc.cursor;
+      desc.panel.size.y *= element[panel].lSpacing * 0.5f;
+      desc.panel.align  =  UI_ALIGN_T | UI_INVIS;
+      desc.panel.mods   =  UI_PANEL;
+      cui32 cursor  = CreatePanel(desc);
       cui32 overlay = CreateTextList(desc);
 
       for(i = 0; i < 6; ++i) desc.function[i] = tempPtrs[i];
 
-      desc.viewPos = tempPos;
       cui32 panelVert = element[panel].vertexIndex;
       cui32 firstVert = element[overlay].vertexIndex;
 
+      element_dgs[element[cursor].vertexIndex].parentIndex  = panelVert;
+      element_dgs[element[cursor].vertexIndex].align       |= UI_INVIS;
+
       for(i = 0; i < element[overlay].vertexCount[1]; ++i) element_dgs[firstVert + i].parentIndex = panelVert;
 
-      element[panel].func.hover[0]     = PassiveDefaultArray;
-      element[panel].func.hover[1]     = Null;
+      element[panel].func.hover[0]     = OnHoverDefaultArray;
+      element[panel].func.hover[1]     = OffHoverDefaultArray;
       element[panel].func.activate0[0] = Activate00DefaultArray;
       element[panel].func.activate0[1] = Activate01DefaultArray;
       element[panel].func.activate1[0] = Activate10DefaultArray;
+      element[panel].func.activate1[1] = Activate11Default;
+      element[cursor].stateBits = 0;
 
-      return { panel, overlay };
+      return { panel, cursor, overlay };
    }
 
    void DisableElements(csi16 elementIndex, csi16 count) {
@@ -1132,15 +1155,15 @@ public:
       // Element slot is empty
       if(element[elementIndex].vertexIndex == -1) return false;
 
-      cHANDLE hElementData = files.OpenFileForWriting(filename, stGUIDir);
+      cHANDLE hElementData = files.OpenForWriting(filename, stGUIDir);
       if(!hElementData) return false;
 
       // Write tag line: 2[Engine].Element.2[Format version]1[Compression method]
-      files.WriteToFile(hElementData, "AE.Element.01u\0", 15);
+      files.Write(hElementData, "AE.Element.01u\0", 15);
       // Write primary element data
-      files.WriteToFile(hElementData, &element[elementIndex], sizeof(GUI_ELEMENT));
+      files.Write(hElementData, &element[elementIndex], sizeof(GUI_ELEMENT));
       // Write GUI_EL_DGS data
-      files.WriteToFile(hElementData, &element_dgs[element[elementIndex].vertexIndex], sizeof(GUI_EL_DGS) * element[elementIndex].vertexCount[1]);
+      files.Write(hElementData, &element_dgs[element[elementIndex].vertexIndex], sizeof(GUI_EL_DGS) * element[elementIndex].vertexCount[1]);
 
       files.CloseFile(hElementData);
 
@@ -1153,242 +1176,386 @@ public:
       // Element slot is empty
       if(element[firstIndex].vertexIndex == -1) return false;
 
-      cHANDLE hElementData = files.OpenFileForWriting(filename, stGUIDir);
+      cHANDLE hElementData = files.OpenForWriting(filename, stGUIDir);
       if(!hElementData) return false;
 
       // Write tag line: 2[Engine].ElementGroup.2[Format version]1[Compression method]
-      files.WriteToFile(hElementData, "AE.ElementGroup.01u\0", 20);
+      files.Write(hElementData, "AE.ElementGroup.01u\0", 20);
 
       // Truncate count if unused entry found
       for(index = (lastIndex = firstIndex) + count; (element[index].vertexIndex != -1) && (lastIndex < index); ++lastIndex);
       count = index - lastIndex;
       // Write element count
-      files.WriteToFile(hElementData, &count, sizeof(count));
+      files.Write(hElementData, &count, sizeof(count));
       // Write element data
-      files.WriteToFile(hElementData, &element[firstIndex], sizeof(GUI_ELEMENT) * count);
+      files.Write(hElementData, &element[firstIndex], sizeof(GUI_ELEMENT) * count);
       // Write GUI_EL_DGS data
       for(index = firstIndex; index < lastIndex; ++index)
-         files.WriteToFile(hElementData, &element_dgs[element[index].vertexIndex], sizeof(GUI_EL_DGS) * element[index].vertexCount[1]);
+         files.Write(hElementData, &element_dgs[element[index].vertexIndex], sizeof(GUI_EL_DGS) * element[index].vertexCount[1]);
 
       files.CloseFile(hElementData);
 
       return false;
    }
 
-   cui32 CreateInterface(cui16 maxVertices, ui16 maxInputs) {
-      if(siInterfaces >= MAX_INTERFACES) return 0x080000001; // All interface slots occupied
+   // Returns index of interface, or 0x08001 if all interface slots occupied
+   cui16 CreateInterface(cchptrc name, si16 interfaceIndex, ui16 maxElements, ui16 maxInputs) {
+      if(siInterfaces >= MAX_INTERFACES) return 0x08001u; // All interface slots occupied
 
-      interfaceProfile[siInterfaces].vertex      = (ui32ptr)zalloc32(sizeof(ui32) * maxVertices);
-      interfaceProfile[siInterfaces].vertCount   = 0;
-      interfaceProfile[siInterfaces].maxVertices = maxVertices;
-      interfaceProfile[siInterfaces].inputs      = zalloc32(sizeof(ui64[8]) * maxInputs);
-      interfaceProfile[siInterfaces].inputLabel  = (char (*)[32])zalloc32(sizeof(char (*)[32]) * maxInputs);
-      interfaceProfile[siInterfaces].inputCount  = 0;
-      interfaceProfile[siInterfaces].maxInputs   = maxInputs;
-
-      return siInterfaces++;
-   }
-
-   cui32 CreateInterface(cui16ptrc elementIndices, cui16 elementCount, ui16 maxVertices, ui16 maxInputs) {
-      al4 ui16 i, j;
-
-      if(siInterfaces >= MAX_INTERFACES) return 0x080000001; // All interface slots occupied
-
-      for(i = 0, j = 0; i < elementCount; ++i) j += element[elementIndices[i]].vertexCount[1];
-
-      if(maxVertices < j) maxVertices = j;
-      if(maxInputs > MAX_INTERFACE_INPUTS) maxVertices = MAX_INTERFACE_INPUTS;
-
-      interfaceProfile[siInterfaces].vertex      = (ui32ptr)zalloc32(sizeof(ui32) * j);
-      interfaceProfile[siInterfaces].vertCount   = j;
-      interfaceProfile[siInterfaces].maxVertices = maxVertices;
-
-      for(i = 0, j = 0; i < elementCount && j < MAX_INTERFACE_VERTS; ++i) {
-         cui16 elementIndex = elementIndices[i];
-
-         if(elementIndex < 0x0FFFFFFFF) {
-            csi32 vertexIndex = element[elementIndex].vertexIndex;
-            cui16 runLength   = element[elementIndex].vertexCount[1];
-            ui16  offset      = 0;
-
-            do interfaceProfile[siInterfaces].vertex[j++] = vertexIndex + offset++;
-            while(offset < runLength);
-         }
-      }
-
-      interfaceProfile[siInterfaces].inputs     = zalloc32(sizeof(ui64[8]) * maxInputs);
-      interfaceProfile[siInterfaces].inputLabel = (char (*)[32])zalloc32(sizeof(char (*)[32]) * maxInputs);
-      interfaceProfile[siInterfaces].inputCount = 0;
-      interfaceProfile[siInterfaces].maxInputs  = maxInputs;
-
-      return siInterfaces++;
-   }
-
-   // Returns index of interface, or 0x080000001 if all interface slots occupied
-   cui32 LoadInterface(cwchptrc filename, si16 interfaceIndex) {
       // Find first available slot if index is -1
       if(interfaceIndex == -1) {
          si16 ii = 0;
-         for(; interfaceProfile[ii].vertCount && ii < MAX_INTERFACES; ++ii);
-         if(ii >= MAX_INTERFACES) return 0x080000001;
+         for(; interfaceProfile[ii].vertex && (ii < MAX_INTERFACES); ++ii);
+         if(ii >= MAX_INTERFACES) return 0x08001u;
          interfaceIndex = ii;
       }
 
-      cHANDLE hInterfaceData = files.OpenFileForReading(filename, stGUIDir);
+      if(maxElements > MAX_INTERFACE_VERTS) maxElements = MAX_INTERFACE_VERTS;
+      if(maxInputs > MAX_INTERFACE_INPUTS) maxInputs = MAX_INTERFACE_INPUTS;
+
+      interfaceProfile[siInterfaces].Initialise(name, maxElements, maxInputs);
+
+      return siInterfaces++;
+   }
+
+   // Returns index of interface, or 0x08001 if all interface slots occupied
+   cui16 LoadInterface(cwchptrc filename, si16 interfaceIndex) {
+      union {
+         chptrc st = (chptr)salloc(RoundUpToNearest16(512u), 16u, null128);
+         //declare1d16z(char, stTemp, 512u);
+         wchptrc wst;
+      } temp;
+//      declare1d16z(char, stTemp, 512u);
+
+      cHANDLE hInterfaceData = files.OpenForReading(filename, stGUIDir);
+
+      ui32 i, j;
+      ui32 newFunctionCount  = 0;
+      ui32 newCBOSCount      = 0;
+      ui16 maximums[2]       = { 0, 0 };
+      ui16 newSoundBankCount = 0;
+      ui16 newAlphabetCount  = 0;
+      ui8  newAtlasCount     = 0;
 
       // Read (and discard) tag line
       if(!files.ReadAndVerify(hInterfaceData, L"AE.Interface.01u")) Try("Invalid interface file", -2, ss_gui);
-      // Read primary data
+      
 
-///--- To do...
-   }
-private:
-   inline void WriteVertexData(cHANDLE fileHandle, cui32 vertexIndex, cui32 newParentIndex, cui8 newAtlasIndex) const {
-      GUI_EL_DGS curElDGS = element_dgs[vertexIndex];
+      // Read max counts and create new interface entry
+      files.Read(hInterfaceData, maximums, 4u);
+      files.Read(hInterfaceData, &i, 4u);
+      chptrc name = (chptr)malloc1(i);
+      files.Read(hInterfaceData, name, i);
+      if((interfaceIndex = (csi16 &)CreateInterface(name, interfaceIndex, maximums[0], maximums[1])) == 0x08001) return 0x08001u;
+      GUI_INTERFACE &curProfile = interfaceProfile[interfaceIndex];
 
-      curElDGS.parentIndex = newParentIndex;
-      curElDGS.atlasIndex  = newAtlasIndex;
+      // Read current counts
+      files.Read(hInterfaceData, &curProfile.vertCount, 4u);
+      // Read input bit patterns and text labels
+      files.Read(hInterfaceData, curProfile.input64, curProfile.inputCount * 64u);
+      files.Read(hInterfaceData, curProfile.inputLabel, curProfile.inputCount * 32u);
+      // Read sub-counts
+      files.Read(hInterfaceData, &newFunctionCount, 4u);
+      files.Read(hInterfaceData, &newSoundBankCount, 2u);
+      files.Read(hInterfaceData, &newAtlasCount, 1u);
+      files.Read(hInterfaceData, &newAlphabetCount, 2u);
+      files.Read(hInterfaceData, &newCBOSCount, 4u);
 
-      files.WriteToFile(fileHandle, &curElDGS, sizeof(GUI_EL_DGS));
-   }
-public:
-   // Returns false if unsuccessful
-   cbool SaveInterface(cwchptrc filename, csi16 interfaceIndex) {
-      cGUI_INTERFACE &curProfile = interfaceProfile[interfaceIndex];
+      // Buffers for translating indices
+      GUI_IO_DATA ioData[2] = { { curProfile.vertCount, newCBOSCount }, { curProfile.vertCount, newCBOSCount } };
 
-      ui32 i, j, k;
-      ui32 lowestVertex      = 0x0FFFFFFFFu;
-      ui32 newVertexCount    = 0;
-      ui32 newParentIndex    = 0;
-      ui32 newFunctionIndex  = 0;
-      ui32 newCBOSIndex      = 0;
-      ui16 newSoundBankIndex = 0;
-      ui8  newAtlasIndex     = 0;
-
-      // Interface slot is empty?
-      if(curProfile.vertCount == 0) return false;
-
-      cHANDLE hInterfaceData = files.OpenFileForWriting(filename, stGUIDir);
-      if(!hInterfaceData) return false;
-
-      // Write tag line: 2[Engine].Interface.2[Format version]1[Compression method]
-      files.WriteToFile(hInterfaceData, "AE.Interface.01u\0", 17u);
-      // Write current & max counts
-      files.WriteToFile(hInterfaceData, &curProfile.maxVertices, 8u);
-      // Write input bit patterns and text labels
-      files.WriteToFile(hInterfaceData, curProfile.input64, curProfile.inputCount * 4u);
-      files.WriteToFile(hInterfaceData, curProfile.inputLabels, curProfile.inputCount * 32u);
-      // Count unique .soundBankIndex, .function, .atlasIndex, and text blocks entries
-      for(i = 0; i < curProfile.vertCount; ++i) newVertexCount += element[curProfile.vertex[i]].vertexCount[0]; // Total vertex count
-      GUI_IO_DATA ioData(curProfile.vertCount, newVertexCount);
-      // Discover all unique references for .soundBankIndex, .function, .atlasIndex, and text blocks
+      for(i = 0; i < newFunctionCount; ++i) { // Read & identify function names
+         files.Read(hInterfaceData, &ioData[0].function[i], 4u);
+         files.ReadLine(hInterfaceData, temp.st);
+         for(j = 0; (j < uiFunctions) && strcmp(temp.st, funcLib[j].label); ++j);
+         if(j < uiFunctions) ioData[1].function[i] = j;
+         else ioData[1].function[i] = 0;
+      }
+      for(i = 0; i < newSoundBankCount; ++i) { // Read & identify sound bank names
+         files.Read(hInterfaceData, &ioData[0].soundBank[i], 2u);
+         files.ReadLine(hInterfaceData, temp.st);
+         for(j = 0; (j < soundLib.bankCount) && strcmp(temp.st, soundLib.bank[j].label); ++j);
+         if(j < soundLib.bankCount) ioData[1].soundBank[i] = j;
+         else ioData[1].soundBank[i] = 0;
+      }
+      for(i = 0; i < newSoundBankCount; ++i) { // Read & identify atlas names
+         files.Read(hInterfaceData, &ioData[0].atlas[i], 1u);
+         files.ReadWideLine(hInterfaceData, temp.wst);
+         for(j = 0; (j < uiAtlas) && wcscmp(temp.wst, stAtlas[j]); ++j);
+         if(j < uiAtlas) ioData[1].atlas[i] = j;
+         else
+            if(wcscmp(temp.wst, wstNone)) ioData[1].atlas[i] = 0;
+            else ioData[1].atlas[i] = 255u;
+      }
+      for(i = 0; i < newAlphabetCount; ++i) { // Read & identify alphabet names
+         files.Read(hInterfaceData, &ioData[0].alphabet[i], 2u);
+         files.ReadLine(hInterfaceData, temp.st);
+         for(j = 0; (j < uiLanguages) && strcmp(temp.st, stLanguage[j]); ++j);
+         if(j < uiLanguages) ioData[1].alphabet[i] = j;
+         else ioData[1].alphabet[i] = 0;
+      }
+      for(i = 0; i < newCBOSCount; ++i) { // Add text blocks to master text buffer
+         files.Read(hInterfaceData, &ioData[0].charBankOS[i], 4u);
+         files.Read(hInterfaceData, &textBuffer[siTextBankOS], 32u);
+         ioData[1].charBankOS[i] = siTextBankOS >> 4;
+         siTextBankOS += 32;
+      }
+      // Read elements
+      declare1d16(ui32, parentList, curProfile.vertCount);
+      ui32 parents = 0;
       for(i = 0; i < curProfile.vertCount; ++i) {
-         cGUI_ELEMENT &curElement = element[curProfile.vertex[i]];
-         for(j = 0; (j < newSoundBankIndex) && (ioData.soundBank[j] != curElement.soundBankIndex); ++j);
-         if(j >= newSoundBankIndex) ioData.soundBank[newSoundBankIndex++] = curElement.soundBankIndex;
-         for(j = 0; j < 6u; ++j) {
-            for(k = 0; (k < newFunctionIndex) && (ioData.function[k] != curElement.function[j]); ++k);
-            if(k >= newFunctionIndex) ioData.function[newFunctionIndex++] = curElement.function[j];
-         }
-         for(j = 0; j < curElement.vertexCount[0]; ++j) {
-            for(k = 0; (k < newAtlasIndex) && (ioData.atlas[k] != element_dgs[curElement.vertexIndex + j].atlasIndex); ++k);
-            if(k >= newAtlasIndex) ioData.atlas[newAtlasIndex++] = element_dgs[curElement.vertexIndex + j].atlasIndex;
-         }
-         if(curElement.elementType == aet_text)
-            for(j = 0; j < curElement.vertexCount[0]; ++j) {
-               for(k = 0; (k < newCBOSIndex) && (ioData.charBankOS[k] != (element_dgs[curElement.vertexIndex + j].charBankOS & 0x03FFFFFFu)); ++k);
-               if(k >= newCBOSIndex) ioData.charBankOS[newCBOSIndex++] = element_dgs[curElement.vertexIndex + j].charBankOS & 0x03FFFFFFu;
+         GUI_ELEMENT &curElement = element[CreateVoid()];
+         files.Read(hInterfaceData, &curElement.coords, 32u);     // Coordinates
+         files.Read(hInterfaceData, &curElement.vertexIndex, 8u); // Vertex indices
+         files.Read(hInterfaceData, &curElement.bitField, 2u);    // Flags
+         files.Read(hInterfaceData, curElement.ptrVar, 16u);      // Scratch space
+
+         cui32 firstVert = CreateVertices(curElement.vertexCount[1]);
+         curElement.vertexIndex = firstVert;
+
+         switch(curElement.elementType & 0x0Fu) {
+         case aet_text:
+            files.Read(hInterfaceData, &curElement.parent, 4u); // Parent element
+            files.Read(hInterfaceData, &curElement.charCount, 4u); // Chararacter count
+            for(j = firstVert; j < ui32(firstVert + curElement.vertexCount[0]); ++j) {
+               files.Read(hInterfaceData, &element_dgs[j], sizeof(GUI_EL_DGS));
+               element_dgs[j].parentIndex = j;
             }
-         if(curElement.elementType == aet_textArray) {
-            ui32 l;
+            if(curElement.parent != 0x0FFFFFFFFu) parentList[parents++] = curElement.parent;
+            break;
+         case aet_textArray:
+            files.Read(hInterfaceData, &curElement.textCount, 4u); // Entry count & active
+            curElement.textArray = (ui32ptr)malloc16(sizeof(ui32ptr) * curElement.textCount);
+            files.Write(hInterfaceData, curElement.textArray, ui32(curElement.textCount) << 2u);
             for(j = 0; j < (ui32)curElement.textCount; ++j) {
                cui32 curVertex = curElement.textArray[j];
                cui32 endVertex = curVertex + (element_dgs[curVertex].sibling & 0x07FFFu);
-               for(k = curVertex; k <= endVertex; ++k)
-                  for(l = 0; (l < newCBOSIndex) && (ioData.charBankOS[l] != (element_dgs[k].charBankOS & 0x03FFFFFFu)); ++k)
-                     if(l >= newCBOSIndex) ioData.charBankOS[newCBOSIndex++] = element_dgs[k].charBankOS & 0x03FFFFFFu;
+               for(ui32 k = curVertex; k <= endVertex; ++k) {
+                  files.Read(hInterfaceData, &element_dgs[k], sizeof(GUI_EL_DGS));
+                  element_dgs[k].parentIndex = k;
+               }
             }
-         }
-      }
-      ui32 fileOffset = files.GetFilePosition(hInterfaceData);
-      files.WriteToFile(hInterfaceData, &null64, 11u); // Reserve space for soundBank, atlas, function and text block counts
-      // Write all .soundBank text names and references
-      for(i = 0; i < newSoundBankIndex; ++i) {
-         files.WriteToFile(hInterfaceData, &i, 2u);
-         files.WriteToFile(hInterfaceData, soundLibrary[ioData.soundBank[i]].label, ui32(strlen(soundLibrary[ioData.soundBank[i]].label) + 1u));
-      }
-///--- Redo...
-      // Write .atlasIndex filenames and references
-      for(i = 0; i < curProfile.vertCount; ++i) {
-         cGUI_ELEMENT &curElement = element[curProfile.vertex[i]];
-         for(j = curElement.vertexIndex; j < ui32(curElement.vertexCount[0] + curElement.vertexIndex); ++j) {
-            cui32 curAtlasIndex = (element_dgs[j].atlasIndex - TEX_REG_OS_GUI) >> 1u;
-            if(curAtlasIndex != 0x0FFu)
-               if(ioData.atlas[curAtlasIndex] == 0x0FFu) {
-                  files.WriteToFile(hInterfaceData, stAtlas[curAtlasIndex], ui32((wcslen(stAtlas[curAtlasIndex]) + 1u) << 1u));
-                  files.WriteToFile(hInterfaceData, &newAtlasIndex, 1u);
-                  ioData.atlas[curAtlasIndex] = newAtlasIndex++;
-               }
-         }
-      }
-      // Write all .function text names
-      for(i = 0; i < curProfile.vertCount; ++i) {
-         cGUI_ELEMENT &curElement = element[curProfile.vertex[i]];
-         for(j = 0; j < 6; ++j)
-            if(curElement.function[j])
-               if(ioData.function[curElement.function[j]] == 0x0FFFFFFFFu) {
-                  files.WriteToFile(hInterfaceData, funcLib[curElement.function[j]].label, ui32(strlen(funcLib[curElement.function[j]].label) + 1u));
-                  files.WriteToFile(hInterfaceData, &newFunctionIndex, 4u);
-                  ioData.function[curElement.function[j]] = newFunctionIndex++;
-               }
-      }
-///--- ...Redo
-      // Write all text blocks
-///--- To do...
-      fileOffset = files.SetFilePosition(hInterfaceData, fileOffset, file_current);
-      files.WriteToFile(hInterfaceData, &newSoundBankIndex, 2u);
-      files.WriteToFile(hInterfaceData, &newAtlasIndex, 1u);
-      files.WriteToFile(hInterfaceData, &newFunctionIndex, 4u);
-      files.WriteToFile(hInterfaceData, &newCBOSIndex, 4u);
-      files.SetFilePosition(hInterfaceData, fileOffset, file_current);
-      // Write elements
-      for(i = 0; i < curProfile.vertCount; ++i) {
-         GUI_ELEMENT curElement = element[curProfile.vertex[i]];
-         curElement.vertexIndex -= (si32)lowestVertex;
-         // Write element data
-         files.WriteToFile(hInterfaceData, &curElement.coords, 32u);     // Coordinates
-         files.WriteToFile(hInterfaceData, &curElement.vertexIndex, 8u); // Vertex indices
-         files.WriteToFile(hInterfaceData, &curElement.bitField, 2u);    // Flags
-         files.WriteToFile(hInterfaceData, curElement.ptrVar, sizeof(ptr[2]));  // Scratch space
-         switch(curElement.elementType & 0x0Fu) {
-         case aet_text:
-            /// List all unique .charBankOS values; write: .charBankOS as idenitifier followed by 32-char text block
-            /// Loop-write vertex data
-//            if(textVertex) { // Write .alphabetIndex filename --- !!! Rewrite to use reference indices !!!
-//               ui32 i = 0;
-//               while((i < uiLanguages) && (curElDGS.alphabetIndex != alphabet[i].pIMMos)) ++i;
-//               files.WriteToFile(fileHandle, stLanguage[i], strlen(stLanguage[i]) + 1u);
-//            }
-
-            break;
-         case aet_textArray:
             break;
          case aet_panel:
          case aet_button:
          case aet_toggle:
          case aet_cursor:
          case aet_dial:
-            WriteVertexData(hInterfaceData, curElement.vertexIndex, newParentIndex++, newAtlasIndex);
+            files.Read(hInterfaceData, &element_dgs[firstVert], sizeof(GUI_EL_DGS));
+            element_dgs[firstVert].parentIndex = firstVert;
             break;
          case aet_scalar:
-            WriteVertexData(hInterfaceData, curElement.vertexIndex, newParentIndex, newAtlasIndex);
-            WriteVertexData(hInterfaceData, curElement.vertexIndex + 1u, newParentIndex, newAtlasIndex);
-            newParentIndex += 2;
+            files.Read(hInterfaceData, &element_dgs[firstVert], sizeof(GUI_EL_DGS) * 2u);
+            element_dgs[firstVert].parentIndex     = firstVert;
+            element_dgs[firstVert + 1].parentIndex = firstVert + 1;
+            break;
+         }
+      }
+      // Create input buffers for text input panels
+      for(i = 0; i < parents; ++i) element[parentList[i]].input = new TEXTBUFFER(element[parentList[i]].vertexCount[1] * 32u, false);
+
+      return (ui16 &)interfaceIndex;
+   }
+
+private:
+   inline void WriteVertexData(cHANDLE fileHandle, cui32 vertexIndex, cui32 parentOffset) const {
+      element_dgs[vertexIndex].parentIndex -= parentOffset;
+      files.Write(fileHandle, &element_dgs[vertexIndex], sizeof(GUI_EL_DGS));
+   }
+public:
+
+   // Returns true if successful
+   cbool SaveInterface(cwchptrc filename, csi16 interfaceIndex) {
+      GUI_INTERFACE &curProfile = interfaceProfile[interfaceIndex];
+
+      ui32 i, j, k, l;
+      ui32 parentOffset      = 0x0FFFFFFFFu;
+      ui32 lowestVertex      = 0x0FFFFFFFFu;
+      ui32 newVertexCount    = 0;
+      ui32 newFunctionIndex  = 0;
+      ui32 newCBOSIndex      = 0;
+      ui16 newSoundBankIndex = 0;
+      ui16 newAlphabetIndex  = 0;
+      ui8  newAtlasIndex     = 0;
+
+      // Interface slot is empty?
+      if(curProfile.vertCount == 0) return false;
+
+      csize_t filenameLength = wcslen(filename);
+      wchptrc filenameWithExt = (wchptr)malloc2(filenameLength * 2u + 14u);
+      wsprintf(filenameWithExt, L"%s.aeuip", filename);
+      cHANDLE hInterfaceData = files.OpenForWriting(filenameWithExt, stGUIDir);
+      mfree1(filenameWithExt);
+      if(!hInterfaceData) return false;
+
+      // Write tag line: 2[Engine].Interface.2[Format version]1[Compression method]
+      files.Write(hInterfaceData, "AE.Interface.01u\0", 17u);
+      // Write max & current counts
+      files.Write(hInterfaceData, &curProfile.maxVertices, 8u);
+      // Write name
+      cui32 nameLength = ui32(strlen(curProfile.label) + 1u);
+      files.Write(hInterfaceData, &nameLength, 4u);
+      files.Write(hInterfaceData, curProfile.label, nameLength);
+      // Write input bit patterns and text labels
+      files.Write(hInterfaceData, curProfile.inputs, curProfile.inputCount * 64u);
+      files.Write(hInterfaceData, curProfile.inputLabel, curProfile.inputCount * 32u);
+
+      // Total vertex count
+      for(i = 0; i < curProfile.vertCount; ++i) newVertexCount += element[curProfile.vertex[i]].vertexCount[0];
+      GUI_IO_DATA ioData = { curProfile.vertCount, newVertexCount };
+
+      // Discover lowest .parentIndex, and all unique references for .soundBankIndex, .function, .atlasIndex, .alphabetIndex, and text blocks
+      for(i = 0; i < curProfile.vertCount; ++i) {
+         cGUI_ELEMENT &curElement = element[curProfile.vertex[i]];
+         // Discover lowest .parentIndex
+         if(curElement.elementType == aet_textArray) {
+            for(j = 0; j < (ui32)curElement.textCount; ++j) {
+               cui32 curVertex = curElement.textArray[j];
+               cui32 endVertex = curVertex + (element_dgs[curVertex].sibling & 0x07FFFu);
+               for(k = curVertex; k <= endVertex; ++k)
+                  if(parentOffset > element_dgs[k].parentIndex) parentOffset = element_dgs[k].parentIndex;
+            }
+         } else
+            for(j = curElement.vertexIndex; j < ui32(curElement.vertexIndex + curElement.vertexCount[0]); ++j)
+               if(parentOffset > element_dgs[j].parentIndex) parentOffset = element_dgs[j].parentIndex;
+         // Discover unique .function values
+         for(j = 0; j < 6u; ++j) {
+            for(k = 0; (k < newFunctionIndex) && (ioData.function[k] != curElement.function[j]); ++k);
+            if(k >= newFunctionIndex) ioData.function[newFunctionIndex++] = curElement.function[j];
+         }
+         // Discover unique .soundBankIndex values
+         for(j = 0; (j < newSoundBankIndex) && (ioData.soundBank[j] != curElement.soundBankIndex); ++j);
+         if(j >= newSoundBankIndex) ioData.soundBank[newSoundBankIndex++] = curElement.soundBankIndex;
+         // Discover unique .atlasIndex values
+         for(j = 0; j < curElement.vertexCount[0]; ++j) {
+            for(k = 0; (k < newAtlasIndex) && (ioData.atlas[k] != element_dgs[curElement.vertexIndex + j].atlasIndex); ++k);
+            if(k >= newAtlasIndex) ioData.atlas[newAtlasIndex++] = element_dgs[curElement.vertexIndex + j].atlasIndex;
+         }
+         // Discover unique .alphabetIndex values
+         if((curElement.elementType == aet_text) || (curElement.elementType == aet_textArray))
+            for(j = 0; j < curElement.vertexCount[0]; ++j) {
+               for(k = 0; (k < uiLanguages) && (alphabet[k].pIMMos != element_dgs[curElement.vertexIndex + j].alphabetIndex); ++k);
+               for(l = 0; l < newAlphabetIndex && (ioData.alphabet[l] != k); ++l);
+               if(l >= newAlphabetIndex) ioData.alphabet[newAlphabetIndex++] = k;
+            }
+         // Discover unique .charBankOS values
+         if(curElement.elementType == aet_text)
+            for(j = curElement.vertexIndex; j < ui32(curElement.vertexIndex + curElement.vertexCount[0]); ++j) {
+               for(k = 0; (k < newCBOSIndex) && (ioData.charBankOS[k] != (element_dgs[j].charBankOS & 0x03FFFFFFu)); ++k);
+               if(k >= newCBOSIndex) ioData.charBankOS[newCBOSIndex++] = element_dgs[j].charBankOS & 0x03FFFFFFu;
+            }
+         if(curElement.elementType == aet_textArray) {
+            for(j = 0; j < (ui32)curElement.textCount; ++j) {
+               cui32 curVertex = curElement.textArray[j];
+               cui32 endVertex = curVertex + (element_dgs[curVertex].sibling & 0x07FFFu);
+               for(k = curVertex; k <= endVertex; ++k) {
+                  for(l = 0; (l < newCBOSIndex) && (ioData.charBankOS[l] != (element_dgs[k].charBankOS & 0x03FFFFFFu)); ++l);
+                  if(l >= newCBOSIndex) ioData.charBankOS[newCBOSIndex++] = element_dgs[k].charBankOS & 0x03FFFFFFu;
+               }
+            }
+         }
+      }
+      for(j = 0; j < newAtlasIndex; ++j) ioData.atlas[j] = (ioData.atlas[j] - TEX_REG_OS_GUI) >> 1u;
+      // Reserve space for .function, .soundBankIndex, .atlasIndex, .alphabetIndex, .charBankOS counts
+      ui32 fileOffset = files.GetPosition(hInterfaceData);
+      files.Write(hInterfaceData, &null128, 13u);
+      // Write all referenced function text names
+      for(i = 0; i < newFunctionIndex; ++i) {
+         files.Write(hInterfaceData, &ioData.function[i], 4u);
+         if(funcLib[ioData.function[i]].label)
+            files.Write(hInterfaceData, funcLib[ioData.function[i]].label, ui32(strlen(funcLib[ioData.function[i]].label) + 1u));
+         else
+            files.Write(hInterfaceData, &null64, 1u);
+      }
+      // Write all referenced sound bank text names
+      for(i = 0; i < newSoundBankIndex; ++i) {
+         files.Write(hInterfaceData, &ioData.soundBank[i], 2u);
+         if(soundLib.bank[ioData.soundBank[i]].label)
+            files.Write(hInterfaceData, soundLib.bank[ioData.soundBank[i]].label, ui32(strlen(soundLib.bank[ioData.soundBank[i]].label) + 1u));
+         else
+            files.Write(hInterfaceData, &null64, 1u);
+      }
+      // Write referenced atlas filenames
+      for(i = 0; i < newAtlasIndex; ++i) {
+         files.Write(hInterfaceData, &ioData.atlas[i], 1u);
+         if(ioData.atlas[i] > TEX_REG_MAX_GUI)
+            files.Write(hInterfaceData, wstNone, ui32(wcslen(wstNone) * 2u + 2u));
+         else if(stAtlas[ioData.atlas[i]])
+            files.Write(hInterfaceData, stAtlas[ioData.atlas[i]], ui32(wcslen(stAtlas[ioData.atlas[i]]) * 2u + 2u));
+         else
+            files.Write(hInterfaceData, &null64, 2u);
+      }
+      // Write all referenced alphabet names
+      for(i = 0; i < newAlphabetIndex; ++i) {
+         files.Write(hInterfaceData, &ioData.alphabet[i], 2u);
+         if(alphabet[ioData.alphabet[i]].stLanguage)
+            files.Write(hInterfaceData, alphabet[ioData.alphabet[i]].stLanguage, ui32(strlen(alphabet[ioData.alphabet[i]].stLanguage) + 1u));
+         else
+            files.Write(hInterfaceData, &null64, 1u);
+      }
+      // Write all text blocks
+      for(i = 0; i < newCBOSIndex; ++i) {
+         files.Write(hInterfaceData, &ioData.charBankOS[i], 4u);
+         files.Write(hInterfaceData, textBuffer + (ioData.charBankOS[i] << 4u), 32u);
+      }
+      // Write counts
+      fileOffset = files.GetPosition(hInterfaceData);
+      files.SetPosition(hInterfaceData, fileOffset, file_begin);
+      files.Write(hInterfaceData, &newFunctionIndex, 4u);
+      files.Write(hInterfaceData, &newSoundBankIndex, 2u);
+      files.Write(hInterfaceData, &newAtlasIndex, 1u);
+      files.Write(hInterfaceData, &newAlphabetIndex, 2u);
+      files.Write(hInterfaceData, &newCBOSIndex, 4u);
+      files.SetPosition(hInterfaceData, fileOffset, file_begin);
+      // Write elements
+      for(i = 0; i < curProfile.vertCount; ++i) {
+         GUI_ELEMENT curElement = element[curProfile.vertex[i]];
+         curElement.vertexIndex -= (si32)lowestVertex;
+         // Write element data
+         files.Write(hInterfaceData, &curElement.coords, 32u);     // Coordinates
+         files.Write(hInterfaceData, &curElement.vertexIndex, 8u); // Vertex indices
+         files.Write(hInterfaceData, &curElement.bitField, 2u);    // Flags
+         files.Write(hInterfaceData, curElement.ptrVar, 16u);      // Scratch space
+         switch(curElement.elementType & 0x0Fu) {
+         case aet_text:
+            if(curElement.parent != 0x0FFFFFFFFu) curElement.parent -= parentOffset;
+            files.Write(hInterfaceData, &curElement.parent, 4u); // Parent element
+            files.Write(hInterfaceData, &curElement.charCount, 4u); // Chararacter count
+            for(j = curElement.vertexIndex; j < ui32(curElement.vertexIndex + curElement.vertexCount[0]); ++j)
+               WriteVertexData(hInterfaceData, curElement.vertexIndex + j, parentOffset);
+            break;
+         case aet_textArray:
+            files.Write(hInterfaceData, &curElement.textCount, 4u); // Entry count & active
+            files.Write(hInterfaceData, curElement.textArray, ui32(curElement.textCount) << 2u);
+            for(j = 0; j < (ui32)curElement.textCount; ++j) {
+               cui32 curVertex = curElement.textArray[j];
+               cui32 endVertex = curVertex + (element_dgs[curVertex].sibling & 0x07FFFu);
+               for(k = curVertex; k <= endVertex; ++k)
+                  WriteVertexData(hInterfaceData, k, parentOffset);
+            }
+            break;
+         case aet_panel:
+         case aet_button:
+         case aet_toggle:
+         case aet_cursor:
+         case aet_dial:
+            WriteVertexData(hInterfaceData, curElement.vertexIndex, parentOffset);
+            break;
+         case aet_scalar:
+            WriteVertexData(hInterfaceData, curElement.vertexIndex, parentOffset);
+            WriteVertexData(hInterfaceData, curElement.vertexIndex + 1u, parentOffset);
             break;
          }
       }
 
       return true;
+   }
+
+   // Returns index of first interface with .label that matches name
+   cui16 FindInterface(chptrc name) const {
+      ui16 i;
+      for(i = 0; (strcmp(name, interfaceProfile[i].label)) && (i < (ui16 &)siInterfaces); ++i);
+      return i;
    }
 
    cbool DestroyInterface(csi16 interfaceIndex) { // Returns false if interface slot is empty
@@ -1397,8 +1564,58 @@ public:
       return true;
    }
 
+   inline void ClearInterfaceInput(csi16 interfaceIndex, cui16 inputIndex) const {
+#ifdef __AVX512__
+      interfaceProfile[interfaceIndex].input512[inputIndex] = null512;
+#else
+      interfaceProfile[interfaceIndex].input256[inputIndex][0] = null256; interfaceProfile[interfaceIndex].input256[inputIndex][1] = null256;
+#endif
+   }
 
-   cui32 ResizeInterfaceInputs(csi16 interfaceIndex, cVEC4Du8 *inputList, cui16 inputCount, ui16 maxInputs) {
+   // Returns true if inputCount exceeds profile's maximum input count
+   inline cbool SetInterfaceInputCount(csi16 interfaceIndex, cui16 inputCount) const {
+      if(inputCount < interfaceProfile[interfaceIndex].maxInputs) {
+         interfaceProfile[interfaceIndex].inputCount = inputCount;
+         return false;
+      }
+      return true;
+   }
+
+   // Add single input code to an interface input. Pass null to inputName to keep current label
+   inline void AddToInterfaceInput(csi16 interfaceIndex, cui16 inputIndex, cchptrc inputName, AE_INPUTCODE inputCode) const {
+      AddToInterfaceInput(interfaceIndex, inputIndex, inputName, 1u, inputCode);
+   }
+
+   // Add input codes to an interface input. Pass null to inputName to keep current label
+   void AddToInterfaceInput(csi16 interfaceIndex, cui16 inputIndex, cchptrc inputName, cui16 numInputCodes ...) const {
+      va_list val; va_start(val, numInputCodes);
+      for(ui16 i = 0, inputCode = va_arg(val, cui16); i < numInputCodes; ++i, inputCode = va_arg(val, cui16)) {
+         interfaceProfile[interfaceIndex].input64[inputIndex][inputCode >> 6u] |= 0x01ull << (inputCode & 0x03Full);
+         if(inputName) strncpy(interfaceProfile[interfaceIndex].inputLabel[inputIndex], inputName, 31u);
+      }
+      va_end(val);
+      ++interfaceProfile[interfaceIndex].inputCount;
+   }
+
+   // Set single input code for an interface input. Pass null to inputName to keep current label
+   inline void SetInterfaceInput(csi16 interfaceIndex, cui16 inputIndex, cchptrc inputName, AE_INPUTCODE inputCode) const {
+      SetInterfaceInput(interfaceIndex, inputIndex, inputName, 1u, inputCode);
+   }
+
+   // Set input codes for an interface input. Pass null to inputName to keep current label
+   void SetInterfaceInput(csi16 interfaceIndex, cui16 inputIndex, cchptrc inputName, cui16 numInputCodes ...) const {
+      va_list val; va_start(val, numInputCodes);
+      ClearInterfaceInput(interfaceIndex, inputIndex);
+      GUI_INTERFACE &curProfile = interfaceProfile[interfaceIndex];
+      for(ui16 i = 0, inputCode = va_arg(val, cui16); i < numInputCodes; ++i, inputCode = va_arg(val, cui16)) {
+         curProfile.input64[inputIndex][inputCode >> 6u] |= 0x01ull << (inputCode & 0x03Full);
+         if(inputName) strncpy(curProfile.inputLabel[inputIndex], inputName, 31u);
+      }
+      va_end(val);
+   }
+
+   ///--- Move into GUI_INTERFACE struct
+   cui16 ResizeInterfaceInputs(csi16 interfaceIndex, cVEC4Du8 *inputList, cui16 inputCount, ui16 maxInputs) {
 ///--- To do...
 
       return 0;
@@ -1409,7 +1626,6 @@ public:
          interfaceProfile[interfaceIndex].vertex[interfaceProfile[interfaceIndex].vertCount++] = elementIndex;
          RegenVertexBuffer(interfaceIndex, aev_maximum);
       }
-
       // Return remaining vertex indices
       return interfaceProfile[interfaceIndex].maxVertices - interfaceProfile[interfaceIndex].vertCount;
    }
@@ -1417,13 +1633,10 @@ public:
    cui32 AddElementToInterface(cVEC2Du32 elementIndex, csi16 interfaceIndex) const {
       GUI_INTERFACE &curInterface = interfaceProfile[interfaceIndex];
 
-      if(elementIndex.x < 0x080000000)
-         interfaceProfile[interfaceIndex].vertex[interfaceProfile[interfaceIndex].vertCount++] = elementIndex.x;
-      if(elementIndex.y < 0x080000000)
-         interfaceProfile[interfaceIndex].vertex[interfaceProfile[interfaceIndex].vertCount++] = elementIndex.y;
+      if(elementIndex.x < 0x080000000) interfaceProfile[interfaceIndex].vertex[interfaceProfile[interfaceIndex].vertCount++] = elementIndex.x;
+      if(elementIndex.y < 0x080000000) interfaceProfile[interfaceIndex].vertex[interfaceProfile[interfaceIndex].vertCount++] = elementIndex.y;
       if((elementIndex.x < 0x080000000) || (elementIndex.y < 0x080000000))
          RegenVertexBuffer(interfaceIndex, aev_maximum);
-
       // Return remaining vertex indices
       return interfaceProfile[interfaceIndex].maxVertices - interfaceProfile[interfaceIndex].vertCount;
    }
@@ -1431,49 +1644,63 @@ public:
    cui32 AddElementToInterface(cVEC3Du32 elementIndex, csi16 interfaceIndex) const {
       GUI_INTERFACE &curInterface = interfaceProfile[interfaceIndex];
 
-      if(elementIndex.x < 0x080000000)
-         interfaceProfile[interfaceIndex].vertex[interfaceProfile[interfaceIndex].vertCount++] = elementIndex.x;
-      if(elementIndex.y < 0x080000000)
-         interfaceProfile[interfaceIndex].vertex[interfaceProfile[interfaceIndex].vertCount++] = elementIndex.y;
-      if(elementIndex.z < 0x080000000)
-         interfaceProfile[interfaceIndex].vertex[interfaceProfile[interfaceIndex].vertCount++] = elementIndex.z;
+      if(elementIndex.x < 0x080000000) interfaceProfile[interfaceIndex].vertex[interfaceProfile[interfaceIndex].vertCount++] = elementIndex.x;
+      if(elementIndex.y < 0x080000000) interfaceProfile[interfaceIndex].vertex[interfaceProfile[interfaceIndex].vertCount++] = elementIndex.y;
+      if(elementIndex.z < 0x080000000) interfaceProfile[interfaceIndex].vertex[interfaceProfile[interfaceIndex].vertCount++] = elementIndex.z;
       if((elementIndex.x < 0x080000000) || (elementIndex.y < 0x080000000) || (elementIndex.z < 0x080000000))
          RegenVertexBuffer(interfaceIndex, aev_maximum);
-
       // Return remaining vertex indices
       return interfaceProfile[interfaceIndex].maxVertices - interfaceProfile[interfaceIndex].vertCount;
    }
 
+   // Direct access to element's text in the master character buffer. Returns 0 if element type is not text
+   inline chptrc CharBuffer(cui32 elementIndex) const {
+      return (element[elementIndex].elementType == aet_text ? &textBuffer[element_dgs[element[elementIndex].vertexIndex].charBankOS << 4u] : 0u);
+   }
+
+   // Direct access to element's text array entry in the master character buffer. Returns 0 if element type is not text array
+   inline chptrc CharBuffer(cui32 elementIndex, cui16 textArrayEntry) const {
+      return (element[elementIndex].elementType == aet_textArray ? &textBuffer[element_dgs[element[elementIndex].textArray[textArrayEntry]].charBankOS << 4u] : 0u);
+   }
+
+   // Returns number of characters in string, or 0 if element type is not text
+   inline cui32 CopyCharBuffer(cui32 elementIndex, chptrc dest) const {
+      if(element[elementIndex].elementType != aet_text) return 0;
+      strncpy(dest, &textBuffer[element_dgs[element[elementIndex].vertexIndex].charBankOS << 4u], element[elementIndex].charCount + 1u);
+      dest[element[elementIndex].charCount] = 0;
+      return element[elementIndex].charCount;
+   }
+
+   // Returns number of characters in string, or 0 if element type is not text array
+   inline cui32 CopyCharBuffer(cui32 elementIndex, cui16 textArrayEntry, chptrc dest) const {
+      if(element[elementIndex].elementType != aet_textArray) return 0;
+      csize_t stringLength = strlen(&textBuffer[element_dgs[element[elementIndex].textArray[textArrayEntry]].charBankOS << 4u]); ///--- Add char counts of vertices instead
+      strncpy(dest, &textBuffer[element_dgs[element[elementIndex].textArray[textArrayEntry]].charBankOS << 4u], stringLength);
+      dest[stringLength] = 0;
+      return ui32(stringLength);
+   }
+
    inline void SetTextArray(cVEC2Du32 elementIndex, si16 value) {
       cGUI_ELEMENT &curElement = element[elementIndex.y];
-
       if(curElement.elementType != aet_textArray) return;
-
       element[elementIndex.y].textEntry = value;
-
       for(ui32 i = 0; i < curElement.vertexCount[1]; ++i)
          element_dgs[curElement.textArray[0] + i].viewPos.y = fl32(value++);
    }
 
    inline void SetTextArray(cVEC2Du32 elementIndex, fl32 value) {
       cGUI_ELEMENT &curElement = element[elementIndex.y];
-
       if(curElement.elementType != aet_textArray) return;
-
       element[elementIndex.y].textEntry = si16(value);
-
       for(ui32 i = 0; i < curElement.vertexCount[1]; ++i)
          element_dgs[curElement.textArray[0] + i].viewPos.y = value++;
    }
 
    inline void OffsetTextArray(cVEC2Du32 elementIndex, cfl32 offset) {
       cGUI_ELEMENT &curElement = element[elementIndex.y];
-
       if(curElement.elementType != aet_textArray) return;
-
       for(ui32 i = 0; i < curElement.vertexCount[1]; ++i)
          element_dgs[curElement.textArray[0] + i].viewPos.y += offset;
-
       element[elementIndex.y].textEntry = si16(element_dgs[curElement.textArray[0]].viewPos.y);
    }
 
@@ -1665,13 +1892,12 @@ public:
       VEC2Df      adjPos;
       GUI_INDICES indices[8];
       si32        siElement = -1;
-      si16        i = 0;
-      si16        j = 0;
+      si16        i = 0, j = 0;
 
       for(; i < interfaceProfile[interfaceIndex].vertCount; ++i, j = i & 0x07) {
          csi32 index = interfaceProfile[interfaceIndex].vertex[i];
          // If element inactive
-         if(!(element[index].stateBits & 0x080)) continue;
+         if(!(element[index].stateBits & UIE_ACTIVE)) continue;
 
          indices[j].element = index;
          indices[j].vertex = element[index].vertexIndex;
@@ -1701,7 +1927,7 @@ public:
          if(adjPos.x > coords.x1 && adjPos.y > coords.y1 && adjPos.x < coords.x2 && adjPos.y < coords.y2) {
             siElement = index;
             // onHover
-            if(!(element[index].stateBits & 0x01) && element[index].function[0])
+            if(!(element[index].stateBits & UIE_BUSYON) && element[index].function[0])
                funcLib[element[index].func.hover[0]].func1a(indices[j].data);
             // onActivate for button 0
             if(ctrlVars.imm.k[16] & 0x01 && element[index].function[2]) {
@@ -1715,7 +1941,7 @@ public:
             }
          } else
             // offHover
-            if(!(element[index].stateBits & 0x02) && element[index].function[1])
+            if(!(element[index].stateBits & UIE_BUSYOFF) && element[index].function[1])
                funcLib[element[index].func.hover[1]].func1a(indices[j].data);
          // offActivate for button 0
          if(!(ctrlVars.imm.k[16] & 0x01) && element[index].function[3]) {
@@ -1751,7 +1977,7 @@ public:
          csi32 index = interfaceProfile[interfaceIndex].vertex[i];
 
          // If element inactive
-         if(!(element[index].stateBits & 0x080)) continue;
+         if(!(element[index].stateBits & UIE_ACTIVE)) continue;
 
          const GUI_EL_DGS &curElVert = element_dgs[element[index].vertexIndex + ((element[index].elementType & 0x080) >> 7)];
          const SSE4Df32    coords    = element[index].activeCoords;
@@ -1783,11 +2009,11 @@ public:
             activeElement.ymm.m256i_i32[0] = index;
 
             // onHover
-            if(!(element[index].stateBits & 0x01) && element[index].function[0])
+            if(!(element[index].stateBits & UIE_BUSYON) && element[index].function[0])
                funcLib[element[index].func.hover[0]].func1a(indices[j].data);
 
             // onActivate for inputMask[0]
-            if(ipd.input.ui >= 1 && !AllFalse(ctrlVars.imm.button, ipd.inputMask[0])) {
+            if(ipd.input.ui >= 1 && !AllFalse(ctrlVars.imm.b512, ipd.inputMask512[0])) {
                activeElement.ymm.m256i_i32[1] = index;
                if(element[index].function[2]) funcLib[element[index].func.activate0[0]].func1a(indices[j].data);
                for(funcCount = 0; funcCount < ipd.funcCount[0].x; funcCount++, nextFuncIndex++)
@@ -1795,7 +2021,7 @@ public:
             }
 
             // onActivate for inputMask[1]
-            if(ipd.input.ui >= 2 && !AllFalse(ctrlVars.imm.button, ipd.inputMask[1])) {
+            if(ipd.input.ui >= 2 && !AllFalse(ctrlVars.imm.b512, ipd.inputMask512[1])) {
                activeElement.ymm.m256i_i32[2] = index;
                if(element[index].function[4]) funcLib[element[index].func.activate1[0]].func1a(indices[j].data);
                for(funcCount = 0; funcCount < ipd.funcCount[1].x; funcCount++, nextFuncIndex++)
@@ -1804,7 +2030,7 @@ public:
 
             // onActivate for inputMask[2~]
             for(ui8 imCount = 2; imCount < ipd.input.ui; imCount++) {
-               if(!AllFalse(ctrlVars.imm.button, ipd.inputMask[imCount])) {
+               if(!AllFalse(ctrlVars.imm.b512, ipd.inputMask512[imCount])) {
                   if(imCount < 7) activeElement.ymm.m256i_i32[imCount + 1] = index;
                   for(funcCount = 0; funcCount < ipd.funcCount[imCount].x; funcCount++, nextFuncIndex++)
                      ipd.function[nextFuncIndex](indices[j].data);
@@ -1812,11 +2038,11 @@ public:
             }
          } else
             // offHover
-            if(!(element[index].stateBits & 0x02) && element[index].function[1])
+            if(!(element[index].stateBits & UIE_BUSYOFF) && element[index].function[1])
                funcLib[element[index].func.hover[1]].func1a(indices[j].data);
 
          // offActivate for inputMask[0]
-         if(ipd.input.ui >= 1 && AllFalse(ctrlVars.imm.button, ipd.inputMask[0])) {
+         if(ipd.input.ui >= 1 && AllFalse(ctrlVars.imm.b512, ipd.inputMask512[0])) {
             activeElement.ymm.m256i_i32[0] = -1;
             if(element[index].function[3]) funcLib[element[index].func.activate0[1]].func1a(indices[j].data);
             for(funcCount = 0; funcCount < ipd.funcCount[0].y; funcCount++, nextFuncIndex++)
@@ -1824,7 +2050,7 @@ public:
          }
 
          // offActivate for inputMask[1]
-         if(ipd.input.ui >= 2 && AllFalse(ctrlVars.imm.button, ipd.inputMask[1])) {
+         if(ipd.input.ui >= 2 && AllFalse(ctrlVars.imm.b512, ipd.inputMask512[1])) {
             activeElement.ymm.m256i_i32[1] = -1;
             if(element[index].function[5]) funcLib[element[index].func.activate1[1]].func1a(indices[j].data);
             for(funcCount = 0; funcCount < ipd.funcCount[1].y; funcCount++, nextFuncIndex++)
@@ -1833,7 +2059,7 @@ public:
 
          // onActivate for inputMask[2~]
          for(ui8 imCount = 2; imCount < ipd.input.ui; imCount++) {
-            if(!AllFalse(ctrlVars.imm.button, ipd.inputMask[imCount])) {
+            if(!AllFalse(ctrlVars.imm.b512, ipd.inputMask512[imCount])) {
                if(imCount < 7) activeElement.ymm.m256i_i32[imCount + 1] = -1;
                for(funcCount = 0; funcCount < ipd.funcCount[imCount].x; funcCount++, nextFuncIndex++)
                   ipd.function[nextFuncIndex](indices[j].data);
@@ -1845,4 +2071,8 @@ public:
    }
 };
 
-typedef const CLASS_GUI cCLASS_GUI;
+typedef const CLASS_GUI         cCLASS_GUI;
+typedef       CLASS_GUI *       CLASS_GUIptr;
+typedef const CLASS_GUI *       cCLASS_GUIptr;
+typedef       CLASS_GUI * const CLASS_GUIptrc;
+typedef const CLASS_GUI * const cCLASS_GUIptrc;

@@ -1,6 +1,6 @@
 /************************************************************
 * File: Input functions.cpp            Created: 2024/04/22 *
-*                                Last modified: 2024/06/06 *
+*                                Last modified: 2024/07/23 *
 *                                                          *
 * Desc:                                                    *
 *                                                          *
@@ -20,8 +20,7 @@
 
 // Scalar inputs to be processed via NULL input pattern in each stage
 void ProcessInputs(INPUT_PROC_DATA &ipd, GLOBALCTRLVARS &ctrlVars) {
-   static ui16 imCount, imLast;
-   static ui8  funcCount;
+   static ui8 imCount, imLast, funcCount;
 
    CLASS_GPU &gpu = *(CLASS_GPU *)ptrLib[1];
    CLASS_GUI &gui = *(CLASS_GUI *)ptrLib[4];
@@ -37,19 +36,19 @@ void ProcessInputs(INPUT_PROC_DATA &ipd, GLOBALCTRLVARS &ctrlVars) {
    (*(CLASS_ENTMAN *)ptrLib[7]).PopulateEntityList(md, ctrlVars.curCoords, gpu.cam.currentCamProj);
 
    // Process global action inputs
-   for(imCount = 0; imCount < imLast; imCount++)
-      if(!AllFalse(ctrlVars.imm.button, ipd.inputMask[imCount]))
+   for(imCount = 0; imCount < imLast; ++imCount)
+      if(!AllFalse(ctrlVars.imm.b512, ipd.inputMask512[imCount]))
          for(funcCount = 0; funcCount < ipd.funcCount[imCount].x; funcCount++)
-            ipd.function[funcCount](NULL);
+            ipd.function[funcCount](0);
 
    // Execute relevant GUI functions
    md.mcrv.activeElements = gui.ProcessInputs(ipd, ctrlVars, (*(GUI_DESC *)ptrLib[15]).interfaceIndex);
 
    // Process world space inputs
-   for(imLast = (imCount += ipd.input.ui) + ipd.input.world; imCount < imLast; imCount++)
-      if(!AllFalse(ctrlVars.imm.button, ipd.inputMask[imCount]))
+   for(imLast = (imCount += ipd.input.ui) + ipd.input.world; imCount < imLast; ++imCount)
+      if(!AllFalse(ctrlVars.imm.b512, ipd.inputMask512[imCount]))
          for(funcCount = 0; funcCount < ipd.funcCount[imCount].x; funcCount++)
-            ipd.function[funcCount](NULL);
+            ipd.function[funcCount](0);
 }
 
 /// !!! For testing purposes !!!
@@ -94,16 +93,16 @@ void ProcessInputs(GLOBALCTRLVARS &ctrlVars) {
       if(ctrlVars.imm.k[16] & 0x08) {
          if(siCell != 0x080000001) {
             mapMan.ModQuadCellDensity(md.mcrv.activeCell, -fElapsedTime, 0, 0);
-            //            gpu.gui.element_dgs[gpu.gui.element[panelElement0].vertexIndex].rotAngle -= fElapsedTime;
-            //            gpu.gui.element_dgs[gpu.gui.element[textInputEl].vertexIndex].rotAngle -= fElapsedTime;
+//            gpu.gui.element_dgs[gpu.gui.element[panelElement0].vertexIndex].rotAngle -= fElapsedTime;
+//            gpu.gui.element_dgs[gpu.gui.element[textInputEl].vertexIndex].rotAngle -= fElapsedTime;
          }
       }
       // Mouse button 4
       if(ctrlVars.imm.k[16] & 0x010) {
          if(siCell != 0x080000001) {
             mapMan.ModQuadCellDensity(md.mcrv.activeCell, fElapsedTime, 0, 0);
-            //            gpu.gui.element_dgs[gpu.gui.element[panelElement0].vertexIndex].rotAngle += fElapsedTime;
-            //            gpu.gui.element_dgs[gpu.gui.element[textInputEl].vertexIndex].rotAngle += fElapsedTime;
+//            gpu.gui.element_dgs[gpu.gui.element[panelElement0].vertexIndex].rotAngle += fElapsedTime;
+//            gpu.gui.element_dgs[gpu.gui.element[textInputEl].vertexIndex].rotAngle += fElapsedTime;
          }
       }
       // Mouse wheel left

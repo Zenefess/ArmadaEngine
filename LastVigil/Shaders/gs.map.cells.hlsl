@@ -35,12 +35,12 @@ struct GOut { // 48 bytes (3 vectors) <-- Add data for texture blending with adj
 #include "common.hlsli"
 #include "gs.mesh displacement functions.hlsli"
 
-cbuffer CB_VIEW : register(b1) { // 160 bytes (10 vectors)
+cbuffer CB_VIEW : register(b1) { // 192 bytes (12 vectors)
    const matrix perspective;  // Perspective transformation
    const matrix orthographic; // Orthographic transformation
    const float2 guiScale;     // Final X & Y scaling factors for GUI
    const uint2  bitField;     // 0-63==???
-   const uint4  RES;
+//   const uint4  RES;
 };
 
 cbuffer CB_MAIN : register(b2) { // 96 bytes (6 vectors)

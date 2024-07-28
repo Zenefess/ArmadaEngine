@@ -1,6 +1,6 @@
 /************************************************************
  * File: DirectInput8 thread.cpp        Created: 2022/11/01 *
- *                                Last modified: 2024/06/24 *
+ *                                Last modified: 2024/07/20 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -30,7 +30,7 @@ BOOL CALLBACK GamepadEnumeration(const DIDEVICEINSTANCE *inst, ptrc con) {
    return DIENUM_CONTINUE;
 }
 
-inline static void ReorderGamepad(cui8 hardwareIndex, cui8 relativeIndex) {
+inline void ReorderGamepad(cui8 hardwareIndex, cui8 relativeIndex) {
    if(padCount <= hardwareIndex) return;
 
    ui64 &gpo = (ui64 &)padOrder;
@@ -38,26 +38,26 @@ inline static void ReorderGamepad(cui8 hardwareIndex, cui8 relativeIndex) {
    gpo = (gpo & (0x0FFFFFFFFFFFFFFFFu >> (64u - (hardwareIndex << 3u)))) | (gpo << ((hardwareIndex << 3u) + 8u)) | (ui64(relativeIndex) << (hardwareIndex << 3u));
 }
 
-inline static void ReorderGamepads(cVEC8Du8 padIndices) { (ui64 &)padOrder = (ui64 &)padIndices; }
+inline void ReorderGamepads(cVEC8Du8 padIndices) { (ui64 &)padOrder = (ui64 &)padIndices; }
 
-inline static void ReorderGamepads(cui8ptr padIndices) { *(ui64ptr)padOrder = *(ui64ptr)padIndices; }
+inline void ReorderGamepads(cui8ptr padIndices) { *(ui64ptr)padOrder = *(ui64ptr)padIndices; }
 
-inline static void ReorderGamepads(cui64 padIndices) { (ui64 &)padOrder = padIndices; }
+inline void ReorderGamepads(cui64 padIndices) { (ui64 &)padOrder = padIndices; }
 
-inline static void ReorderGamepads(cui8 pad0, cui8 pad1, cui8 pad2, cui8 pad3, cui8 pad4, cui8 pad5, cui8 pad6, cui8 pad7) {
+inline void ReorderGamepads(cui8 pad0, cui8 pad1, cui8 pad2, cui8 pad3, cui8 pad4, cui8 pad5, cui8 pad6, cui8 pad7) {
    padOrder[0] = pad0; padOrder[1] = pad1; padOrder[2] = pad2; padOrder[3] = pad3;
    padOrder[4] = pad4; padOrder[5] = pad5; padOrder[6] = pad6; padOrder[7] = pad7;
 }
 
-inline static void SetGamepadShaping(cui8 index, cfl32 shaping) { padShaping._fl[index] = shaping; }
+inline void SetGamepadShaping(cui8 index, cfl32 shaping) { padShaping._fl[index] = shaping; }
 
-inline static void SetGamepadShaping(cVEC8Df padShapes) { Copy8(&padShapes, &padShaping, 32u); }
+inline void SetGamepadShaping(cVEC8Df padShapes) { Copy8(&padShapes, &padShaping, 32u); }
 
-inline static void SetGamepadShaping(cfl32ptr padShapes) { Copy8(padShapes, &padShaping, 32u); }
+inline void SetGamepadShaping(cfl32ptr padShapes) { Copy8(padShapes, &padShaping, 32u); }
 
-inline static void SetGamepadShaping(cAVX8Df32 padShapes) { padShaping = padShapes; }
+inline void SetGamepadShaping(cAVX8Df32 padShapes) { padShaping = padShapes; }
 
-inline static void SetGamepadShaping(cfl32 padShape0, cfl32 padShape1, cfl32 padShape2, cfl32 padShape3, cfl32 padShape4, cfl32 padShape5, cfl32 padShape6, cfl32 padShape7, cfl32 padShape8) {
+inline void SetGamepadShaping(cfl32 padShape0, cfl32 padShape1, cfl32 padShape2, cfl32 padShape3, cfl32 padShape4, cfl32 padShape5, cfl32 padShape6, cfl32 padShape7, cfl32 padShape8) {
    padShaping._fl[0] = padShape0; padShaping._fl[1] = padShape1; padShaping._fl[2] = padShape2; padShaping._fl[3] = padShape3;
    padShaping._fl[4] = padShape4; padShaping._fl[5] = padShape5; padShaping._fl[6] = padShape6; padShaping._fl[7] = padShape7;
 }
@@ -79,16 +79,20 @@ inline static HRESULT PollMouse(void) {
 
    if(FAILED(hr)) do hr = di8Mse->Acquire(); while(hr == DIERR_INPUTLOST);
 
-   Try(stPollMouse, di8Mse->GetDeviceState(sizeof(DIMOUSESTATE38), &mseState[0]), ss_input);
+   Try(stPollMouse, di8Mse->GetDeviceState(sizeof(DIMOUSESTATE38), mseState38), ss_input);
 
    // Process axes
    GetCursorPos((LPPOINT)gcvLocal.curCoord);
    ScreenToClient(hWnd, (LPPOINT)gcvLocal.curCoord);
 
-   gcvLocal.mouse.x = float(mseState[0].x) * mouseScale;
-   gcvLocal.mouse.y = float(mseState[0].y) * mouseScale;
+   gcvLocal.mouse.x = fl32(mseState[0].x) * mouseScale;
+   gcvLocal.mouse.y = fl32(mseState[0].y) * mouseScale;
    gcvLocal.mouse.z += mseState[0].z / 120;
    gcvLocal.mouse.w += mseState[0].w / 120;
+
+   ///--- !!! This isn't assembly; do better !!!
+   cVEC2Du16 &backBufRes = *((VEC2Du16*)ptrLib[2] + 180u); // CLASS_GPU::backBufRes
+   gcvLocal.scrCoord = { fl32(gcv.curCoords.x) / fl32(backBufRes.x), fl32(gcv.curCoords.y) / fl32(backBufRes.y) };
 
    return hr;
 }
@@ -298,8 +302,8 @@ inline static cchar DikToAscii(cui8 dikValue, cbool shift) {
 
 // Returns number of characters [buffer] has been incremented by
 inline static csi16 ModifyCharBuffer(void) {
-   ui64      (&keysI)[4]  = gcvLocal.imm.k64;
-   ui64      (&keysR)[4]  = gcvLocal.rel.k64;
+   ui64      (&keysI)[8]  = gcvLocal.imm.k64;
+   ui64      (&keysR)[8]  = gcvLocal.rel.k64;
    TEXTBUFFER &textBuffer = *activeTextBuffer;
    cui64       byteOffset = RoundUpToNearest16(ui64(textBuffer.source.byteOffset));
 
@@ -448,8 +452,7 @@ Reinitialise_:
 
       // Stall if no state change requested
       if(!(gcv.misc[7] & 0x080)) {
-         _mm_pause(); // To flush branch prediction. Sleep(0 || user defineable)???
-         Sleep(1);
+         Idle(thread.sleepTime[ss_input]);
          continue;
       }
       gcv.misc[7] &= 0x07F;
@@ -467,23 +470,7 @@ Reinitialise_:
       Stream32(&mseState[0], &mseState[1], 32u);
       Stream64(padState[0], padState[1], 768u);
 
-#ifdef __AVX__
-      // Clear button states
-      gcvLocal.imm.key    = _mm256_setzero_si256();
-      gcvLocal.imm.button = _mm256_setzero_si256();
-      gcvLocal.rel.key    = _mm256_setzero_si256();
-      gcvLocal.rel.button = _mm256_setzero_si256();
-#else
-      // Clear button states
-      gcvLocal.imm[0].key    = _mm_setzero_si128();
-      gcvLocal.imm[1].key    = _mm_setzero_si128();
-      gcvLocal.imm[0].button = _mm_setzero_si128();
-      gcvLocal.imm[1].button = _mm_setzero_si128();
-      gcvLocal.rel[0].key    = _mm_setzero_si128();
-      gcvLocal.rel[1].key    = _mm_setzero_si128();
-      gcvLocal.rel[0].button = _mm_setzero_si128();
-      gcvLocal.rel[1].button = _mm_setzero_si128();
-#endif
+      mzero(&gcvLocal.imm.k512, 256u); // Clear all key & button states
 
       PollMouse();
       PollKeyboard();

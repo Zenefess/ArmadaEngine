@@ -1,6 +1,6 @@
 /************************************************************
  * File: GUI structures.h               Created: 2023/01/26 *
- *                                Last modified: 2024/07/05 *
+ *                                Last modified: 2024/07/23 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -13,7 +13,7 @@
 #include "typedefs.h"
 #include "Vector structures.h"
 
-// .align macros
+// Vertex .align flags
 constexpr ui8 UI_ALIGN_C  = 0x0;
 constexpr ui8 UI_ALIGN_L  = 0x01u;
 constexpr ui8 UI_ALIGN_R  = 0x02u;
@@ -26,7 +26,7 @@ constexpr ui8 UI_ALIGN_BR = 0x0Au;
 constexpr ui8 UI_ELLIPSE  = 0x010u;
 constexpr ui8 UI_INVIS    = 0x080u;
 
-// .mods macros
+// Vertex .mods flags
 constexpr ui8 UI_NONE    = 0x0;
 constexpr ui8 UI_ROT     = 0x01u;
 constexpr ui8 UI_TRANS   = 0x02u;
@@ -43,6 +43,21 @@ constexpr ui8 UI_PANEL     = 0x0Fu;
 constexpr ui8 UI_TEXTARRAY = 0x036u;
 constexpr ui8 UI_TEXT      = 0x047u;
 constexpr ui8 UI_INPUT     = 0x026u;
+
+// Element .stateBits flags
+constexpr ui8 UIE_BUSYON  = 0x01u;
+constexpr ui8 UIE_BUSYOFF = 0x02u;
+constexpr ui8 UIE_BUSY0   = 0x04u;
+constexpr ui8 UIE_BUSY1   = 0x08u;
+constexpr ui8 UIE_RES2    = 0x010u;
+constexpr ui8 UIE_RES3    = 0x020u;
+constexpr ui8 UIE_VISIBLE = 0x040u;
+constexpr ui8 UIE_ACTIVE  = 0x080u;
+
+// Profile .transitionMods flags
+constexpr ui8 UIPT_DELAY   = 0x01u;
+constexpr ui8 UIPT_OVERLAY = 0x02u;
+constexpr ui8 UIPT_FADE    = 0x04u;
 
 enum AE_ELEMENT_TYPE : ui8 { aet_text, aet_textArray, aet_panel, aet_button, aet_toggle, aet_scalar, aet_cursor, aet_dial, aet_8, aet_9, aet_10, aet_11, aet_12, aet_13, aet_14, aet_void };
 enum AE_REGEN_VERTS  : ui8 { aev_minimum, aev_maximum };
@@ -108,10 +123,13 @@ al32 struct GUI_EL_DGS { // 96 bytes (24 scalars)   ///--- Rewrite to remove red
       };
       AVX8Df32 coords;
    };
-   fp16n0_3x16 colour;      // Panel corners / Every 8 characters
-   VEC2Df      size;        // Text/Element scale : % of viewspace
-   fl32        rotAngle;    // Type!=TextArray: Orientation
-   ui32        parentIndex; // GUI_EL_DGS index of parent element; this==No parent
+   fp16n0_3x16 colour; // Panel corners / Every 8 characters
+   VEC2Df      size;   // Text/Element scale : % of viewspace
+   union {
+      fl32 rotAngle; // Type!=TextArray: Orientation
+      fl32 listPos;  // Type==TextArray: Scroll offset
+   };
+   ui32 parentIndex; // GUI_EL_DGS index of parent element; this==No parent
    union {
       struct { // Type==Text|TextArray
          fl32 width;         // Total width of vertex's text in view space
@@ -152,6 +170,7 @@ al32 struct GUI_ELEMENT { // 96 bytes
    union {
       ui32ptr     textArray;    // List of each text string's first vertex
       TEXTBUFFER *input;        // Buffer for text input management
+      ui32        parent;       // Parent element
       bool        toggleState;  // State of toggle element
       si32        scalarPos;    // Position of 1D scalar; integer
       fl32        fScalarPos;   // Position of 1D scalar; floating-point
@@ -159,6 +178,7 @@ al32 struct GUI_ELEMENT { // 96 bytes
       VEC2Df      fScalarPos2D; // Position of 2D scalar; floating-point
    };
    union {
+      fl32 lSpacing;  // Text list vertical spacing size
       si32 charCount; // Current number of characters in buffer
       struct {
          si16 textCount; // Total number of entries in .textArray
@@ -205,27 +225,49 @@ al32 struct GUI_ELEMENT { // 96 bytes
    };
 };
 
-al32 struct GUI_INTERFACE { // 64 bytes
-   ui32ptr vertex;      // Vertex array of indices to element entries
-   ui16    maxVertices; // Maximum element entries
-   ui16    vertCount;   // Current element entries
-   ui16    maxInputs;   // Maxmimum input bit patterns
-   ui16    inputCount;  // Current input bit patterns
-   union {              // Array of input combinations
+al16 struct GUI_INTERFACE { // 48 bytes
+   union { chptr label; cchptr cLabel; }; // Interface name
+   ui32ptr vertex; // Vertex array of indices to element entries
+   union {         // Array of input combinations
       ui512  *input512;
       ui256 (*input256)[2];
-      ui128 (*input128)[2];
+      ui128 (*input128)[4];
       ui64  (*input64)[8];
       ptr     inputs;
    };
-   union {              // Array of input text labels
-      chptr *inputLabels;
+   union { // Array of input text labels
+      chptr  inputLabels;
       char (*inputLabel)[32];
    };
-   union {              // 1-bit element activity array, ~256 vertices
-      ui64  mod[4];
-      ui128 mod128[2];
-      ui256 mod256;
+   union { cUNIPTR mod; UNIPTR _mod; }; // Activity array; 1 bit per element
+   ui16 maxVertices; // Maximum element entries
+   ui16 maxInputs;   // Maxmimum input bit patterns
+   ui16 vertCount;   // Current element entries
+   ui16 inputCount;  // Current input bit patterns
+
+private:
+   void Init(cui16 maxElement, cui16 maxInput) {
+      vertex      = zalloc1d32(ui32, maxElement);
+      inputs      = zalloc1d32(ui64, maxInput * 8u);
+      inputLabel  = zalloc2d32(char, maxInput, 32u);
+      _mod        = zalloc1d16(ui8, maxElement >> 3u);
+      maxVertices = maxElement;
+      maxInputs   = maxInput;
+      vertCount   = 0;
+      inputCount  = 0;
+   }
+
+public:
+   GUI_INTERFACE(cui16 maxElements, cui16 maxInputs) {
+      Init(maxElements, maxInputs); cLabel = 0;
+   };
+
+   void Initialise(chptrc name, cui16 maxElements, cui16 maxInputs) {
+      Init(maxElements, maxInputs); label = name;
+   };
+
+   void Initialise(cchptrc name, cui16 maxElements, cui16 maxInputs) {
+      Init(maxElements, maxInputs); cLabel = name;
    };
 };
 
@@ -246,8 +288,11 @@ struct GUI_PCT_PROPS {
       si32 sCount; // String count
    };
    fl32 wOpacity; // Window opacity
-   fl32 bSize;    // Border size
-   ui16 bStyle;   // Border style
+   union {
+      fl32 bSize;    // Border size
+      fl32 lSpacing; // Text list vertical spacing multiplier
+   };
+   ui16 bStyle; // Border style
    union {
       struct {
          ui8 align; // Alignment flags
@@ -266,7 +311,7 @@ al32 struct GUI_EL_DESC { // 186 of 192 bytes
             ui32 activate[2][2]; // Functions for onActivate & offActivate via buttons 0 & 1
             struct {
                ui32 activate0[2]; // Functions for onActivate & offActivate via buttons 0
-               ui32 activate1[2]; // Functions for onActivate & offActivate via buttons 0
+               ui32 activate1[2]; // Functions for onActivate & offActivate via buttons 1
             };
          };
       } func;
@@ -280,7 +325,7 @@ al32 struct GUI_EL_DESC { // 186 of 192 bytes
    GUI_PCT_PROPS cursor; // Tint, Size, N/A, N/A, Window opacity, Border size, Border style, Alignment, Modifiers
    GUI_PCT_PROPS text; // Tint, Size, String (array) pointer, Character/string count, N/A, N/A, N/A, Alignment, Modifiers
    struct { // soundbank, alphabet, spriteLib, panelSprite, cursorSprite
-      si16 soundBank;
+      ui16 soundBank;
       si16 alphabet;
       ui16 spriteLib;
       ui16 panelSprite;
@@ -300,16 +345,21 @@ al32 struct GUI_EL_DESC { // 186 of 192 bytes
       panel.bStyle   = 0;
       panel.align    = UI_ALIGN_C;
       panel.mods     = UI_PANEL;
-      cursor.tint  = { 1.0f, 1.0f, 1.0f, 1.0f };
-      cursor.size  = { 1.0f, 1.0f };
-      cursor.align = UI_ALIGN_C;
-      cursor.mods  = UI_CURSOR;
-      text.tint   = { 1.0f, 1.0f, 1.0f, 1.0f };
-      text.size   = { 1.0f, 1.0f };
-      text.p      = 0;
-      text.cCount = 0;
-      text.align  = UI_ALIGN_C;
-      text.mods   = UI_TEXT;
+      cursor.tint     = { 1.0f, 1.0f, 1.0f, 1.0f };
+      cursor.size     = { 1.0f, 1.0f };
+      cursor.wIndent  = { 1.0f, 1.0f };
+      cursor.wOpacity = 0.0f;
+      cursor.bSize    = 0.125f;
+      cursor.bStyle   = 1;
+      cursor.align    = UI_ALIGN_C;
+      cursor.mods     = UI_CURSOR;
+      text.tint     = { 1.0f, 1.0f, 1.0f, 1.0f };
+      text.size     = { 1.0f, 1.0f };
+      text.p        = 0;
+      text.cCount   = 0;
+      text.lSpacing = 1.0f;
+      text.align    = UI_ALIGN_C;
+      text.mods     = UI_TEXT;
       index.soundBank    = -1;
       index.alphabet     = -1;
       index.spriteLib    = 0x0FFFFu;
@@ -323,7 +373,7 @@ extern vGLOBALCTRLVARS gcv;
 
 #define TriggerInputProcessing gcv.misc[7] |= 0x080
 
-// Passing-in true when declaring will set it as globally accessible.
+// Passing-in true when declaring will add it to the master library of pointers.
 // Set .interfaceIndex before executing "gcv.misc[7] |= 0x080;"
 al32 struct GUI_DESC {
    ui32 interfaceIndex   = 0;    // Currently active interface
@@ -332,11 +382,28 @@ al32 struct GUI_DESC {
    ui32 nextInterface    = 0;    // User interface to transition to
    fl32 transitionTime   = 0.0f; // Period of time (in seconds) to transition between user interfaces
    fl32 elapsedTime      = 0.0f; // Current elapsed time (in seconds) of transition
-   ui16 noInputTime      = 0;    // Period of time (in milliseconds) GUI input is inactive between interface transitions
-   ui8  transitionMods   = 0;    // 0==Delayed, 1==Overlaid, 2==Fade in, 3==Fade out, 4~7==???
-   ui8  RES[5];
+   fl32 noInputTime      = 0.0f; // Period of time GUI input is inactive during interface transitions
+   ui8  transitionMods   = 0;    // 0==Delayed, 1==Overlaid, 2==Fade to, 3~7==???
+//   ui8  RES[3];
 
    GUI_DESC(cbool makeGlobal) { if(makeGlobal) ptrLib[15] = this; }
+
+   inline GUI_DESC &operator=(GUI_DESC &input) {
+#ifdef __AVX__
+      return (GUI_DESC &)(*(ui256ptrc)this = _mm256_load_si256((cui256ptrc)&input));
+#else
+      ((ui128ptrc)this)[0] = _mm_load_si128((cui128ptrc)&input);
+      ((ui128ptrc)this)[1] = _mm_load_si128((cui128ptrc)&input + 1u);
+      return *this;
+#endif
+   }
+
+   inline void SetNextInterface(cui32 interfaceIndex, cfl32 duration, cfl32 inputDelay, cui8 flags) {
+      transitionMods = flags;
+      noInputTime    = inputDelay;
+      transitionTime = duration;
+      nextInterface  = interfaceIndex;
+   }
 
    // Requires GLOBALCTRLVARS 'gcv' global variable
    void ProcessInputs(void) const { gcv.misc[7] |= 0x080; }
@@ -365,41 +432,50 @@ struct UI_PTRS {
    GUI_EL_DGS *vertex;
 };
 
-typedef const AE_ELEMENT_TYPE         cAE_ELEMENT_TYPE;
-typedef const AE_REGEN_VERTS          cAE_REGEN_VERTS;
-typedef const ALPHABET                cALPHABET;
-typedef       ALPHABET        *       ALPHABETptr;
-typedef const ALPHABET        *       cALPHABETptr;
-typedef       ALPHABET        * const ALPHABETptrc;
-typedef const ALPHABET        * const cALPHABETptrc;
-typedef const CHAR_IMM                cCHAR_IMM;
-typedef       CHAR_IMM        *       CHAR_IMMptr;
-typedef const CHAR_IMM        *       cCHAR_IMMptr;
-typedef       CHAR_IMM        * const CHAR_IMMptrc;
-typedef const CHAR_IMM        * const cCHAR_IMMptrc;
-typedef const GUI_EL_DESC             cGUI_EL_DESC;
-typedef const GUI_EL_DGS              cGUI_EL_DGS;
-typedef       GUI_EL_DGS      * const GUI_EL_DGSptrc;
-typedef const GUI_EL_DGS      * const cGUI_EL_DGSptrc;
-typedef const GUI_ELEMENT             cGUI_ELEMENT;
-typedef       GUI_ELEMENT     *       GUI_ELEMENTptr;
-typedef const GUI_ELEMENT     *       cGUI_ELEMENTptr;
-typedef       GUI_ELEMENT     * const GUI_ELEMENTptrc;
-typedef const GUI_ELEMENT     * const cGUI_ELEMENTptrc;
-typedef const GUI_INDICES             cGUI_INDICES;
-typedef const GUI_INTERFACE           cGUI_INTERFACE;
-typedef       GUI_INTERFACE   *       GUI_INTERFACEptr;
-typedef const GUI_INTERFACE   *       cGUI_INTERFACEptr;
-typedef       GUI_INTERFACE   * const GUI_INTERFACEptrc;
-typedef const GUI_INTERFACE   * const cGUI_INTERFACEptrc;
-typedef const GUI_SPRITE              cGUI_SPRITE;
-typedef       GUI_SPRITE      *       GUI_SPRITEptr;
-typedef const GUI_SPRITE      *       cGUI_SPRITEptr;
-typedef       GUI_SPRITE      * const GUI_SPRITEptrc;
-typedef const GUI_SPRITE      * const cGUI_SPRITEptrc;
-typedef const GUI_SPRITE_LIB          cGUI_SPRITE_LIB;
-typedef       GUI_SPRITE_LIB  *       GUI_SPRITE_LIBptr;
-typedef const GUI_SPRITE_LIB  *       cGUI_SPRITE_LIBptr;
-typedef       GUI_SPRITE_LIB  * const GUI_SPRITE_LIBptrc;
-typedef const GUI_SPRITE_LIB  * const cGUI_SPRITE_LIBptrc;
-typedef const UI_PTRS                 cUI_PTRS;
+typedef const AE_ELEMENT_TYPE        cAE_ELEMENT_TYPE;
+typedef const AE_REGEN_VERTS         cAE_REGEN_VERTS;
+typedef const ALPHABET               cALPHABET;
+typedef       ALPHABET       *       ALPHABETptr;
+typedef const ALPHABET       *       cALPHABETptr;
+typedef       ALPHABET       * const ALPHABETptrc;
+typedef const ALPHABET       * const cALPHABETptrc;
+typedef const CHAR_IMM               cCHAR_IMM;
+typedef       CHAR_IMM       *       CHAR_IMMptr;
+typedef const CHAR_IMM       *       cCHAR_IMMptr;
+typedef       CHAR_IMM       * const CHAR_IMMptrc;
+typedef const CHAR_IMM       * const cCHAR_IMMptrc;
+typedef const GUI_DESC               cGUI_DESC;
+typedef       GUI_DESC       *       GUI_DESCptr;
+typedef const GUI_DESC       *       cGUI_DESCptr;
+typedef       GUI_DESC       * const GUI_DESCptrc;
+typedef const GUI_DESC       * const cGUI_DESCptrc;
+typedef const GUI_EL_DESC            cGUI_EL_DESC;
+typedef       GUI_EL_DESC    *       GUI_EL_DESCptr;
+typedef const GUI_EL_DESC    *       cGUI_EL_DESCptr;
+typedef       GUI_EL_DESC    * const GUI_EL_DESCptrc;
+typedef const GUI_EL_DESC    * const cGUI_EL_DESCptrc;
+typedef const GUI_EL_DGS             cGUI_EL_DGS;
+typedef       GUI_EL_DGS     * const GUI_EL_DGSptrc;
+typedef const GUI_EL_DGS     * const cGUI_EL_DGSptrc;
+typedef const GUI_ELEMENT            cGUI_ELEMENT;
+typedef       GUI_ELEMENT    *       GUI_ELEMENTptr;
+typedef const GUI_ELEMENT    *       cGUI_ELEMENTptr;
+typedef       GUI_ELEMENT    * const GUI_ELEMENTptrc;
+typedef const GUI_ELEMENT    * const cGUI_ELEMENTptrc;
+typedef const GUI_INDICES            cGUI_INDICES;
+typedef const GUI_INTERFACE          cGUI_INTERFACE;
+typedef       GUI_INTERFACE  *       GUI_INTERFACEptr;
+typedef const GUI_INTERFACE  *       cGUI_INTERFACEptr;
+typedef       GUI_INTERFACE  * const GUI_INTERFACEptrc;
+typedef const GUI_INTERFACE  * const cGUI_INTERFACEptrc;
+typedef const GUI_SPRITE             cGUI_SPRITE;
+typedef       GUI_SPRITE     *       GUI_SPRITEptr;
+typedef const GUI_SPRITE     *       cGUI_SPRITEptr;
+typedef       GUI_SPRITE     * const GUI_SPRITEptrc;
+typedef const GUI_SPRITE     * const cGUI_SPRITEptrc;
+typedef const GUI_SPRITE_LIB         cGUI_SPRITE_LIB;
+typedef       GUI_SPRITE_LIB *       GUI_SPRITE_LIBptr;
+typedef const GUI_SPRITE_LIB *       cGUI_SPRITE_LIBptr;
+typedef       GUI_SPRITE_LIB * const GUI_SPRITE_LIBptrc;
+typedef const GUI_SPRITE_LIB * const cGUI_SPRITE_LIBptrc;
+typedef const UI_PTRS                cUI_PTRS;

@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_entitymanager.h          Created: 2023/05/06 *
- *                                Last modified: 2024/06/29 *
+ *                                Last modified: 2024/07/14 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -54,7 +54,7 @@ al16 struct CLASS_ENTMAN {
    }
 
    // Create array of object template slots
-   cui32 CreateObjectGroup(wchptrc name, wchptrc text, csi32 maxObjects, csi32 maxParts) {
+   cui32 CreateObjectGroup(chptrc name, chptrc text, csi32 maxObjects, csi32 maxParts) {
       // Find next available index
       for(siEntry = 0; objGroup[siEntry].object; siEntry++);
       if(siEntry >= MAX_OBJECT_GROUPS) { return 0x080000001; }
@@ -68,7 +68,7 @@ al16 struct CLASS_ENTMAN {
    }
 
    // Create array of entity slots
-   cui32 CreateEntityGroup(wchptrc name, wchptrc text, csi32 maxEntities, csi32 maxBones) {
+   cui32 CreateEntityGroup(chptrc name, chptrc text, csi32 maxEntities, csi32 maxBones) {
       // Find next available index
       for(siEntry = 0; entGroup[siEntry].entity; siEntry++);
       if(siEntry >= MAX_ENTITY_GROUPS) { return 0x080000001; }
@@ -122,7 +122,7 @@ al16 struct CLASS_ENTMAN {
       return 0x80000001;
    }
 
-   cID32c CreateObject(cui16 group, cVEC3Df position, cVEC3Df orientation, cVEC2Df size, cVEC6Df recoilState, cVEC4Df texCoords, cui8 atlasIndex, csi8 partCount) {
+   cID32 CreateObject(cui16 group, cVEC3Df position, cVEC3Df orientation, cVEC2Df size, cVEC6Df recoilState, cVEC4Df texCoords, cui8 atlasIndex, csi8 partCount) {
       cui16 index = objGroup[group].totalObjects++;
 
       if(index >= MAX_OBJECTS) return { 0x08000, 0x01 };
@@ -145,7 +145,7 @@ al16 struct CLASS_ENTMAN {
       return { index, group };
    }
 
-   cID64c CreateEntity(cui32 group, ID32 object, cbool transparent) {
+   cID64 CreateEntity(cui32 group, ID32 object, cbool transparent) {
       cui32 index = entGroup[group].totalEntities++;
 
       if(index >= MAX_ENTITIES) return { 0x080000001, 0x0 };
@@ -205,7 +205,7 @@ al16 struct CLASS_ENTMAN {
       return { index, group };
    }
 
-   cID64c CreateEntity(MAP_DESC &md, cui32 entityGroup, ID32 objectID, cSSE4Df32 position, cSSE4Df32 orientation, cSSE4Df32 size) {
+   cID64 CreateEntity(MAP_DESC &md, cui32 entityGroup, ID32 objectID, cSSE4Df32 position, cSSE4Df32 orientation, cSSE4Df32 size) {
       cui32 index = entGroup[entityGroup].totalEntities++;
 
       if(index >= MAX_ENTITIES) return { 0x080000001, 0x0 };
@@ -321,7 +321,7 @@ al16 struct CLASS_ENTMAN {
       return boneIndex;
    }
 
-   inline void SetPart(cID32c object, csi8 part, cVEC3Df position, cVEC3Df orientation, cVEC2Df size, cVEC6Df recoilState, cSSE4Df32 texCoords, cui8 atlasIndex) const {
+   inline void SetPart(cID32 object, csi8 part, cVEC3Df position, cVEC3Df orientation, cVEC2Df size, cVEC6Df recoilState, cSSE4Df32 texCoords, cui8 atlasIndex) const {
 ///--- To do...
    }
 

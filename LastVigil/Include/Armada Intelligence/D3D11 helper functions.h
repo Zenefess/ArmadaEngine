@@ -1,6 +1,6 @@
 /**************************************************************  
  * File: D3D11 helper functions.h         Created: 2023/05/31 *
- *                                  Last modified: 2024/06/30 *
+ *                                  Last modified: 2024/07/09 *
  *                                                            *
  * Desc:                                                      *
  *                                                            *
@@ -24,10 +24,10 @@ al16 struct HELPFUNC_MAP {
    CLASS_GPU    &gpu;
    CLASS_MAPMAN &man;
 
-   ui32ptr (*const visBuf)[MAX_MAP_LOD]  = (ui32ptr (*)[MAX_ENT_LOD])zalloc64(RoundUpToNearest64(sizeof(ui32[MAX_WORLDS][MAX_MAP_LOD])));
-   ui32ptr  *const modBuf                = (ui32ptrptr)zalloc64(RoundUpToNearest64(sizeof(ui32ptr[MAX_WORLDS])));
-   si32    (*const gpuBuf)[5]            = (si32 (*)[5])zalloc64(RoundUpToNearest64(sizeof(si32[MAX_WORLDS][5])));
-   si32    (*const vertBuf)[MAX_MAP_LOD] = (si32 (*)[MAX_ENT_LOD])zalloc64(RoundUpToNearest64(sizeof(si32[MAX_WORLDS][MAX_MAP_LOD])));
+   declare2d64z(ui32ptr, visBuf,  MAX_WORLDS, MAX_MAP_LOD);
+   declare1d64z(ui32ptr, modBuf,  MAX_WORLDS);
+   declare2d64z(si32,    gpuBuf,  MAX_WORLDS, 5u);
+   declare2d64z(si32,    vertBuf, MAX_WORLDS, MAX_MAP_LOD);
 
    ui8 levelsOfDetail = 0;
 
@@ -43,20 +43,21 @@ al16 struct HELPFUNC_MAP {
       for(ui32 i = 0; i <= levelsOfDetail; i++) {
          csi32 subcount = count >> (levelsOfDetail - i);
 
-         visBuf[worldIndex][i]  = (ui32ptr)zalloc16(RoundUpToNearest16(sizeof(ui32) * subcount));
-         vertBuf[worldIndex][i] = gpu.buf.CreateVertex(visBuf[worldIndex][i], sizeof(ui32), subcount, 1);
+         visBuf[worldIndex][i]  = zalloc1d16(ui32, subcount);
+         vertBuf[worldIndex][i] = gpu.buf.CreateVertex(visBuf[worldIndex][i], sizeof(ui32), subcount, 1u);
       }
-      modBuf[worldIndex] = (ui32ptr)zalloc16(RoundUpToNearest16(sizeof(ui32) * count));
+      modBuf[worldIndex] = zalloc1d16(ui32, count);
 
-      cVEC3Du32 mapDim     = { ui32(map.desc.mapDim.x), ui32(map.desc.mapDim.y), ui32(map.desc.mapDim.z) };
-      ui32ptrc  relIndices = (ui32ptrc)malloc16(RoundUpToNearest16(map.desc.mapCells * sizeof(ui32)));
+      cVEC3Du32 mapDim = { ui32(map.desc.mapDim.x), ui32(map.desc.mapDim.y), ui32(map.desc.mapDim.z) };
+      declare1d16(ui32, relIndices, map.desc.mapCells);
+
       for(VEC4Du32 co = {}; co.z < mapDim.z; ++co.z)
          for(co.y = 0; co.y < mapDim.y; ++co.y)
             for(co.x = 0; co.x < mapDim.x; ++co.x)
                relIndices[co.w++] = man.CalcCellIndex_((VEC3Ds32 &)co, mapIndex, worldIndex);
 
 ///--- Group all mapDims_iCB and elements_iGS into master arrays and use offsets in shaders
-      gpuBuf[worldIndex][0] = gpu.buf.CreateConstant(0, map.pCB, sizeof(MAPDIMS_ICB), man.world[worldIndex].totalMaps, 3, ae_stages_vertex_geometry, true);
+      gpuBuf[worldIndex][0] = gpu.buf.CreateConstant(0, map.pCB, sizeof(MAPDIMS_ICB), man.world[worldIndex].totalMaps, 3u, ae_stages_vertex_geometry, true);
       gpuBuf[worldIndex][1] = gpu.buf.CreateStructured(0, table.pIGS, sizeof(ELEM_IGS), table.numElements, ae_buf_immutable);
       gpuBuf[worldIndex][2] = gpu.buf.CreateStructured(0, relIndices, sizeof(ui32),     map.desc.mapCells, ae_buf_immutable);
       gpuBuf[worldIndex][3] = gpu.buf.CreateStructured(0, map.pDGS,   sizeof(CELL_DGS), map.desc.mapCells, ae_buf_dynamic);
@@ -110,19 +111,14 @@ al16 struct HELPFUNC_ENT {
    CLASS_GPU    &gpu;
    CLASS_ENTMAN &man;
 
-   ui32ptr (*visBuf)[MAX_ENT_LOD];
-   ui32ptr  *modBuf;
-   si32    (*gpuBuf)[4];
-   si32    (*vertBuf)[MAX_ENT_LOD];
+   declare2d64z(ui32ptr, visBuf,  MAX_ENTITY_GROUPS, MAX_ENT_LOD);
+   declare1d64z(ui32ptr, modBuf,  MAX_ENTITY_GROUPS);
+   declare2d64z(si32,    gpuBuf,  MAX_ENTITY_GROUPS, 4u);
+   declare2d64z(si32,    vertBuf, MAX_ENTITY_GROUPS, MAX_ENT_LOD);
 
    ui8 levelsOfDetail = 0;
 
-   HELPFUNC_ENT(CLASS_GPU &gpuClass, CLASS_ENTMAN &entMan) : gpu(gpuClass), man(entMan) {
-      visBuf  = (ui32ptr (*)[MAX_ENT_LOD])zalloc64(RoundUpToNearest64(sizeof(ui32[MAX_ENTITY_GROUPS][MAX_ENT_LOD])));
-      modBuf  = (ui32ptrptr)zalloc64(RoundUpToNearest64(sizeof(ui32ptr[MAX_ENTITY_GROUPS])));
-      gpuBuf  = (si32 (*)[4])zalloc64(RoundUpToNearest64(sizeof(si32[MAX_ENTITY_GROUPS][4])));
-      vertBuf = (si32 (*)[MAX_ENT_LOD])zalloc64(RoundUpToNearest64(sizeof(si32[MAX_ENTITY_GROUPS][MAX_ENT_LOD])));
-   }
+   HELPFUNC_ENT(CLASS_GPU &gpuClass, CLASS_ENTMAN &entMan) : gpu(gpuClass), man(entMan) {}
 
    ~HELPFUNC_ENT() { mfree(modBuf, visBuf, vertBuf, gpuBuf); }
 
@@ -135,10 +131,10 @@ al16 struct HELPFUNC_ENT {
       for(ui32 i = 0; i <= levelsOfDetail; i++) {
          csi32 subcount = count >> (levelsOfDetail - i);
 
-         visBuf[groupIndex][i]  = (ui32ptr)zalloc16(RoundUpToNearest16(sizeof(ui32) * subcount));
+         visBuf[groupIndex][i]  = zalloc1d16(ui32, subcount);
          vertBuf[groupIndex][i] = gpu.buf.CreateVertex(visBuf[groupIndex][i], sizeof(ui32) * 32, (subcount + 31) >> 5, 1);
       }
-      modBuf[groupIndex] = (ui32ptr)zalloc16(RoundUpToNearest16(sizeof(ui32) * count));
+      modBuf[groupIndex] = zalloc1d16(ui32, count);
 
       gpuBuf[groupIndex][0] = gpu.buf.CreateStructured(0, objGroup.object, sizeof(OBJECT_IGS), objGroup.totalObjects, ae_buf_immutable);
       gpuBuf[groupIndex][1] = gpu.buf.CreateStructured(0, objGroup.part, sizeof(PART_IGS), objGroup.totalParts, ae_buf_immutable);
