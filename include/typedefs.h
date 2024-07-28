@@ -1,6 +1,6 @@
 /****************************************************************
  * File: typedefs.h                         Created:   Jul.2007 *
- *                                    Last modified: 2024/07/06 *
+ *                                    Last modified: 2024/07/25 *
  *                                                              *
  * Desc: Shorthand type defines & composites, and static        *
  *       constant values of common data-type sizes.             *
@@ -235,9 +235,9 @@ typedef         __m256d  **fl64x4ptrptr;
 typedef         __m512d   *fl64x8ptr;
 typedef         __m512d  **fl64x8ptrptr;
 typedef          char     *chptr;
-typedef          char    **stptrptr;
+typedef          char    **chptrptr;
 typedef          wchar_t  *wchptr;
-typedef          wchar_t **wstptrptr;
+typedef          wchar_t **wchptrptr;
 #if defined(_FILE_DEFINED)
 typedef          FILE     *Fptr;
 #endif
@@ -272,9 +272,9 @@ typedef const         __m128d   *cfl64x2ptr;
 typedef const         __m256d   *cfl64x4ptr;
 typedef const         __m512d   *cfl64x8ptr;
 typedef const          char     *cchptr;
-typedef const          char    **cstptr;
+typedef const          char    **cchptrptr;
 typedef const          wchar_t  *cwchptr;
-typedef const          wchar_t **cwstptr;
+typedef const          wchar_t **cwchptrptr;
 
 // Constant pointers to types
 typedef unsigned  __int8  * const ui8ptrc;
@@ -324,9 +324,9 @@ typedef          __m256d ** const fl64x4ptrptrc;
 typedef          __m512d  * const fl64x8ptrc;
 typedef          __m512d ** const fl64x8ptrptrc;
 typedef             char  * const chptrc;
-typedef             char ** const stptrc;
+typedef             char ** const chptrptrc;
 typedef          wchar_t  * const wchptrc;
-typedef          wchar_t ** const wstptrc;
+typedef          wchar_t ** const wchptrptrc;
 
 // Constant pointers to constant pointers to types
 typedef unsigned  __int8 * const * const ui8ptrcptrc;
@@ -442,9 +442,9 @@ typedef vol         __m128d   *vfl64x2ptr;
 typedef vol         __m256d   *vfl64x4ptr;
 typedef vol         __m512d   *vfl64x8ptr;
 typedef vol          char     *vchptr;
-typedef vol          char    **vstptr;
+typedef vol          char    **vchptrptr;
 typedef vol          wchar_t  *vwchptr;
-typedef vol          wchar_t **vwstptr;
+typedef vol          wchar_t **vwchptrptr;
 
 // Constant pointers to volatile types
 typedef vol unsigned char     * const vbptrc;
@@ -476,16 +476,16 @@ typedef vol         __m128d   * const vfl64x2ptrc;
 typedef vol         __m256d   * const vfl64x4ptrc;
 typedef vol         __m512d   * const vfl64x8ptrc;
 typedef vol          char     * const vchptrc;
-typedef vol          char    ** const vstptrc;
+typedef vol          char    ** const vchptrptrc;
 typedef vol          wchar_t  * const vwchptrc;
-typedef vol          wchar_t ** const vwstptrc;
+typedef vol          wchar_t ** const vwchptrptrc;
 
 // Function pointer types
 typedef void (*func)(void);
-typedef void (*funcptr)(const void *const);
-typedef void (*funcptr2)(const void *const, const void *const);
-typedef void (*funcptr3)(const void *const, const void *const, const void *const);
-typedef void (*funcptr4)(const void *const, const void *const, const void *const, const void *const);
+typedef void (*funcptr)(cptrc);
+typedef void (*funcptr2)(cptrc, cptrc);
+typedef void (*funcptr3)(cptrc, cptrc, cptrc);
+typedef void (*funcptr4)(cptrc, cptrc, cptrc, cptrc);
 
 // Pointer arrays
 struct PTR2 { ptr p0; ptr p1; };

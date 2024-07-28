@@ -1,6 +1,6 @@
 /************************************************************
  * File: memory management.h            Created: 2008/12/08 *
- *                                Last modified: 2024/07/08 *
+ *                                Last modified: 2024/07/23 *
  *                                                          *
  * Notes: 2024/05/02: Added support for data tracking.      *
  *                                                          *
@@ -19,9 +19,37 @@
 extern SYSTEM_DATA sysData;
 #endif
 
+#define malloc1(byteCount)  malloc(byteCount, 1u)
+#define malloc2(byteCount)  malloc(byteCount, 2u)
+#define malloc4(byteCount)  malloc(byteCount, 4u)
+#define malloc8(byteCount)  malloc(byteCount, 8u)
 #define malloc16(byteCount) malloc(byteCount, 16u)
 #define malloc32(byteCount) malloc(byteCount, 32u)
 #define malloc64(byteCount) malloc(byteCount, 64u)
+
+// Declare 1-dimensional array at 16-byte boundary
+#define declare1d16(dataType, variableName, dim) \
+   dataType *const variableName = (dataType *)malloc(RoundUpToNearest16(sizeof(dataType) * (dim)), 16u)
+
+// Declare 1-dimensional array at 32-byte boundary
+#define declare1d32(dataType, variableName, dim) \
+   dataType *const variableName = (dataType *)malloc(RoundUpToNearest32(sizeof(dataType) * (dim)), 32u)
+
+// Declare 1-dimensional array at 64-byte boundary
+#define declare1d64(dataType, variableName, dim) \
+   dataType *const variableName = (dataType *)malloc(RoundUpToNearest64(sizeof(dataType) * (dim)), 64u)
+
+// Declare 2-dimensional array at 16-byte boundary
+#define declare2d16(dataType, variableName, dim1, dim2) \
+   dataType (*const variableName)[dim2] = (dataType (*)[dim2])malloc(RoundUpToNearest16(sizeof(dataType) * ((dim1) * (dim2))), 16u)
+
+// Declare 2-dimensional array at 32-byte boundary
+#define declare2d32(dataType, variableName, dim1, dim2) \
+   dataType (*const variableName)[dim2] = (dataType (*)[dim2])malloc(RoundUpToNearest32(sizeof(dataType) * ((dim1) * (dim2))), 32u)
+
+// Declare 2-dimensional array at 64-byte boundary
+#define declare2d64(dataType, variableName, dim1, dim2) \
+   dataType (*const variableName)[dim2] = (dataType (*)[dim2])malloc(RoundUpToNearest64(sizeof(dataType) * ((dim1) * (dim2))), 64u)
 
 // Declare 1-dimensional array at 16-byte boundary, then zero contents
 #define declare1d16z(dataType, variableName, dim) \
@@ -37,15 +65,15 @@ extern SYSTEM_DATA sysData;
 
 // Declare 2-dimensional array at 16-byte boundary, then zero contents
 #define declare2d16z(dataType, variableName, dim1, dim2) \
-   dataType (*const variableName)[dim2] = (dataType (*)[dim2])salloc(RoundUpToNearest16(sizeof(dataType) * (dim1 * dim2)), 16u, null128)
+   dataType (*const variableName)[dim2] = (dataType (*)[dim2])salloc(RoundUpToNearest16(sizeof(dataType) * ((dim1) * (dim2))), 16u, null128)
 
 // Declare 2-dimensional array at 32-byte boundary, then zero contents
 #define declare2d32z(dataType, variableName, dim1, dim2) \
-   dataType (*const variableName)[dim2] = (dataType (*)[dim2])salloc(RoundUpToNearest32(sizeof(dataType) * (dim1 * dim2)), 32u, null128)
+   dataType (*const variableName)[dim2] = (dataType (*)[dim2])salloc(RoundUpToNearest32(sizeof(dataType) * ((dim1) * (dim2))), 32u, null128)
 
 // Declare 2-dimensional array at 64-byte boundary, then zero contents
 #define declare2d64z(dataType, variableName, dim1, dim2) \
-   dataType (*const variableName)[dim2] = (dataType (*)[dim2])salloc(RoundUpToNearest64(sizeof(dataType) * (dim1 * dim2)), 64u, null128)
+   dataType (*const variableName)[dim2] = (dataType (*)[dim2])salloc(RoundUpToNearest64(sizeof(dataType) * ((dim1) * (dim2))), 64u, null128)
 
 // Declare 1-dimensional array at 16-byte boundary, then the entire array to a repeating pattern of 8~512 bits
 #define declare1d16s(dataType, variableName, dim, bitPattern) \
@@ -68,7 +96,7 @@ extern SYSTEM_DATA sysData;
 
 // Allocates RAM at 16-byte boundary, then sets the entire array to a repeating pattern of 8~512 bits
 #define salloc2d16(dataType, dim1, dim2, bitPattern) \
-   (dataType (*)[dim2])salloc(RoundUpToNearest16(sizeof(dataType) * (dim1 * dim2)), 16u, bitPattern)
+   (dataType (*)[dim2])salloc(RoundUpToNearest16(sizeof(dataType) * ((dim1) * (dim2))), 16u, bitPattern)
 
 // Allocates RAM at 32-byte boundary, then sets the entire array to a repeating pattern of 8~512 bits
 #define salloc32(byteCount, bitPattern) salloc(byteCount, 32u, bitPattern)
@@ -79,7 +107,7 @@ extern SYSTEM_DATA sysData;
 
 // Allocates RAM at 32-byte boundary, then sets the entire array to a repeating pattern of 8~512 bits
 #define salloc2d32(dataType, dim1, dim2, bitPattern) \
-   (dataType (*)[dim2])salloc(RoundUpToNearest32(sizeof(dataType) * (dim1 * dim2)), 32u, bitPattern)
+   (dataType (*)[dim2])salloc(RoundUpToNearest32(sizeof(dataType) * ((dim1) * (dim2))), 32u, bitPattern)
 
 // Allocates RAM at 64-byte boundary, then sets the entire array to a repeating pattern of 8~512 bits
 #define salloc64(byteCount, bitPattern) salloc(byteCount, 64u, bitPattern)
@@ -90,30 +118,54 @@ extern SYSTEM_DATA sysData;
 
 // Allocates RAM at 64-byte boundary, then sets the entire array to a repeating pattern of 8~512 bits
 #define salloc2d64(dataType, dim1, dim2, bitPattern) \
-   (dataType (*)[dim2])salloc(RoundUpToNearest64(sizeof(dataType) * (dim1 * dim2)), 64u, bitPattern)
+   (dataType (*)[dim2])salloc(RoundUpToNearest64(sizeof(dataType) * ((dim1) * (dim2))), 64u, bitPattern)
 
 // Allocates RAM at 16-byte boundary, then sets the entire array to zero
 #define zalloc16(byteCount) salloc(byteCount, 16u, null128)
 
 // Allocates RAM at 16-byte boundary, then sets the entire array to zero
 #define zalloc1d16(dataType, dim) \
-   (dataType *)salloc(RoundUpToNearest16(sizeof(dataType) * dim)), 16u, null128)
+   (dataType *)salloc(RoundUpToNearest16(sizeof(dataType) * (dim)), 16u, null128)
 
 // Allocates RAM at 16-byte boundary, then sets the entire array to zero
 #define zalloc2d16(dataType, dim1, dim2) \
-   (dataType (*)[dim2])salloc(RoundUpToNearest16(sizeof(dataType) * dim1 * dim2)), 16u, null128)
+   (dataType (*)[dim2])salloc(RoundUpToNearest16(sizeof(dataType) * ((dim1) * (dim2))), 16u, null128)
 
 #ifdef __AVX__
 // Allocates RAM at 32-byte boundary, then sets the entire array to zero
 #define zalloc32(byteCount) salloc(byteCount, 32u, null256)
+
+// Allocates RAM at 32-byte boundary, then sets the entire array to zero
+#define zalloc1d32(dataType, dim) \
+   (dataType *)salloc(RoundUpToNearest32(sizeof(dataType) * (dim)), 32u, null256)
+
+// Allocates RAM at 32-byte boundary, then sets the entire array to zero
+#define zalloc2d32(dataType, dim1, dim2) \
+   (dataType (*)[dim2])salloc(RoundUpToNearest32(sizeof(dataType) * ((dim1) * (dim2))), 32u, null256)
 #else
 // Allocates RAM at 32-byte boundary, then sets the entire array to zero
 #define zalloc32(byteCount) salloc(byteCount, 32u, null128)
+
+// Allocates RAM at 32-byte boundary, then sets the entire array to zero
+#define zalloc1d32(dataType, dim) \
+   (dataType *)salloc(RoundUpToNearest32(sizeof(dataType) * (dim)), 32u, null128)
+
+// Allocates RAM at 32-byte boundary, then sets the entire array to zero
+#define zalloc2d32(dataType, dim1, dim2) \
+   (dataType (*)[dim2])salloc(RoundUpToNearest32(sizeof(dataType) * ((dim1) * (dim2))), 32u, null128)
 #endif
 
 #ifdef __AVX512__
 // Allocates RAM at 64-byte boundary, then sets the entire array to zero
 #define zalloc64(byteCount) salloc(byteCount, 64u, null512)
+
+// Allocates RAM at 64-byte boundary, then sets the entire array to zero
+#define zalloc1d64(dataType, dim) \
+   (dataType *)salloc(RoundUpToNearest64(sizeof(dataType) * (dim)), 64u, null512)
+
+// Allocates RAM at 64-byte boundary, then sets the entire array to zero
+#define zalloc2d64(dataType, dim1, dim2) \
+   (dataType (*)[dim2])salloc(RoundUpToNearest64(sizeof(dataType) * ((dim1) * (dim2))), 64u, null512)
 #else
 #ifdef __AVX__
 // Allocates RAM at 64-byte boundary, then sets the entire array to zero
@@ -121,14 +173,22 @@ extern SYSTEM_DATA sysData;
 
 // Allocates RAM at 64-byte boundary, then sets the entire array to zero
 #define zalloc1d64(dataType, dim) \
-   (dataType *)salloc(RoundUpToNearest64(sizeof(dataType[dim])), 64u, null128)
+   (dataType *)salloc(RoundUpToNearest64(sizeof(dataType) * (dim)), 64u, null128)
 
 // Allocates RAM at 64-byte boundary, then sets the entire array to zero
 #define zalloc2d64(dataType, dim1, dim2) \
-   (dataType (*)[dim2])salloc(RoundUpToNearest64(sizeof(dataType[dim1][dim2])), 64u, null128)
+   (dataType (*)[dim2])salloc(RoundUpToNearest64(sizeof(dataType) * ((dim1) * (dim2))), 64u, null128)
 #else
 // Allocates RAM at 64-byte boundary, then sets the entire array to zero
 #define zalloc64(byteCount) salloc(byteCount, 64, null128)
+
+// Allocates RAM at 64-byte boundary, then sets the entire array to zero
+#define zalloc1d64(dataType, dim) \
+   (dataType *)salloc(RoundUpToNearest64(sizeof(dataType) * (dim)), 64u, null512)
+
+// Allocates RAM at 64-byte boundary, then sets the entire array to zero
+#define zalloc2d64(dataType, dim1, dim2) \
+   (dataType (*)[dim2])salloc(RoundUpToNearest64(sizeof(dataType) * ((dim1) * (dim2))), 64u, null512)
 #endif
 #endif
 
@@ -285,7 +345,7 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui512 bitPattern) {
 #define mfree1(pointer) mdealloc(pointer)
 
 // Frees a variable number of pointers. Each bit represents each pointer (in argument order), and will be true if the relevant pointer is freed.
-#define mfree(pointer, ...) mdealloc_(pointer, __VA_ARGS__, -1)
+#define mfree(pointer, ...) mdealloc_(pointer, __VA_ARGS__, -1ll)
 
 // Frees a pointer and returns true if successful.
 inline cui64 mdealloc(ptrc pointer) {
@@ -314,23 +374,19 @@ inline cui64 mdealloc(ptrc pointer) {
 }
 
 // Frees a variable number of pointers. Each bit represents each pointer (in argument order), and will be true if the relevant pointer is freed.
-inline cui64 mdealloc_(ptrc pointer, ...) {
-   va_list val;
-   ui64    retVal = 0, ptrBit = 0x01;
+inline cui64 mdealloc_(ptr pointer, ...) {
+   va_list val; va_start(val, pointer);
+   ui64    retVal = 0, ptrBit = 0x01u;
 
-   va_start(val, pointer);
-
-   for(ptr arg = va_arg(val, ptrc); (ui64 &)arg != -1; arg = va_arg(val, ptrc), ptrBit <<= 1) {
+   for(; (ui64 &)pointer != -1; pointer = va_arg(val, ptrc)) {
       if(pointer) {
 #ifdef DATA_TRACKING
          cui32     allocations = sysData.mem.allocations;
          vptrcptrc location    = sysData.mem.location;
-
-         ui32 index = 0;
+         ui32      index       = 0;
 
          // Find entry
          while(pointer != location[index] && allocations >= index) index++;
-
          // Is the pointer invalid?
          if(index >= allocations) continue;
 
@@ -341,6 +397,7 @@ inline cui64 mdealloc_(ptrc pointer, ...) {
 #endif
          _aligned_free(pointer);
          retVal |= ptrBit;
+         ptrBit <<= 1;
       }
    }
    va_end(val);
@@ -419,6 +476,57 @@ inline void mzero(vptrc addr, cui64 numBytes) {
    for(i <<= 3; i < (numBytes >> 3); ++i) ((ui64ptr)addr)[i] = 0u;
    for(i <<= 3; i < numBytes; ++i) ((ui8ptr)addr)[i] = 0u;
 #endif
+}
+
+// Set a region of memory to zero
+inline void mzero(ui128ptrc addr, cui64 numBytes) {
+   ui64 i;
+   cui64 count = numBytes >> 4;
+   for(i = 0; i < count; ++i) ((ui128ptr)addr)[i] = null128;
+   for(i <<= 2; i < (numBytes >> 2); ++i) ((ui32ptr)addr)[i] = 0u;
+   for(i <<= 2; i < numBytes; ++i) ((ui8ptr)addr)[i] = 0u;
+   return;
+}
+
+// Set a region of memory to zero
+inline void mzero(ui256ptrc addr, cui64 numBytes) {
+   ui64 i;
+#ifdef __AVX__
+   cui64 count = numBytes >> 5;
+   for(i = 0; i < count; ++i) ((ui256ptr)addr)[i] = null256;
+   for(i <<= 3; i < (numBytes >> 2); ++i) ((ui32ptr)addr)[i] = 0u;
+   for(i <<= 2; i < numBytes; ++i) ((ui8ptr)addr)[i] = 0u;
+#else
+   cui64 count = numBytes >> 4;
+   for(i = 0; i < count; ++i) ((ui128ptr)addr)[i] = null128;
+   for(i <<= 2; i < (numBytes >> 2); ++i) ((ui32ptr)addr)[i] = 0u;
+   for(i <<= 2; i < numBytes; ++i) ((ui8ptr)addr)[i] = 0u;
+#endif
+   return;
+}
+
+// Set a region of memory to zero
+inline void mzero(ui512ptrc addr, cui64 numBytes) {
+   ui64 i;
+#ifdef __AVX512__
+   cui64 count = numBytes >> 6;
+   for(i = 0; i < count; ++i) ((ui512ptr)addr)[i] = null512;
+   for(i <<= 3; i < (numBytes >> 3); ++i) ((ui64ptr)addr)[i] = 0u;
+   for(i <<= 3; i < numBytes; ++i) ((ui8ptr)addr)[i] = 0u;
+#else
+#ifdef __AVX__
+   cui64 count = numBytes >> 5;
+   for(i = 0; i < count; ++i) ((ui256ptr)addr)[i] = null256;
+   for(i <<= 3; i < (numBytes >> 2); ++i) ((ui32ptr)addr)[i] = 0u;
+   for(i <<= 2; i < numBytes; ++i) ((ui8ptr)addr)[i] = 0u;
+#else
+   cui64 count = numBytes >> 4;
+   for(i = 0; i < count; ++i) ((ui128ptr)addr)[i] = null128;
+   for(i <<= 2; i < (numBytes >> 2); ++i) ((ui32ptr)addr)[i] = 0u;
+   for(i <<= 2; i < numBytes; ++i) ((ui8ptr)addr)[i] = 0u;
+#endif
+#endif
+   return;
 }
 
 // Set a region of memory to a repeating pattern

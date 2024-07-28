@@ -75,8 +75,9 @@ al16 struct SYSTEM_DATA {
 
    wchptrc folderProgramData = (wchptr)_aligned_malloc(sizeof(wchar) * 1024u, 64u);
    wchptrc folderAppData     = folderProgramData + 512u;
+   bool    freeAllAllocations;
 
-   SYSTEM_DATA(cui64 maxMemAllocations) {
+   SYSTEM_DATA(cui64 maxMemAllocations, cbool freeAllMemoryOnDeletion) {
       SYSTEM_INFO sysInfo;
       wchptr      stPath;
 
@@ -98,16 +99,17 @@ al16 struct SYSTEM_DATA {
       GetSystemInfo(&sysInfo);
       cpu.processorMask  = sysInfo.dwActiveProcessorMask;
       cpu.processorCount = sysInfo.dwNumberOfProcessors;
+
+      freeAllAllocations = freeAllMemoryOnDeletion;
    }
 
    ~SYSTEM_DATA(void) {
+      // Free all memory still allocated?
+      if(freeAllAllocations)
+         for(ui32 i = 0; i < mem.allocations; i++)
+            if(mem.location[i])
+               _aligned_free((ptr)mem.location[i]);
       _aligned_free(folderProgramData);
-
-      // Free all memory still allocated
-      for(ui32 i = 0; i < mem.allocations; i++)
-         if(mem.location[i])
-            _aligned_free((ptr)mem.location[i]);
-
       _aligned_free((ptr)mem.byteCount);
       _aligned_free(mem.location);
       mem.maxAllocations = 0;
