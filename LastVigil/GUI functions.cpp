@@ -1,6 +1,6 @@
 /************************************************************
  * File: GUI functions.cpp              Created: 2023/06/13 *
- *                                Last modified: 2024/07/25 *
+ *                                Last modified: 2024/07/30 *
  *                                                          *
  * Desc: User interface functions for in-game menus and     *
  *       developer environment.                             *
@@ -445,7 +445,7 @@ void TempMenuGen(cptrc argList) {
       elementDesc.panel.mods   = UI_NONE;
       elementDesc.text.tint   = c4_white;
       elementDesc.text.size   = { 1.0f, 1.0f };
-      elementDesc.text.cPtr   = (chptr)"New game";
+      elementDesc.text.cPtr   = (chptr)stMainMenus[0];
       elementDesc.text.cCount = (si32)strlen(elementDesc.text.cPtr);
       elementDesc.text.align  = UI_ALIGN_C;
       elementDesc.text.mods   = UI_ROT | UI_TRANS | UI_SCALE_X;
@@ -453,32 +453,32 @@ void TempMenuGen(cptrc argList) {
       buttonNew = gui.CreateTextButton(elementDesc);
 
       elementDesc.viewPos = { 0.0625f, 0.25f };
-      elementDesc.text.cPtr   = (chptr)"Save game";
+      elementDesc.text.cPtr   = (chptr)stMainMenus[1];
       elementDesc.text.cCount = (si32)strlen(elementDesc.text.cPtr);
       elementDesc.func.activate0[1] = Activate01SaveButton;
       buttonSave = gui.CreateTextButton(elementDesc);
 
       elementDesc.viewPos = { 0.0625f, 0.1875f };
-      elementDesc.text.cPtr   = (chptr)"Load game";
+      elementDesc.text.cPtr   = (chptr)stMainMenus[2];
       elementDesc.text.cCount = (si32)strlen(elementDesc.text.cPtr);
       elementDesc.func.activate0[1] = Activate01LoadButton;
       buttonLoad = gui.CreateTextButton(elementDesc);
 
       elementDesc.viewPos = { 0.0625f, 0.125f };
-      elementDesc.text.cPtr   = (chptr)"Options";
+      elementDesc.text.cPtr   = (chptr)stMainMenus[3];
       elementDesc.text.cCount = (si32)strlen(elementDesc.text.cPtr);
       elementDesc.func.activate0[1] = Activate01OptionsButton;
       buttonOptions = gui.CreateTextButton(elementDesc);
 
       elementDesc.viewPos = { 0.0625f, 0.0625f };
-      elementDesc.text.cPtr   = (chptr)"Editors";
+      elementDesc.text.cPtr   = (chptr)stMainMenus[4];
       elementDesc.text.cCount = (si32)strlen(elementDesc.text.cPtr);
       elementDesc.func.activate0[1] = Activate01EditorsButton;
       buttonEditors = gui.CreateTextButton(elementDesc);
 
       elementDesc.viewPos = { 0.03125f, 0.03125f };
       elementDesc.index   = { index.soundBank, index.alphabet, index.spriteLib, 38u };
-      elementDesc.text.cPtr   = (chptr)"Exit";
+      elementDesc.text.cPtr   = (chptr)stMainMenus[5];
       elementDesc.text.cCount = (si32)strlen(elementDesc.text.cPtr);
       elementDesc.func.activate0[1] = Activate01ExitButton;
       buttonExit = gui.CreateTextButton(elementDesc);
@@ -505,7 +505,7 @@ void TempMenuGen(cptrc argList) {
       elementDesc.panel.wOpacity = 0.2929f;
       elementDesc.panel.wIndent  = { 1.0f, 1.0f };
       elementDesc.panel.align    = UI_ALIGN_T;
-      elementDesc.text.cPtr   = (chptr)"Editors";
+      elementDesc.text.cPtr   = (chptr)stMainMenus[4];
       elementDesc.text.cCount = (si32)strlen(elementDesc.text.cPtr);
       element[0] = gui.CreateTextPanel(elementDesc);
 
@@ -516,33 +516,33 @@ void TempMenuGen(cptrc argList) {
       elementDesc.panel.bSize    = 0.0f;
       elementDesc.panel.wOpacity = 1.0;
       elementDesc.panel.align    = UI_ALIGN_BL;
-      elementDesc.text.cPtr   = (chptr)"User interface";
+      elementDesc.text.cPtr   = (chptr)stEditorMenus[0];
       elementDesc.text.cCount = (si32)strlen(elementDesc.text.cPtr);
       elementDesc.func.activate0[1] = Activate01UIEditorButton;
       element[1] = gui.CreateTextButton(elementDesc);
 
       elementDesc.viewPos = { 0.0625f, 0.25f };
-      elementDesc.text.cPtr   = (chptr)"Artificial Intelligence";
+      elementDesc.text.cPtr   = (chptr)stEditorMenus[1];
       elementDesc.text.cCount = (si32)strlen(elementDesc.text.cPtr);
       element[2] = gui.CreateTextButton(elementDesc);
 
       elementDesc.viewPos = { 0.0625f, 0.1875f };
-      elementDesc.text.cPtr   = (chptr)"Entity";
+      elementDesc.text.cPtr   = (chptr)stEditorMenus[2];
       elementDesc.text.cCount = (si32)strlen(elementDesc.text.cPtr);
       element[3] = gui.CreateTextButton(elementDesc);
 
       elementDesc.viewPos = { 0.0625f, 0.125f };
-      elementDesc.text.cPtr   = (chptr)"Map";
+      elementDesc.text.cPtr   = (chptr)stEditorMenus[3];
       elementDesc.text.cCount = (si32)strlen(elementDesc.text.cPtr);
       element[4] = gui.CreateTextButton(elementDesc);
 
       elementDesc.viewPos = { 0.0625f, 0.0625f };
-      elementDesc.text.cPtr   = (chptr)"Mission";
+      elementDesc.text.cPtr   = (chptr)stEditorMenus[4];
       elementDesc.text.cCount = (si32)strlen(elementDesc.text.cPtr);
       element[5] = gui.CreateTextButton(elementDesc);
 
       elementDesc.viewPos = { 0.03125f, 0.03125f };
-      elementDesc.text.cPtr   = (chptr)"Main menu";
+      elementDesc.text.cPtr   = (chptr)stEditorMenus[5];
       elementDesc.text.cCount = (si32)strlen(elementDesc.text.cPtr);
       element[6] = gui.CreateTextButton(elementDesc);
 
@@ -558,8 +558,7 @@ void TempMenuGen(cptrc argList) {
 ///--- Editors
 
 ///--- User interface editor
-      // Panel for element creation options
-      cchptrc listOptionsElements[8] = { "Text", "Text array", "Panel", "Button", "Toggle", "Scalar", "Cursor", "Dial" };
+      // Text Array Panel for element creation choice
       elementDesc.viewPos = { 0.0f, 0.0f };
       elementDesc.index   = { 0, index.alphabet, 0, 0, 0 };
       elementDesc.panel.tint     = c4_white;
@@ -577,17 +576,72 @@ void TempMenuGen(cptrc argList) {
       elementDesc.cursor.wOpacity = 0.2929f;
       elementDesc.text.tint     = c4_white;
       elementDesc.text.size     = { 0.24f, 0.24f };
-      elementDesc.text.cArray   = (chptrptr)listOptionsElements;
-      elementDesc.text.sCount   = 8;
+      elementDesc.text.cArray   = (chptrptr)stElementNames;
+      elementDesc.text.sCount   = 16;
       elementDesc.text.lSpacing = 1.375f;
       elementDesc.text.align    = UI_ALIGN_TL;
       elementDesc.text.mods     = UI_TEXTARRAY;
-      cVEC3Du32 element0 = gui.CreateTextSelectionPanel(elementDesc);
+      cVEC3Du32 tsp_Creation = gui.CreateTextSelectionPanel(elementDesc);
       // Panel for element properties
-      /// Create overlapping & conditionally visible elements
+      elementDesc.viewPos = { 0.0f, 0.0f };
+      elementDesc.panel.tint     = c4_white;
+      elementDesc.panel.size     = { 0.125f, 0.125f };
+      elementDesc.panel.bStyle   = 1u;
+      elementDesc.panel.bSize    = 0.03125f;
+      elementDesc.panel.wIndent  = { 0.03125f, 0.03125f };
+      elementDesc.panel.wOpacity = 0.2929f;
+      elementDesc.panel.align    = UI_ALIGN_C;
+      elementDesc.panel.mods     = UI_PANEL;
+      cui32 p_Properties = gui.CreatePanel(elementDesc);
+      // Text: Element type
+      elementDesc.viewPos = { 0.0f, 0.03125f };
+      elementDesc.parent  = p_Properties;
+      elementDesc.text.tint   = c4_white;
+      elementDesc.text.size   = { 0.24f, 0.24f };
+      elementDesc.text.cPtr   = (chptr)stNone;
+      elementDesc.text.cCount = 32;
+      elementDesc.text.align  = UI_ALIGN_T;
+      elementDesc.text.mods   = UI_TEXT;
+      cui32 t_PropertiesType = gui.CreateText(elementDesc);
+      // Text: viewPos label
+      elementDesc.viewPos = { -0.5f, 0.0625f };
+      elementDesc.parent  = p_Properties;
+      elementDesc.text.tint   = c4_white;
+      elementDesc.text.size   = { 0.24f, 0.24f };
+      elementDesc.text.cPtr   = (chptr)stNone;
+      elementDesc.text.cCount = 32;
+      elementDesc.text.align  = UI_ALIGN_T;
+      elementDesc.text.mods   = UI_TEXT;
+      cui32 t_PropertiesType = gui.CreateText(elementDesc);
+      // Text: size label
+      elementDesc.viewPos = { 0.0f, 0.0625f };
+      elementDesc.parent  = p_Properties;
+      elementDesc.text.tint   = c4_white;
+      elementDesc.text.size   = { 0.24f, 0.24f };
+      elementDesc.text.cPtr   = (chptr)stNone;
+      elementDesc.text.cCount = 32;
+      elementDesc.text.align  = UI_ALIGN_T;
+      elementDesc.text.mods   = UI_TEXT;
+      cui32 t_PropertiesType = gui.CreateText(elementDesc);
+      // Text: activeCoords label
+      elementDesc.viewPos = { 0.5f, 0.0625f };
+      elementDesc.parent  = p_Properties;
+      elementDesc.text.tint   = c4_white;
+      elementDesc.text.size   = { 0.24f, 0.24f };
+      elementDesc.text.cPtr   = (chptr)stNone;
+      elementDesc.text.cCount = 32;
+      elementDesc.text.align  = UI_ALIGN_T;
+      elementDesc.text.mods   = UI_TEXT;
+      cui32 t_PropertiesType = gui.CreateText(elementDesc);
+      // Input panel: viewPos
+      
+      // Input panel: size (derivative of activeCoords)
+
+      // Input panel: activeCoords
+
+
 
       // Panel for vertex properties
-      /// Create overlapping & conditionally visible elements
 
 ///--- User interface editor
 

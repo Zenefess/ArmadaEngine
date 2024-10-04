@@ -1,6 +1,6 @@
 /************************************************************
  * File: project definitions.h          Created: 2024/06/15 *
- *                                Last modified: 2024/07/13 *
+ *                                Last modified: 2024/07/30 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -13,6 +13,8 @@
 
 // Disable custom fixed-point data types
 #define FPDT_NO_CUSTOM
+
+#include "typedefs.h"
 
 constexpr auto CFG_MAX_SHADERS = 128u; // Maximum number of shaders
 constexpr auto CFG_MAX_STATES  = 16u;  // Maximum number of sampler states
@@ -76,6 +78,13 @@ constexpr auto MAX_OPAQUE_SPRITES   = 1048576u;
 constexpr auto MAX_TRANS_SPRITES    = 1048576u;
 
 // Generic string library
-const char stNone[] = "(none)";
+cchptrc stElementNames[] = {
+   "Text", "Text array", "Panel", "Text Panel", "Text Array Panel", "Input Panel", "Drop Panel", "Button",
+   "textButton", "Toggle", "Scalar", "Cursor", "Dial", "", "", "(none)"
+};
+cchptrc stMainMenus[]   = {"New game", "Save game", "Load game", "Options", "Editors", "Exit" };
+cchptrc stEditorMenus[] = { "User interfaces", "Artificial intelligence", "Entity", "Map", "Mission", "Main Menu" };
+cchptrc stNone = "(none)";
 
-const wchar_t wstNone[] = L"(none)";
+cwchptrc wstNone = L"(none)";
+

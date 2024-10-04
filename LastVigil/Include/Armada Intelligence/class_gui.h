@@ -1066,7 +1066,7 @@ public:
 
       cui32 panel = CreatePanel(desc);
 
-      cui32   tempPtrs[6] = { desc.function[0], desc.function[1], desc.function[2], desc.function[3], desc.function[4], desc.function[5] };
+      cui32 tempPtrs[6] = { desc.function[0], desc.function[1], desc.function[2], desc.function[3], desc.function[4], desc.function[5] };
 
       for(i = 0; i < 6; ++i) desc.function[i] = 0;
 

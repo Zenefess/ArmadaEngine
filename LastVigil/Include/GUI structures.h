@@ -1,6 +1,6 @@
 /************************************************************
  * File: GUI structures.h               Created: 2023/01/26 *
- *                                Last modified: 2024/07/23 *
+ *                                Last modified: 2024/07/30 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -59,8 +59,11 @@ constexpr ui8 UIPT_DELAY   = 0x01u;
 constexpr ui8 UIPT_OVERLAY = 0x02u;
 constexpr ui8 UIPT_FADE    = 0x04u;
 
-enum AE_ELEMENT_TYPE : ui8 { aet_text, aet_textArray, aet_panel, aet_button, aet_toggle, aet_scalar, aet_cursor, aet_dial, aet_8, aet_9, aet_10, aet_11, aet_12, aet_13, aet_14, aet_void };
 enum AE_REGEN_VERTS  : ui8 { aev_minimum, aev_maximum };
+enum AE_ELEMENT_TYPE : ui8 { aet_text, aet_textArray, aet_panel, aet_textPanel,
+                             aet_textArrayPanel, aet_inputPanel, aet_dropPanel, aet_button,
+                             aet_textButton, aet_toggle, aet_scalar, aet_cursor,
+                             aet_dial, aet_13, aet_14, aet_void };
 
 union GUI_INDICES {
    cptrc data;
@@ -303,7 +306,7 @@ struct GUI_PCT_PROPS {
 };
 
 // Input data for element creation
-al32 struct GUI_EL_DESC { // 186 of 192 bytes
+al32 struct GUI_EL_DESC { // 190 of 192 bytes
    union {
       struct {
          ui32 hover[2]; // Functions for onHover & offHover
@@ -331,7 +334,14 @@ al32 struct GUI_EL_DESC { // 186 of 192 bytes
       ui16 panelSprite;
       ui16 cursorSprite;
    } index;
-   ui8 RES[6];
+   ui8 RES[2];
+   union _AE_UI_EL_I {
+      ui32 data;
+      _AE_UI_EL_I(void) {}
+      _AE_UI_EL_I(cui32 input) { data = input; }
+      _AE_UI_EL_I(cVEC2Du32 input) { data = input.x; }
+      _AE_UI_EL_I(cVEC3Du32 input) { data = input.x; }
+   } parent;
 
    GUI_EL_DESC(void) {
       for(ui8 i = 0; i < 6; ++i)

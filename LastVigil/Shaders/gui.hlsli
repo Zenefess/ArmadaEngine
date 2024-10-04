@@ -1,6 +1,6 @@
 /************************************************************
  * File: gui.hlsli                      Created: 2024/05/25 *
- * Type: Header file              Last modified: 2024/05/26 *
+ * Type: Header file              Last modified: 2024/07/29 *
  *                                                          *
  * Notes:                                                   *
  *                                                          *
@@ -8,7 +8,22 @@
  ************************************************************/
 
 #include "common.hlsli"
- 
+
+#define aet_text           0u
+#define aet_textArray      1u
+#define aet_panel          2u
+#define aet_textPanel      3u
+#define aet_textArrayPanel 4u
+#define aet_inputPanel     5u
+#define aet_dropPanel      6u
+#define aet_button         7u
+#define aet_textButton     8u
+#define aet_toggle         9u
+#define aet_scalar         10u
+#define aet_cursor         11u
+#define aet_dial           12u
+#define aet_void           15u
+
 cbuffer CB_VIEW : register(b1) { // 192 bytes (12 vectors)
    const matrix projection;   // Perspective transformation
    const matrix orthographic; // Orthographic transformation

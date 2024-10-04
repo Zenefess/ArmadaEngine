@@ -1,6 +1,6 @@
 /************************************************************************************************
  * File: gs.gui.hlsl                                                        Created: 2023/04/09 *
- * Type: Geometry shader                                              Last modified: 2024/06/27 *
+ * Type: Geometry shader                                              Last modified: 2024/07/29 *
  *                                                                                              *
  * Notes: 8 characters per instance.                                                            *
  *                                                                                              *
@@ -21,7 +21,7 @@
 
 StructuredBuffer   <CHAR_IMM>   alphabet : register(t80); // Character geometry
 StructuredBuffer   <uint4>      char16   : register(t81); // Text pool
-RWStructuredBuffer <GUI_EL_DYN> element  : register(u1); // Element data
+RWStructuredBuffer <GUI_EL_DYN> element  : register(u1);  // Element data
 
 [instance(4)] [maxvertexcount(32)]
 void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceID, inout TriangleStream<GOut> output) {
@@ -29,7 +29,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
    const uint type = (curElement.ind_type >> 24u) & 0x0Fu;
 
    // Type==void
-   if(type == 15u) return;
+   if(type == aet_void) return;
    
    const float2 invScale = 1.0f / guiScale;
    const uint   curBits  = curElement.seo_bits >> 16u;
@@ -118,7 +118,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
    float  border = ((curElement.pei != input[0]) && (curBits & 0x0200u) ? invScale.y : invScale.x);
 
    // Type!=text(0)/textArray(1)
-   [branch] if(type > 1u) {
+   [branch] if(type > aet_textArray) {
       const float4 size   = float4(curElement.size * parScaling.xy, curElement.size * parScaling.xy / parScaling.zw);
       const float4 col[4] = { float4((uint4(curElement.tint[0].xx, curElement.tint[0].yy) >> uint4(0, 16u, 0, 16u)) & 0x0FFFFu) * rcp21845,
                               float4((uint4(curElement.tint[0].zz, curElement.tint[0].ww) >> uint4(0, 16u, 0, 16u)) & 0x0FFFFu) * rcp21845,
@@ -129,12 +129,12 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       coords = curElement.coords[0].xy;
 
       // Justification
-      [flatten] if((type == 0x05u) || (type == 0x06u)) { // Type==Scalar or Cursor
+      [flatten] if((type == aet_scalar) || (type == aet_cursor)) { // Type==Scalar or Cursor
          [flatten] if(curBits & 0x01u) coords.x -= size.z; // Align origin to left
          [flatten] if(curBits & 0x02u) coords.x += size.z; // Align origin to right
          [flatten] if(curBits & 0x04u) coords.y += size.w; // Align origin to top
          [flatten] if(curBits & 0x08u) coords.y -= size.w; // Align origin to bottom
-      } else { // Type!=Scalar or Cursor
+      } else {
          [flatten] if(curBits & 0x03u) { // Origin relative to left/right of viewport
             coords.x += size.z - border;
             [flatten] if(curBits & 0x02u) coords.x *= -1.0f; // Origin relative to right of viewport
@@ -261,7 +261,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       const float  adjWidth = (totalChars > 32u ? totalWidth : curElement.width_at0);
 
       // Adjust to scroll position if textArray
-      if(type==1u) coords.y -= element[curElement.pei + 2u].rot;
+      if(type == aet_textArray) coords.y -= element[curElement.pei + 2u].rot;
       
       // Justification
       const bool fillView = (curBits & 0x02000u) && ((totalWidth > 1.0f) || (totalChars > 32u));
@@ -280,7 +280,7 @@ void main(in point const uint input[1] : INDEX, in const uint i : SV_GSInstanceI
       float2 coords2 = ((i & 0x01u) ? element[input[0]].coords[i_div2].z : element[input[0]].coords[i_div2].x) - element[input[0]].coords[0].x;
 
 //      const float4 rotVals = { coords, sin(curElement.rot), cos(curElement.rot) };
-      const float4 rotVals = { coords, (type == 1u ? float2(0.0f, 1.0f) : float2(sin(curElement.rot), cos(curElement.rot))) };
+      const float4 rotVals = { coords, (type == aet_textArray ? float2(0.0f, 1.0f) : float2(sin(curElement.rot), cos(curElement.rot))) };
 
       // 'Rotate' && 'translate' bits test: Transrotate around parent's center
       if((curBits & 0x0300u) == 0x0300u) {

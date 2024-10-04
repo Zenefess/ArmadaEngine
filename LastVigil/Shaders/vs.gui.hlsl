@@ -1,6 +1,6 @@
 /************************************************************
  * File: vs.gui.hlsl                    Created: 2023/04/09 *
- * Type: Vertex shader            Last modified: 2024/06/24 *
+ * Type: Vertex shader            Last modified: 2024/07/29 *
  *                                                          *
  * Notes: 32 characters per vertex.                         *
  *                                                          *
@@ -14,14 +14,14 @@
 
 StructuredBuffer   <CHAR_IMM>   alphabet : register(t80); // Character geometry
 StructuredBuffer   <uint4>      char16   : register(t81); // Text pool
-RWStructuredBuffer <GUI_EL_DYN> element  : register(u1); // Element data
+RWStructuredBuffer <GUI_EL_DYN> element  : register(u1);  // Element data
 
 uint main(in const uint index : INDEX) : INDEX {   
    // If invisible
    if(element[index].seo_bits & 0x0800000u) return index;
 
    // If type!=Text(0)/textArray(1)
-   if(((element[index].ind_type >> 24u) & 0x0Fu) > 1u) return index;
+   if(((element[index].ind_type >> 24u) & 0x0Fu) > aet_textArray) return index;
 
    // If (re)processing not needed
    if(element[index].width_at0 > 0.0f) return index;
