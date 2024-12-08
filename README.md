@@ -1,5 +1,5 @@
 2024/12/09:   This project is still active. I have been busy with my day job as a live-in disability carer, managing injuries, and a Rottweiler dying of old age.
-   The GUI system is technically funcitonal. Currently in the middle of hand-coding a basic interface editor; once that is done I can use it to quickly improve it's own interface, as well as create all futurte interfaces.
+   The GUI system is technically functional. Currently in the middle of hand-coding a basic interface editor; once that is done I can use it to quickly improve it's own interface, as well as create all future interfaces.
 
 
 Previous updates:
