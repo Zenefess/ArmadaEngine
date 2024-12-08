@@ -1,6 +1,11 @@
-2024/06/06 update:
+2024/12/09:   This project is still active. I have been busy with my day job as a live-in disability carer, managing injuries, and a Rottweiler dying of old age.
+   The GUI system is technically funcitonal. Currently in the middle of hand-coding a basic interface editor; once that is done I can use it to quickly improve it's own interface, as well as create all futurte interfaces.
 
-   Input processing is complete. Input mappings for triggering functions can be any combination of all 512 binary inputs (keys, mouse buttons, and controller buttons & POV directions) and, optionally, any combination of scalar inputs (mouse and game controller axes). Work on custom function handling is still underway, being worked on in parallel with the rest of the GUI system. Game controller axes support deadzone, sensitivity, and center offset adjmustments. Only 1 mouse and 1 keyboard are supported, currently; this may change in the future.
+
+Previous updates:
+
+
+2024/06/06:   Input processing is complete. Input mappings for triggering functions can be any combination of all 512 binary inputs (keys, mouse buttons, and controller buttons & POV directions) and, optionally, any combination of scalar inputs (mouse and game controller axes). Work on custom function handling is still underway, being worked on in parallel with the rest of the GUI system. Game controller axes support deadzone, sensitivity, and center offset adjmustments. Only 1 mouse and 1 keyboard are supported, currently; this may change in the future.
    
    The following is supported:
    
@@ -8,24 +13,11 @@
 * Keyboard: Up to 192 unique keys
 * Game controllers: Up to 8 devices, each of which allows for up to 8 axes, 4 POVs, and 32 buttons
 
+2024/06/01:   I have spendt most of the time since the last update rewriting fixed-point data type handling, which has included revising a lot of code that utilises those data types. Much easier to use them, now, as their conversions are handled by class functions. Work on this project is still well in progress.
 
+2024/05/06:   Currently preparing GUI backend to make creating/editing GUI profiles fully customisable. Support for custom input processing & triggered functions is almost complete.
 
-
-2024/06/01 update:
-
-   I have spendt most of the time since the last update rewriting fixed-point data type handling, which has included revising a lot of code that utilises those data types. Much easier to use them, now, as their conversions are handled by class functions. Work on this project is still well in progress.
-
-   
-
-2024/05/06 update:
-
-   Currently preparing GUI backend to make creating/editing GUI profiles fully customisable. Support for custom input processing & triggered functions is almost complete.
-
-
-
-2024/04/07 update:
-
-   Most of the GUI functionality is done, now. Soon enough I'll start creating a GUI editor.   ...Creating a GUI system from scratch is my biggest irritation when it comes to software development, I have discovered. I will be relieved when it's completed; then I can go back to working on terrain generation, as well as begin work on the AI system.
+2024/04/07:   Most of the GUI functionality is done, now. Soon enough I'll start creating a GUI editor.   ...Creating a GUI system from scratch is my biggest irritation when it comes to software development, I have discovered. I will be relieved when it's completed; then I can go back to working on terrain generation, as well as begin work on the AI system.
    At some point I'll decide on a license agreement that allows for attributed use of my code. Right now I'm not sure which elements will be core to the ArmadaEngine and which will be specific to future commerical products. Most will become core elements.
    On a related subject: My brain's progress is holding. Even with a massive 8+ months break due to my dominant arm needing more physiotherapy to stop my hand going numb.
 
