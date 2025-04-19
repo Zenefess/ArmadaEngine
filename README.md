@@ -1,5 +1,6 @@
-2024/12/09:   This project is still active. I have been busy with my day job as a live-in disability carer, managing injuries, and a Rottweiler dying of old age.
-   The GUI system is technically functional. Currently in the middle of hand-coding a basic interface editor; once that is done I can use it to quickly improve it's own interface, as well as create all future interfaces.
+2024/12/09~2025/04/19:   This project is still active. I have been busy with my day job as a live-in disability carer, pet health issues, and managing my own permanent injuries... which includes a neck/shoulder injury that became so bad I couldn't sit and/or type without my arm going weak & numb. I have implemented some very assertive physiotherpay and redesigned my entire office setup to better accomodate my injuries which, hopefully, allows me to get back to working on this large project. I need a trainee...
+
+* The GUI system is technically functional. Currently in the middle of hand-coding a basic interface editor; once that is done I can use it to quickly improve it's own interface, as well as create all future interfaces.
 
 
 Previous updates:
