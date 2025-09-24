@@ -16,7 +16,7 @@
 #include "D3D11SDKLayers.h"
 #endif
 
-void OpenAL1_1Thread(void* argList) {
+unsigned int __stdcall OpenAL1_1Thread(void* argList) {
    GLOBALCOORDS        gcoLocal     = {};
    CLASS_OAL11FILEOPS  sndFiles     = files;
    ALCdevice          *ALdev        = NULL;
@@ -34,6 +34,8 @@ Reinitialise_:
    THREAD_LIFE &= ~AUDIO_THREAD_RESET;
 
    // Initialisation
+   CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+   _putenv_s("ALSOFT_DRIVERS", "wasapi");
    ALdev = alcOpenDevice(NULL);
    if(!ALdev) Try(stOpenDev, -2, ss_audio);
    ALdevcon = alcCreateContext(ALdev, NULL);
@@ -81,6 +83,8 @@ Reinitialise_:
       Idle(thread.sleepTime[ss_audio]);
    } while (threadLife & AUDIO_THREAD_ALIVE);
 
+   CoUninitialize();
    THREAD_LIFE |= AUDIO_THREAD_DIED;
    //_endthread();
+   return 0;
 }

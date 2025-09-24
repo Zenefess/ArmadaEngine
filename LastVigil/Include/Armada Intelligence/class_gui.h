@@ -1,6 +1,6 @@
 /*******************************************************************************  
  * File: class_gui.h                                       Created: 2023/01/26 *
- *                                                   Last modified: 2024/07/25 *
+ *                                                   Last modified: 2025/09/09 *
  *                                                                             *
  * Desc:                                                                       *
  *                                                                             *
@@ -12,7 +12,7 @@
  *******************************************************************************/
 #pragma once
 
-#include "..\master header.h"
+#include "master header.h"
 #include "Data structures.h"
 #include "GUI structures.h"
 #include "GUI functions.h"
@@ -48,7 +48,7 @@ al32 struct CLASS_GUI {
    declare1d64z(GUI_SPRITE_LIB, spriteLib,        MAX_GUI_SPRITE_LIBS);            // Master array of sprite libraries
    declare1d64z(GUI_INTERFACE,  interfaceProfile, MAX_INTERFACES);                 // Master array of interface profiles
    declare1d64s(GUI_ELEMENT,    element,          MAX_GUI_ELEMENTS, max128);       // 96K per 1,024 elements
-   declare1d64z(GUI_EL_DGS,     element_dgs,      MAX_GUI_VERTICES);                // GPU-bound element data
+   declare1d64z(GUI_EL_DGS,     element_dgs,      MAX_GUI_VERTICES);               // GPU-bound element data
 
    declare1d64z(ui32, totalVertexList, MAX_GUI_VERTICES);
    declare1d64s(ui32, curVertexCount,  MAX_INTERFACES, max128);
@@ -117,7 +117,7 @@ private:
       funcLib[index++] = { __Activate0_1_Editors_Button,   stActivate01EditorsButton };
       funcLib[index++] = { __Activate0_1_Exit_Button,      stActivate01ExitButton };
 
-      funcLib[index++] = { __Activate0_1_UI_Editor_Button, stActivate01ExitButton };
+      funcLib[index++] = { __Activate0_1_UI_Editor_Button, stActivate01UIEditorButton };
 
       uiFunctions = index;
    }
@@ -185,11 +185,11 @@ public:
 ///--- To do...
    }
 
-   cbool SaveAtlas(cwchptrc filename, cwchptrc folder, csi16 atlasIndex) const {
+   cbool SaveAtlas(cwchptrc filename, cwchptrc folder, csi16 atlasIndex) {
 ///--- To do...
    }
 
-   cui32 CreateSpriteLibrary(si32 libraryIndex, csi16 maxSprites, csi16 atlasIndex) const {
+   cui32 CreateSpriteLibrary(si32 libraryIndex, csi16 maxSprites, csi16 atlasIndex) {
       // Find first available slot if index is -1
       if(libraryIndex == -1) {
          ui8 i = 0;
@@ -208,7 +208,7 @@ public:
 
    // Read atlas filename then locates/loads texture. Returns atlas index
    inline cui16 ReadAndLoadAtlas(cHANDLE fileHandle) {
-      static al16 wchptrc atlasFilename = (wchptr)malloc16(512u);
+      al16 wchptrc atlasFilename = (wchptr)malloc16(512u);
       ui16 i = 0;
 
       files.ReadWideLine(fileHandle, atlasFilename);
@@ -221,6 +221,7 @@ public:
          i = atlasSlot;
       }
 
+      mfree1(atlasFilename);
       return i;
    }
 
@@ -264,11 +265,12 @@ public:
    }
 
    // Returns true if successful
-   cbool SaveSpriteLibrary(cwchptrc filename, csi32 libIndex) const {
+   cbool SaveSpriteLibrary(cwchptrc filename, csi32 libIndex) {
       // Sprite library slot is empty
       if(!spriteLib[libIndex].maxSprites) return false;
 
-      ui32 bytesWritten, charsWritten = 0;
+      cui32 zeroes = 0;
+      ui32  bytesWritten, charsWritten = 0;
 
       cHANDLE hSpriteLibData = files.OpenForWriting(filename, stGUIDir);
       
@@ -279,7 +281,7 @@ public:
       // Write current & maximum counts
       bytesWritten += files.Write(hSpriteLibData, &spriteLib[libIndex].numSprites, sizeof(ui16[2]));
       // Reserved for total character count of sprite strings
-      files.Write(hSpriteLibData, &hSpriteLibData, 4u);
+      files.Write(hSpriteLibData, &zeroes, 4u);
       // Write sprite data
       for(ui32 i = 0; i < spriteLib[libIndex].numSprites; ++i) {
          cui32 stringLength = ui32(strlen(spriteLib[libIndex].sprite[i].name) + 1u);
@@ -296,14 +298,14 @@ public:
       return true;
    }
 
-   cui32 CreateSprite(csi32 libIndex, chptrc name, cVEC4Df texCoords, cVEC2Df activeArea) const {
+   cui32 CreateSprite(csi32 libIndex, chptrc name, cVEC4Df texCoords, cVEC2Df activeArea) {
       if(spriteLib[libIndex].numSprites >= MAX_GUI_LIB_SPRITES) return 0x080000001;
       spriteLib[libIndex].sprite[spriteLib[libIndex].numSprites] = { name, activeArea, texCoords };
 
       return spriteLib[libIndex].numSprites++;
    }
 
-   cui32 CreateSprite(csi32 libIndex, GUI_SPRITE spriteData, cbool flipY) const {
+   cui32 CreateSprite(csi32 libIndex, GUI_SPRITE spriteData, cbool flipY) {
       if(spriteLib[libIndex].numSprites >= MAX_GUI_LIB_SPRITES) return 0x080000001;
 
       if(flipY) {
@@ -320,7 +322,7 @@ public:
 
 ///--- !!! Temporary; for building primary libraries !!!
    al32 struct GUI_SPRITE_DEFAULTS { cchptrc name; VEC4Df tc; VEC2Df aa; };
-   cui32 CreateSprite(csi32 libIndex, GUI_SPRITE_DEFAULTS spriteData, cbool flipY) const {
+   cui32 CreateSprite(csi32 libIndex, GUI_SPRITE_DEFAULTS spriteData, cbool flipY) {
       if(spriteLib[libIndex].numSprites >= MAX_GUI_LIB_SPRITES) return 0x080000001;
 
       if(flipY) {
@@ -354,7 +356,7 @@ public:
       cHANDLE hSpriteData = files.OpenForReading(filename, stGUIDir);
 
       // Read (and discard) tag line
-      if(!files.ReadAndVerify(hSpriteData, L"AE.Sprite.01u")) Try("Invalid sprite file", -3, ss_gui);
+      if(!files.ReadAndVerify(hSpriteData, "AE.Sprite.01u")) Try("Invalid sprite file", -3, ss_gui);
       // Read data
       files.ReadLine(hSpriteData, spriteLib[libIndex].sprite[spriteIndex].name);
       files.Read(hSpriteData, &spriteLib[libIndex].sprite[spriteIndex].tc, sizeof(fl32[6]));
@@ -365,7 +367,7 @@ public:
    }
 
    // Returns true if successful
-   cbool SaveSprite(cwchptrc filename, csi32 libIndex, csi16 spriteIndex) const {
+   cbool SaveSprite(cwchptrc filename, csi32 libIndex, csi16 spriteIndex) {
       // Sprite slot is empty
       if(!spriteLib[libIndex].sprite[spriteIndex].name) return false;
 
@@ -389,13 +391,15 @@ public:
          for(; alphabet[i].stLanguage && i < MAX_ALPHABETS; ++i);
          if(i >= MAX_ALPHABETS) return 0x08001u; // All alphabet slots occupied
          alphabetIndex = i;
-      }
+      } else
+         if(!alphabet[alphabetIndex].stLanguage)
+            return 0x08002u; // Alphabet slot already occupied
       if(xSegments < 1 || ySegments < 1) return 0x08002u;
       if(xSegments * ySegments > MAX_CHARACTERS) return 0x08003u;
 
       cui32 pIMMos = alphabetIndex * MAX_CHARACTERS;
-      strcpy(stLanguage[uiLanguages], languageName);
-      alphabet[alphabetIndex].stLanguage = stLanguage[uiLanguages++];
+      strcpy(stLanguage[alphabetIndex], languageName);
+      alphabet[alphabetIndex].stLanguage = stLanguage[alphabetIndex];
       alphabet[alphabetIndex].stAtlasFilename = stAtlas[atlasIndex];
       alphabet[alphabetIndex].atlasIndex = atlasIndex;
       alphabet[alphabetIndex].numChars = xSegments * ySegments;
@@ -414,6 +418,8 @@ public:
             alphabet_pIMM[pIMMos + i].yos    = 0.0f;
          }
 
+      ++uiLanguages;
+
       return alphabetIndex;
    }
 
@@ -424,30 +430,32 @@ public:
          for(; alphabet[i].stLanguage && i < MAX_ALPHABETS; ++i);
          if(i >= MAX_ALPHABETS) return 0x08001u; // All alphabet slots occupied
          index = i;
-      }
+      } else
+         if(!alphabet[index].stLanguage)
+            return 0x08002u; // Alphabet slot already occupied
 
       cHANDLE hAlphabetData = files.OpenForReading(filename, stGUIDir);
 
       // Read (and discard) tag line
       if(!files.ReadAndVerify(hAlphabetData, "AE.Alphabet.01u")) Try("Invalid alphabet file", -2, ss_gui);
       // Read primary data
-      files.ReadLine(hAlphabetData, stLanguage[uiLanguages]);
-      alphabet[uiLanguages].stLanguage = stLanguage[uiLanguages];
-      alphabet[uiLanguages].atlasIndex = ReadAndLoadAtlas(hAlphabetData);
-      alphabet[uiLanguages].stAtlasFilename = stAtlas[alphabet[uiLanguages].atlasIndex];
-      files.Read(hAlphabetData, &alphabet[uiLanguages].numChars, sizeof(ui16));
-      alphabet[uiLanguages].pIMMos = uiLanguages * MAX_CHARACTERS;
+      files.ReadLine(hAlphabetData, stLanguage[index]);
+      alphabet[index].stLanguage      = stLanguage[index];
+      alphabet[index].atlasIndex      = ReadAndLoadAtlas(hAlphabetData);
+      alphabet[index].stAtlasFilename = stAtlas[alphabet[index].atlasIndex];
+      files.Read(hAlphabetData, &alphabet[index].numChars, sizeof(ui16));
+      alphabet[index].pIMMos          = index * MAX_CHARACTERS;
       // Read character data
-      files.Read(hAlphabetData, &alphabet_pIMM[uiLanguages * MAX_CHARACTERS], sizeof(CHAR_IMM) * alphabet[uiLanguages].numChars);
+      files.Read(hAlphabetData, &alphabet_pIMM[uiLanguages * MAX_CHARACTERS], sizeof(CHAR_IMM) * alphabet[index].numChars);
 
-      CloseHandle(hAlphabetData);
+      files.CloseFile(hAlphabetData);
       ++uiLanguages;
 
       return index;
    }
 
    // Returns true if successful
-   cbool SaveAlphabet(cwchptrc filename, csi16 index) const {
+   cbool SaveAlphabet(cwchptrc filename, csi16 index) {
       // Alphabet slot is empty
       if(!alphabet[index].stLanguage) return false;
 
@@ -467,11 +475,11 @@ public:
       return true;
    }
 
-   cui32 DestroyAlphabet(si16 index) const {
+   cui32 DestroyAlphabet(si16 index) {
 ///- To do...
    }
 
-   inline cSSE4Df32 CalcActiveCoords(cVEC2Df viewPos, cVEC2Df spriteSize, cVEC2Df activeSize, cui8 alignment) const {
+   inline cSSE4Df32 CalcActiveCoords(cVEC2Df viewPos, cVEC2Df spriteSize, cVEC2Df activeSize, cui8 alignment) {
       cVEC2Df indent = { spriteSize.x - activeSize.x, spriteSize.y - activeSize.y };
 
       SSE4Df32 coords = { viewPos.x, viewPos.y, viewPos.x, viewPos.y };
@@ -599,7 +607,7 @@ public:
 
    // Returns first vertex
    cui32 CreateVertices(cui32 vertCount) {
-      if(siGUIElements >= MAX_GUI_VERTICES) return 0x080000001u;
+      if(uiGUIVerts + vertCount >= MAX_GUI_VERTICES) return 0x080000001u;
 
       cui32 firstVert = uiGUIVerts;
 
@@ -693,7 +701,7 @@ public:
          siTextBankOS = textBufferStart;
          uiGUIVerts   = GUIVertsOrigin;
 
-         return 0x08000002;
+         return 0x080000002;
       }
 
       ///- CalcActiveCoords?
@@ -1151,7 +1159,7 @@ public:
       return 0; // Return old index of relocated element
    }
 
-   cbool SaveElement(cwchptrc filename, csi32 elementIndex) const { // Returns false if unsuccessful
+   cbool SaveElement(cwchptrc filename, csi32 elementIndex) { // Returns false if unsuccessful
       // Element slot is empty
       if(element[elementIndex].vertexIndex == -1) return false;
 
@@ -1170,7 +1178,7 @@ public:
       return true;
    }
 
-   cbool SaveElements(cwchptrc filename, csi32 firstIndex, si32 count) const { // Returns false if unsuccessful
+   cbool SaveElements(cwchptrc filename, csi32 firstIndex, si32 count) { // Returns false if unsuccessful
       si32 index, lastIndex;
 
       // Element slot is empty
@@ -1210,9 +1218,8 @@ public:
          interfaceIndex = ii;
       }
 
-      if(maxElements > MAX_INTERFACE_VERTS) maxElements = MAX_INTERFACE_VERTS;
-      if(maxInputs > MAX_INTERFACE_INPUTS) maxInputs = MAX_INTERFACE_INPUTS;
-
+      //if(maxElements > MAX_INTERFACE_VERTS)  maxElements = MAX_INTERFACE_VERTS;
+      //if(maxInputs   > MAX_INTERFACE_INPUTS) maxInputs   = MAX_INTERFACE_INPUTS;
       interfaceProfile[siInterfaces].Initialise(name, maxElements, maxInputs);
 
       return siInterfaces++;
@@ -1358,7 +1365,7 @@ public:
    }
 
 private:
-   inline void WriteVertexData(cHANDLE fileHandle, cui32 vertexIndex, cui32 parentOffset) const {
+   inline void WriteVertexData(cHANDLE fileHandle, cui32 vertexIndex, cui32 parentOffset) {
       element_dgs[vertexIndex].parentIndex -= parentOffset;
       files.Write(fileHandle, &element_dgs[vertexIndex], sizeof(GUI_EL_DGS));
    }
@@ -1552,7 +1559,7 @@ public:
    }
 
    // Returns index of first interface with .label that matches name
-   cui16 FindInterface(chptrc name) const {
+   cui16 FindInterface(chptrc name) {
       ui16 i;
       for(i = 0; (strcmp(name, interfaceProfile[i].label)) && (i < (ui16 &)siInterfaces); ++i);
       return i;
@@ -1564,7 +1571,7 @@ public:
       return true;
    }
 
-   inline void ClearInterfaceInput(csi16 interfaceIndex, cui16 inputIndex) const {
+   inline void ClearInterfaceInput(csi16 interfaceIndex, cui16 inputIndex) {
 #ifdef __AVX512__
       interfaceProfile[interfaceIndex].input512[inputIndex] = null512;
 #else
@@ -1573,7 +1580,7 @@ public:
    }
 
    // Returns true if inputCount exceeds profile's maximum input count
-   inline cbool SetInterfaceInputCount(csi16 interfaceIndex, cui16 inputCount) const {
+   inline cbool SetInterfaceInputCount(csi16 interfaceIndex, cui16 inputCount) {
       if(inputCount < interfaceProfile[interfaceIndex].maxInputs) {
          interfaceProfile[interfaceIndex].inputCount = inputCount;
          return false;
@@ -1582,12 +1589,12 @@ public:
    }
 
    // Add single input code to an interface input. Pass null to inputName to keep current label
-   inline void AddToInterfaceInput(csi16 interfaceIndex, cui16 inputIndex, cchptrc inputName, AE_INPUTCODE inputCode) const {
+   inline void AddToInterfaceInput(csi16 interfaceIndex, cui16 inputIndex, cchptrc inputName, AE_INPUTCODE inputCode) {
       AddToInterfaceInput(interfaceIndex, inputIndex, inputName, 1u, inputCode);
    }
 
    // Add input codes to an interface input. Pass null to inputName to keep current label
-   void AddToInterfaceInput(csi16 interfaceIndex, cui16 inputIndex, cchptrc inputName, cui16 numInputCodes ...) const {
+   void AddToInterfaceInput(csi16 interfaceIndex, cui16 inputIndex, cchptrc inputName, cui16 numInputCodes ...) {
       va_list val; va_start(val, numInputCodes);
       for(ui16 i = 0, inputCode = va_arg(val, cui16); i < numInputCodes; ++i, inputCode = va_arg(val, cui16)) {
          interfaceProfile[interfaceIndex].input64[inputIndex][inputCode >> 6u] |= 0x01ull << (inputCode & 0x03Full);
@@ -1598,12 +1605,12 @@ public:
    }
 
    // Set single input code for an interface input. Pass null to inputName to keep current label
-   inline void SetInterfaceInput(csi16 interfaceIndex, cui16 inputIndex, cchptrc inputName, AE_INPUTCODE inputCode) const {
+   inline void SetInterfaceInput(csi16 interfaceIndex, cui16 inputIndex, cchptrc inputName, AE_INPUTCODE inputCode) {
       SetInterfaceInput(interfaceIndex, inputIndex, inputName, 1u, inputCode);
    }
 
    // Set input codes for an interface input. Pass null to inputName to keep current label
-   void SetInterfaceInput(csi16 interfaceIndex, cui16 inputIndex, cchptrc inputName, cui16 numInputCodes ...) const {
+   void SetInterfaceInput(csi16 interfaceIndex, cui16 inputIndex, cchptrc inputName, cui16 numInputCodes ...) {
       va_list val; va_start(val, numInputCodes);
       ClearInterfaceInput(interfaceIndex, inputIndex);
       GUI_INTERFACE &curProfile = interfaceProfile[interfaceIndex];
@@ -1614,57 +1621,83 @@ public:
       va_end(val);
    }
 
-   ///--- Move into GUI_INTERFACE struct
-   cui16 ResizeInterfaceInputs(csi16 interfaceIndex, cVEC4Du8 *inputList, cui16 inputCount, ui16 maxInputs) {
-///--- To do...
+   // Add one element to an interface. Returns remaining vertex capacity for that interface.
+   inline ui32 AddElementToInterface(cui32 elementIndex, csi16 interfaceIndex) {
+      // 0) Contracts
+      if (interfaceIndex < 0 || interfaceIndex >= siInterfaces) return 0u;
+      if (elementIndex >= (ui32)siGUIElements)                  return 0u;
 
-      return 0;
-   }
+      GUI_INTERFACE& iface = interfaceProfile[(ui32)interfaceIndex];
 
-   cui32 AddElementToInterface(cui32 elementIndex, csi16 interfaceIndex) const {
-      if(elementIndex < 0x080000000) {
-         interfaceProfile[interfaceIndex].vertex[interfaceProfile[interfaceIndex].vertCount++] = elementIndex;
-         RegenVertexBuffer(interfaceIndex, aev_maximum);
+      // 1) Ensure current vertex usage is synced and check headroom vs. MAX_INTERFACE_VERTS
+      RegenVertexBuffer((ui32)interfaceIndex, aev_maximum);
+      ui32 need = (ui32)element[elementIndex].vertexCount[aev_maximum];
+      if (need == 0u && element[elementIndex].vertexCount[aev_minimum] != 0u)
+         need = (ui32)element[elementIndex].vertexCount[aev_minimum];
+
+      if (curVertexCount[(ui32)interfaceIndex] + need > MAX_INTERFACE_VERTS)
+         return 0u; // not enough per-interface vertex space to safely add
+
+      // 2) Grow interface element capacity if required (cap at MAX_INTERFACE_VERTS)
+      if (iface.vertCount >= iface.maxVertices)
+      {
+         ui32 oldMax = (ui32)iface.maxVertices;
+         ui32 target = oldMax ? (oldMax << 1) : 8u;
+         if (target > MAX_INTERFACE_VERTS) target = MAX_INTERFACE_VERTS;
+         if (target <= oldMax) return 0u; // cannot grow further
+
+         // grow vertex index array
+         ui32ptr vNew = zalloc1d32(ui32, (ui16)target);
+         if (!vNew) return 0u;
+         if (oldMax) memcpy(vNew, iface.vertex, oldMax * sizeof(ui32));
+         _aligned_free(iface.vertex);
+         iface.vertex = vNew;
+
+         // grow activity bitset (1 bit per element)
+         ui16   oldBytes = (ui16)((oldMax + 7u) >> 3);
+         ui16   newBytes = (ui16)((target + 7u) >> 3);
+         ui8ptr mNew     = zalloc1d16(ui8, newBytes);
+         if (!mNew) return 0u;
+         if (oldBytes) memcpy(mNew, iface._mod.p, oldBytes);
+         _aligned_free(iface._mod.p);
+         iface._mod = mNew;
+
+         iface.maxVertices = (ui16)target;
       }
-      // Return remaining vertex indices
-      return interfaceProfile[interfaceIndex].maxVertices - interfaceProfile[interfaceIndex].vertCount;
+      // 3) Append and mark active
+      ui16 i = iface.vertCount;
+      iface.vertex[i] = elementIndex;
+      (iface._mod.pu8)[i >> 3u] |= (ui8)(1u << (i & 7u));
+      iface.vertCount = (ui16)(i + 1u);
+
+      // 4) Rebuild per-interface vertex list using maximum counts; report remaining capacity
+      RegenVertexBuffer((ui32)interfaceIndex, aev_maximum);
+      return (ui32)(MAX_INTERFACE_VERTS - curVertexCount[(ui32)interfaceIndex]);
    }
 
-   cui32 AddElementToInterface(cVEC2Du32 elementIndex, csi16 interfaceIndex) const {
-      GUI_INTERFACE &curInterface = interfaceProfile[interfaceIndex];
-
-      if(elementIndex.x < 0x080000000) interfaceProfile[interfaceIndex].vertex[interfaceProfile[interfaceIndex].vertCount++] = elementIndex.x;
-      if(elementIndex.y < 0x080000000) interfaceProfile[interfaceIndex].vertex[interfaceProfile[interfaceIndex].vertCount++] = elementIndex.y;
-      if((elementIndex.x < 0x080000000) || (elementIndex.y < 0x080000000))
-         RegenVertexBuffer(interfaceIndex, aev_maximum);
-      // Return remaining vertex indices
-      return interfaceProfile[interfaceIndex].maxVertices - interfaceProfile[interfaceIndex].vertCount;
+   cui32 __vectorcall AddElementToInterface(cVEC2Du32 elementIndex, csi16 interfaceIndex) noexcept {
+             AddElementToInterface(elementIndex.x, interfaceIndex);
+      return AddElementToInterface(elementIndex.y, interfaceIndex);
    }
 
-   cui32 AddElementToInterface(cVEC3Du32 elementIndex, csi16 interfaceIndex) const {
-      GUI_INTERFACE &curInterface = interfaceProfile[interfaceIndex];
-
-      if(elementIndex.x < 0x080000000) interfaceProfile[interfaceIndex].vertex[interfaceProfile[interfaceIndex].vertCount++] = elementIndex.x;
-      if(elementIndex.y < 0x080000000) interfaceProfile[interfaceIndex].vertex[interfaceProfile[interfaceIndex].vertCount++] = elementIndex.y;
-      if(elementIndex.z < 0x080000000) interfaceProfile[interfaceIndex].vertex[interfaceProfile[interfaceIndex].vertCount++] = elementIndex.z;
-      if((elementIndex.x < 0x080000000) || (elementIndex.y < 0x080000000) || (elementIndex.z < 0x080000000))
-         RegenVertexBuffer(interfaceIndex, aev_maximum);
-      // Return remaining vertex indices
-      return interfaceProfile[interfaceIndex].maxVertices - interfaceProfile[interfaceIndex].vertCount;
+   cui32 __vectorcall AddElementToInterface(cVEC3Du32 elementIndex, csi16 interfaceIndex) noexcept {
+      AddElementToInterface(elementIndex.x, interfaceIndex);
+      AddElementToInterface(elementIndex.y, interfaceIndex);
+      return AddElementToInterface(elementIndex.z, interfaceIndex);
    }
 
    // Direct access to element's text in the master character buffer. Returns 0 if element type is not text
-   inline chptrc CharBuffer(cui32 elementIndex) const {
+   inline chptrc CharBuffer(cui32 elementIndex) {
       return (element[elementIndex].elementType == aet_text ? &textBuffer[element_dgs[element[elementIndex].vertexIndex].charBankOS << 4u] : 0u);
    }
 
    // Direct access to element's text array entry in the master character buffer. Returns 0 if element type is not text array
-   inline chptrc CharBuffer(cui32 elementIndex, cui16 textArrayEntry) const {
+   inline chptrc CharBuffer(cui32 elementIndex, cui16 textArrayEntry) {
       return (element[elementIndex].elementType == aet_textArray ? &textBuffer[element_dgs[element[elementIndex].textArray[textArrayEntry]].charBankOS << 4u] : 0u);
    }
 
    // Returns number of characters in string, or 0 if element type is not text
-   inline cui32 CopyCharBuffer(cui32 elementIndex, chptrc dest) const {
+   inline cui32 CopyCharBuffer(cui32 elementIndex, chptrc dest) {
       if(element[elementIndex].elementType != aet_text) return 0;
       strncpy(dest, &textBuffer[element_dgs[element[elementIndex].vertexIndex].charBankOS << 4u], element[elementIndex].charCount + 1u);
       dest[element[elementIndex].charCount] = 0;
@@ -1672,7 +1705,7 @@ public:
    }
 
    // Returns number of characters in string, or 0 if element type is not text array
-   inline cui32 CopyCharBuffer(cui32 elementIndex, cui16 textArrayEntry, chptrc dest) const {
+   inline cui32 CopyCharBuffer(cui32 elementIndex, cui16 textArrayEntry, chptrc dest) {
       if(element[elementIndex].elementType != aet_textArray) return 0;
       csize_t stringLength = strlen(&textBuffer[element_dgs[element[elementIndex].textArray[textArrayEntry]].charBankOS << 4u]); ///--- Add char counts of vertices instead
       strncpy(dest, &textBuffer[element_dgs[element[elementIndex].textArray[textArrayEntry]].charBankOS << 4u], stringLength);
@@ -1826,7 +1859,7 @@ public:
       for(ui32 i = elementOffset; i < (elementCount + elementOffset); ++i) UpdateText((i * maxCharCount) + cchptrc(stringArray), elementArray[i]);
    }
 
-   inline void RegenVertexBuffer(cui32 interfaceIndex, cAE_REGEN_VERTS count) const {
+   inline void RegenVertexBuffer(cui32 interfaceIndex, cAE_REGEN_VERTS count) {
       ui32 i = 0;
       for(ui32 j = 0; j < interfaceProfile[interfaceIndex].vertCount; ++j)
          for(ui32 k = 0; k < element[interfaceProfile[interfaceIndex].vertex[j]].vertexCount[count]; ++k)
@@ -1834,21 +1867,21 @@ public:
       curVertexCount[interfaceIndex] = i;
    }
 
-   inline void RegenTotalVertexBuffer(void) const { for(ui32 i = 0; i < uiGUIVerts; ++i) totalVertexList[i] = i; }
+   inline void RegenTotalVertexBuffer(void) { for(ui32 i = 0; i < uiGUIVerts; ++i) totalVertexList[i] = i; }
 
-   inline void UploadAlphabetBuffer(cui8 context) const { gpu.buf.UpdateStructured(context, alphabet_pIMM, bufAlphabet, 1); }
-
-///--- Modify for WRITE_NO_OVERWRITE and add mod test ---///
-   inline void UploadTextBuffer(cui8 context) const { gpu.buf.UpdateStructured(context, textBuffer, bufText, 1); }
+   inline void UploadAlphabetBuffer(cui8 context) { gpu.buf.UpdateStructured(context, alphabet_pIMM, bufAlphabet, 1); }
 
 ///--- Modify for WRITE_NO_OVERWRITE and add mod test ---///
-   inline void UploadEntryBuffer(cui8 context) const { gpu.buf.UpdateStructuredSubresource(context, element_dgs, bufDGS, sizeof(GUI_EL_DGS) * uiGUIVerts); }
+   inline void UploadTextBuffer(cui8 context) { gpu.buf.UpdateStructured(context, textBuffer, bufText, 1); }
 
-   inline void UploadVertexBuffer(cui8 context, cui32 interfaceIndex) const { gpu.buf.UpdateVertex(context, curVertexList[interfaceIndex], bufVertex, RoundUpToNearest4(curVertexCount[interfaceIndex])); }
+///--- Modify for WRITE_NO_OVERWRITE and add mod test ---///
+   inline void UploadEntryBuffer(cui8 context) { gpu.buf.UpdateStructuredSubresource(context, element_dgs, bufDGS, sizeof(GUI_EL_DGS) * uiGUIVerts); }
 
-   inline void UploadTotalVertexBuffer(cui8 context) const { gpu.buf.UpdateVertex(context, totalVertexList, bufVertex, RoundUpToNearest4(uiGUIVerts)); }
+   inline void UploadVertexBuffer(cui8 context, cui32 interfaceIndex) { gpu.buf.UpdateVertex(context, curVertexList[interfaceIndex], bufVertex, RoundUpToNearest4(curVertexCount[interfaceIndex])); }
 
-   inline void SetResourceBuffers(cui8 context, cui8 startIndex) const {
+   inline void UploadTotalVertexBuffer(cui8 context) { gpu.buf.UpdateVertex(context, totalVertexList, bufVertex, RoundUpToNearest4(uiGUIVerts)); }
+
+   inline void SetResourceBuffers(cui8 context, cui8 startIndex) {
       gpu.buf.SetVSR(0, bufAlphabet, startIndex, 1);
       gpu.buf.SetVSR(0, bufText, startIndex + 1, 1);
       gpu.buf.SetGSR(0, bufAlphabet, startIndex, 1);
@@ -1858,7 +1891,7 @@ public:
    }
 
    // Use the value in the globally accessible MAP_DESC object
-   inline void DrawInterface(cui8 context) const {
+   inline void DrawInterface(cui8 context) {
       UploadTextBuffer(context);
       UploadEntryBuffer(context);
       UploadVertexBuffer(context, (*(const GUI_DESC *)ptrLib[15]).interfaceIndex);
@@ -1866,7 +1899,7 @@ public:
       gpu.ren.QueueDrawGUI(context, bufVertex, bufDGS, curVertexCount[(*(const GUI_DESC *)ptrLib[15]).interfaceIndex]);
    }
 
-   inline void DrawInterface(cui8 context, cui32 interfaceIndex) const {
+   inline void DrawInterface(cui8 context, cui32 interfaceIndex) {
       UploadTextBuffer(context);
       UploadEntryBuffer(context);
       UploadVertexBuffer(context, interfaceIndex);
@@ -1874,7 +1907,7 @@ public:
       gpu.ren.QueueDrawGUI(context, bufVertex, bufDGS, curVertexCount[interfaceIndex]);
    }
 
-   inline void DrawAllElements(cui8 context) const {
+   inline void DrawAllElements(cui8 context) {
       UploadTextBuffer(context);
       UploadEntryBuffer(context);
       RegenTotalVertexBuffer();

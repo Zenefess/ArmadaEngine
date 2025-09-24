@@ -10,8 +10,7 @@
 
 // Enable tracking of operational data
 #define DATA_TRACKING
-
-// Disable custom fixed-point data types
+// Disable customisable fixed-point data types
 #define FPDT_NO_CUSTOM
 
 #include "typedefs.h"

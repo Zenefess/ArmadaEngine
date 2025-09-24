@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_camera.h                 Created: 2022/10/20 *
- *                                Last modified: 2024/06/15 *
+ *                                Last modified: 2025/09/23 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -27,7 +27,7 @@ al32 struct CLASS_CAM {
    matrix  *const mInverseCamera = &mCamera[8];
    matrix  *const mOrthoCamera   = &mCamera[16];
    matrix  *const mProjCamera    = &mCamera[24];
-   matrix (*const mProj)[4]     = (matrix(*)[4])&mCamera[32];
+   matrix (*const mProj)[4]      = (matrix(*)[4])&mCamera[32]; // Top half of mCamera
 
    si32ptrc bufferSlot = (si32ptr)malloc32(sizeof(si32[24]));
 
@@ -232,7 +232,8 @@ al32 struct CLASS_CAM {
    }
 
    // Return values are 0x080000001 if target is beyond horizon
-   inline VEC2Ds32 RayLayerIntersect(cfl32x4 rayOri, cfl32x4 rayDir, si32 layer) {
+#if defined(USE_OLD_CODE)
+   inline VEC2Ds32 __vectorcall RayLayerIntersect(cfl32x4 rayOri, cfl32x4 rayDir, si32 layer) {
       cfl32x4 planeDir = { 0.0f, 0.0f, 1.0f };
       cfl32x4 planeOri = { 0.0f, 0.0f, fl32(layer)};
       cfl32x4 vDenom   = DX::XMVector3Dot(planeDir, rayDir);
@@ -252,10 +253,36 @@ al32 struct CLASS_CAM {
       }
       return { (si32)0x080000001, (si32)0x080000001 };
    }
+#else
+   inline VEC2Ds32 __vectorcall RayLayerIntersect(cfl32x4 rayOri, cfl32x4 rayDir, si32 layer) const {
+    cfl32 coordZ = fl32(layer);
+    // z lanes
+    cfl32x4 oz   = _mm_shuffle_ps(rayOri, rayOri, _MM_SHUFFLE(2, 2, 2, 2));
+    cfl32x4 dz   = _mm_shuffle_ps(rayDir, rayDir, _MM_SHUFFLE(2, 2, 2, 2));
+    cfl32   oriZ = _mm_cvtss_f32(oz);
+    cfl32   dirZ = _mm_cvtss_f32(dz);
+
+    if (dirZ == 0.0f) return { (si32)0x080000001, (si32)0x080000001 };
+
+    // (optional: rcp + 1 NR step if profiling favors it)
+    cfl32 t = (coordZ - oriZ) / dirZ;
+    if (t <= 0.0f) return { (si32)0x080000001, (si32)0x080000001 };
+
+    cfl32x4 T   = _mm_set1_ps(t);
+    cfl32x4 hit = simd::fmadd_ps(rayDir, T, rayOri); // dir * t + ori
+    // floor(x,y) -> int
+    cfl32x4 flo = _mm_floor_ps(hit);         // SSE4.1
+    cui128  ixy = _mm_cvttps_epi32(flo);
+    csi32    ix = _mm_cvtsi128_si32(ixy);    // x
+    csi32    iy = _mm_extract_epi32(ixy, 1); // y
+
+    return { ix, iy };
+}
+#endif
 
    inline cfl32 CursorSphereIntersect(cfl32x4 &sphere, cVEC2Ds32 curPos, cVEC2Du8 camProj) const {
       cmatrix mInvertedCam = mInverseCamera[camProj.x];
-      cVEC2Df vScreen      = { (curPos.x / ScrRes.dims[ScrRes.state].w) * 2.0f - 1.0f, 1.0f - (curPos.y / ScrRes.dims[ScrRes.state].h) * 2.0f };
+      cVEC2Df vScreen      = { curPos.x * ScrRes.rcpDims.w - 1.0f, 1.0f - (curPos.y * ScrRes.rcpDims.h) };
       cVEC2Df vProjected   = { vScreen.x / mProj[camProj.x][camProj.y].fl[0], vScreen.y / mProj[camProj.x][camProj.y].fl[5]};
 
       cAVX8Df32 projCOs = { .xmm = { _mm_set_ps1(vProjected.x), _mm_set_ps1(vProjected.y) } };
@@ -274,9 +301,9 @@ al32 struct CLASS_CAM {
    }
 
    // First return values are 0x080000001 if target is beyond horizon
-   inline cVEC2Ds32 CursorLayerIntersect(csi32 layer, cfl32x4 camOffset, cVEC2Ds32 curPos, cui8 cam, cui8 proj) const {
+   inline cVEC2Ds32 __vectorcall CursorLayerIntersect(csi32 layer, cfl32x4 camOffset, cVEC2Ds32 curPos, cui8 cam, cui8 proj) const noexcept {
       cmatrix mInvertedCam = mInverseCamera[cam];
-      cVEC2Df vScreen      = { (curPos.x / ScrRes.dims[ScrRes.state].w) * 2.0f - 1.0f, 1.0f - (curPos.y / ScrRes.dims[ScrRes.state].h) * 2.0f };
+      cVEC2Df vScreen      = { curPos.x * ScrRes.rcpDims.w - 1.0f, 1.0f - (curPos.y * ScrRes.rcpDims.h) };
       cVEC2Df vProjected   = { vScreen.x / mProj[cam][proj].fl[0], vScreen.y / mProj[cam][proj].fl[5] };
 
       cAVX8Df32 projCOs = { .xmm = { _mm_set_ps1(vProjected.x), _mm_set_ps1(vProjected.y) } };
@@ -309,9 +336,9 @@ al32 struct CLASS_CAM {
 
    // First return value is (quiet) NaN if target is beyond horizon
    inline cVEC3Df CursorLayerIntersect(csi32 layer, cVEC2Ds32 curPos, cVEC2Du8 camProj) const {
-      cmatrix mInvertedCam = mInverseCamera[camProj.x];
-      cVEC2Df vScreen      = { (curPos.x / ScrRes.dims[ScrRes.state].w) * 2.0f - 1.0f, 1.0f - (curPos.y / ScrRes.dims[ScrRes.state].h) * 2.0f };
-      cVEC2Df vProjected   = { vScreen.x / mProj[camProj.x][camProj.y].fl[0], vScreen.y / mProj[camProj.x][camProj.y].fl[5] };
+      cmatrix &mInvertedCam = mInverseCamera[camProj.x];
+      cVEC2Df  vScreen      = { curPos.x * ScrRes.rcpDims.w - 1.0f, 1.0f - (curPos.y * ScrRes.rcpDims.h) };
+      cVEC2Df  vProjected   = { vScreen.x / mProj[camProj.x][camProj.y].fl[0], vScreen.y / mProj[camProj.x][camProj.y].fl[5] };
 
       cAVX8Df32 projCOs = { .xmm = { _mm_set_ps1(vProjected.x), _mm_set_ps1(vProjected.y) } };
       cAVX8Df32 rayDir_ = { .ymm = _mm256_mul_ps(projCOs.ymm, mInvertedCam.ymm[0]) };
@@ -340,7 +367,7 @@ al32 struct CLASS_CAM {
          }
       }
 
-      static cui32 uiNaN = 0x0EFAAAAAA;
+      static cui32 uiNaN = NAN; // From <math.h>
 
       return { (cfl32 &)uiNaN };
    }
@@ -348,14 +375,14 @@ al32 struct CLASS_CAM {
    // Return value is false if target is beyond horizon
    inline cbool CursorLayerIntersect(SSE4Df32 &location, cVEC2Ds32 curPos, cVEC2Du8 camProj) const {
       cmatrix mInvertedCam = mInverseCamera[camProj.x];
-      cVEC2Df vScreen      = { (curPos.x / ScrRes.dims[ScrRes.state].w) * 2.0f - 1.0f, 1.0f - (curPos.y / ScrRes.dims[ScrRes.state].h) * 2.0f };
+      cVEC2Df vScreen      = { curPos.x * ScrRes.rcpDims.w - 1.0f, 1.0f - (curPos.y * ScrRes.rcpDims.h) };
       cVEC2Df vProjected   = { vScreen.x / mProj[camProj.x][camProj.y].fl[0], vScreen.y / mProj[camProj.x][camProj.y].fl[5] };
 
       cAVX8Df32 projCOs = { .xmm = { _mm_set_ps1(vProjected.x), _mm_set_ps1(vProjected.y) } };
       cAVX8Df32 rayDir_ = { .ymm = _mm256_mul_ps(projCOs.ymm, mInvertedCam.ymm[0]) };
       cSSE4Df32 rayDir  = { .xmm = _mm_add_ps(_mm_add_ps(rayDir_.xmm0, rayDir_.xmm1), mInvertedCam.xmm[2]) };
 
-      //      cfl32x4 vRayOri = _mm_add_ps(data[camProj.x].pos32.xmm, camOffset);
+//      cfl32x4 vRayOri = _mm_add_ps(data[camProj.x].pos32.xmm, camOffset);
       cfl32x4 vRayOri = data32[camProj.x].pos.xmm;
       cfl32x4 vRayDir = DX::XMVector3Normalize(rayDir.xmm);
 
@@ -484,6 +511,7 @@ al32 struct CLASS_CAM {
       return success;
    }
 
+#if defined(USE_ORACLE_CODE)
    // Each true bit in the return value == chunk visible
    inline cui8 ChunkFrustumIntersect8(SSE4Ds32 chunk, cui8 cam) {
       cAVX8Df32 chunkOffsets = { ._fl = { 0.5f, 0.5f, 0.5f, 1.0f, 0.5f, 0.5f, 0.5f, 1.0f } };
@@ -518,4 +546,48 @@ al32 struct CLASS_CAM {
 
       return success;
    }
+#else
+   // Each true bit in the return value == chunk visible
+   inline cui8 ChunkFrustumIntersect8(SSE4Ds32 chunk, cui8 cam) {
+      cVEC4Df &chunkScale = data32[cam].fDims[0].vector;
+
+      cfl32 boundingSize = Max3(chunkScale) * -0.86602540378443864676372317075294f;
+
+      csi32 baseX = chunk.vector.x;
+      cfl32 baseY = fl32(chunk.vector.y);
+      cfl32 baseZ = fl32(chunk.vector.z);
+
+      cfl32 halfScaleX = chunkScale.x * 0.5f;
+      cfl32 halfScaleY = chunkScale.y * 0.5f;
+      cfl32 halfScaleZ = chunkScale.z * 0.5f;
+
+      cfl32x8 baseIndices = _mm256_cvtepi32_ps(_mm256_add_epi32(_mm256_set1_epi32(baseX), _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7)));
+      cfl32x8 chunkX      = _mm256_fmadd_ps(baseIndices, _mm256_set1_ps(chunkScale.x), _mm256_set1_ps(halfScaleX));
+      cfl32x8 chunkY      = _mm256_fmadd_ps(_mm256_set1_ps(baseY), _mm256_set1_ps(chunkScale.y), _mm256_set1_ps(halfScaleY));
+      cfl32x8 chunkZ      = _mm256_fmadd_ps(_mm256_set1_ps(baseZ), _mm256_set1_ps(chunkScale.z), _mm256_set1_ps(halfScaleZ));
+      cfl32x8 chunkW      = _mm256_set1_ps(chunkScale.w);
+      cfl32x8 threshold   = _mm256_set1_ps(boundingSize);
+
+      ui8 success = 0xFF;
+
+      for(ui8 planeIndex = 0; planeIndex < 6 && success; planeIndex++) {
+         const PLANEfl32 &plane = data32[cam].frustum.fPlane[planeIndex];
+
+         cfl32x8 planeX = _mm256_broadcast_ss(&plane.xmm.m128_f32[0]);
+         cfl32x8 planeY = _mm256_broadcast_ss(&plane.xmm.m128_f32[1]);
+         cfl32x8 planeZ = _mm256_broadcast_ss(&plane.xmm.m128_f32[2]);
+         cfl32x8 planeW = _mm256_broadcast_ss(&plane.xmm.m128_f32[3]);
+
+         fl32x8 distance = _mm256_fmadd_ps(chunkX, planeX, _mm256_setzero_ps());
+                distance = _mm256_fmadd_ps(chunkY, planeY, distance);
+                distance = _mm256_fmadd_ps(chunkZ, planeZ, distance);
+                distance = _mm256_fmadd_ps(chunkW, planeW, distance);
+
+         cui8 mask = cui8(_mm256_movemask_ps(_mm256_cmp_ps(distance, threshold, _CMP_LT_OQ)));
+         if(mask) success &= cui8(~mask);
+      }
+
+      return success;
+   }
+#endif
 };

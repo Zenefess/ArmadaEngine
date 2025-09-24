@@ -23,14 +23,14 @@ al32 struct CLASS_CONFIG {   // Rewrite to use files., malloc pointers, and chan
 
    // Allocate all blob and shader pointers packed
    ID3DBlob *(*const pBlob)[CFG_MAX_SHADERS] = (ID3DBlob*(*)[CFG_MAX_SHADERS])zalloc64(RoundUpToNearest64(sizeof(ptr[(CFG_MAX_SHADERS * 9u) + (CFG_MAX_STATES * 5u)])));
-   ID3D11VertexShader      **const pVS  = (ID3D11VertexShader **)pBlob + (CFG_MAX_SHADERS * 6u);
-   ID3D11PixelShader       **const pPS  = (ID3D11PixelShader**)pVS + CFG_MAX_SHADERS;
-   ID3D11GeometryShader    **const pGS  = (ID3D11GeometryShader**)pPS + CFG_MAX_SHADERS;
-   ID3D11BlendState        **const pBS  = (ID3D11BlendState**)pGS + CFG_MAX_SHADERS;
-   ID3D11SamplerState      **const pSS  = (ID3D11SamplerState**)pBS + CFG_MAX_STATES;
-   ID3D11InputLayout       **const pIL  = (ID3D11InputLayout**)pSS + CFG_MAX_STATES;
+   ID3D11VertexShader      **const pVS  = (ID3D11VertexShader**)pBlob    + (CFG_MAX_SHADERS * 6u);
+   ID3D11PixelShader       **const pPS  = (ID3D11PixelShader**)pVS       + CFG_MAX_SHADERS;
+   ID3D11GeometryShader    **const pGS  = (ID3D11GeometryShader**)pPS    + CFG_MAX_SHADERS;
+   ID3D11BlendState        **const pBS  = (ID3D11BlendState**)pGS        + CFG_MAX_SHADERS;
+   ID3D11SamplerState      **const pSS  = (ID3D11SamplerState**)pBS      + CFG_MAX_STATES;
+   ID3D11InputLayout       **const pIL  = (ID3D11InputLayout**)pSS       + CFG_MAX_STATES;
    ID3D11DepthStencilState **const pDSS = (ID3D11DepthStencilState**)pIL + CFG_MAX_STATES;
-   ID3D11RasterizerState   **const pRS  = (ID3D11RasterizerState**)pDSS + CFG_MAX_STATES;
+   ID3D11RasterizerState   **const pRS  = (ID3D11RasterizerState**)pDSS  + CFG_MAX_STATES;
 
    ui8   (*shaderIndex)[CFG_MAX_SHADERS]       = (ui8(*)[CFG_MAX_SHADERS])malloc64(RoundUpToNearest64(sizeof(ui8[6][CFG_MAX_SHADERS])));
    wchar (*shaderString)[CFG_MAX_SHADERS][256] = (wchar(*)[CFG_MAX_SHADERS][256])malloc64(RoundUpToNearest64(sizeof(wchar[6][CFG_MAX_SHADERS][256])));
@@ -95,21 +95,21 @@ al32 struct CLASS_CONFIG {   // Rewrite to use files., malloc pointers, and chan
          // Map format
          { {"INDEX", 0, DXGI_FORMAT_R32_UINT, 0, 0, D3D11_INPUT_PER_INSTANCE_DATA, 1}, {}, {}, {}, {}, {}, {}, {} },
          // Entity format
-         { {"INDEX", 0, DXGI_FORMAT_R32_UINT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0}, {}, {}, {}, {}, {}, {}, {} },
+         { {"INDEX", 0, DXGI_FORMAT_R32_UINT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA,   0}, {}, {}, {}, {}, {}, {}, {} },
          // GUI entry format
-         { {"INDEX", 0, DXGI_FORMAT_R32_UINT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0}, {}, {}, {}, {}, {}, {}, {} },
+         { {"INDEX", 0, DXGI_FORMAT_R32_UINT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA,   0}, {}, {}, {}, {}, {}, {}, {} },
          // GUI cursor format
-         { {"POSITION", 0, DXGI_FORMAT_R32G32B32_SINT, 0, 0, D3D11_INPUT_PER_INSTANCE_DATA, 1},
-           {"COLOUR", 0, DXGI_FORMAT_R32_UINT, 0, 12, D3D11_INPUT_PER_INSTANCE_DATA, 1},
+         { {"POSITION", 0, DXGI_FORMAT_R32G32B32_SINT, 0, 0,  D3D11_INPUT_PER_INSTANCE_DATA, 1},
+           {"COLOUR",   0, DXGI_FORMAT_R32_UINT,       0, 12, D3D11_INPUT_PER_INSTANCE_DATA, 1},
            {}, {}, {}, {}, {}, {} },
          // Entity sprite format
-         { {"INDEX", 0, DXGI_FORMAT_R32G32B32A32_UINT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
-           {"INDEX", 1, DXGI_FORMAT_R32G32B32A32_UINT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0},
-           {"INDEX", 2, DXGI_FORMAT_R32G32B32A32_UINT, 0, 32, D3D11_INPUT_PER_VERTEX_DATA, 0},
-           {"INDEX", 3, DXGI_FORMAT_R32G32B32A32_UINT, 0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0},
-           {"INDEX", 4, DXGI_FORMAT_R32G32B32A32_UINT, 0, 64, D3D11_INPUT_PER_VERTEX_DATA, 0},
-           {"INDEX", 5, DXGI_FORMAT_R32G32B32A32_UINT, 0, 80, D3D11_INPUT_PER_VERTEX_DATA, 0},
-           {"INDEX", 6, DXGI_FORMAT_R32G32B32A32_UINT, 0, 96, D3D11_INPUT_PER_VERTEX_DATA, 0},
+         { {"INDEX", 0, DXGI_FORMAT_R32G32B32A32_UINT, 0, 0,   D3D11_INPUT_PER_VERTEX_DATA, 0},
+           {"INDEX", 1, DXGI_FORMAT_R32G32B32A32_UINT, 0, 16,  D3D11_INPUT_PER_VERTEX_DATA, 0},
+           {"INDEX", 2, DXGI_FORMAT_R32G32B32A32_UINT, 0, 32,  D3D11_INPUT_PER_VERTEX_DATA, 0},
+           {"INDEX", 3, DXGI_FORMAT_R32G32B32A32_UINT, 0, 48,  D3D11_INPUT_PER_VERTEX_DATA, 0},
+           {"INDEX", 4, DXGI_FORMAT_R32G32B32A32_UINT, 0, 64,  D3D11_INPUT_PER_VERTEX_DATA, 0},
+           {"INDEX", 5, DXGI_FORMAT_R32G32B32A32_UINT, 0, 80,  D3D11_INPUT_PER_VERTEX_DATA, 0},
+           {"INDEX", 6, DXGI_FORMAT_R32G32B32A32_UINT, 0, 96,  D3D11_INPUT_PER_VERTEX_DATA, 0},
            {"INDEX", 7, DXGI_FORMAT_R32G32B32A32_UINT, 0, 112, D3D11_INPUT_PER_VERTEX_DATA, 0} },
          // Spares
          { {}, {}, {}, {}, {}, {}, {}, {} },

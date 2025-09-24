@@ -1,19 +1,19 @@
 /************************************************************
-* File: Map structures.h               Created: 2022/12/11 *
-*                                Last modified: 2024/06/30 *
-*                                                          *
-* Desc:                                                    *
-*                                                          *
-*  Copyright (c) David William Bull. All rights reserved.  *
-************************************************************/
+ * File: Map structures.h               Created: 2022/12/11 *
+ *                                Last modified: 2024/06/30 *
+ *                                                          *
+ * Desc:                                                    *
+ *                                                          *
+ *  Copyright (c) David William Bull. All rights reserved.  *
+ ************************************************************/
 #pragma once
 
-#include "..\master header.h"
+#include "../master header.h"
 
-#define MM_VIS_BUSY  0x01
-#define MM_MOD_BUSY  0x02
-#define MM_VIS_START 0x0FFFFFFFC0000000E
-#define MM_MOD_START 0x000000003FFFFFFFD
+#define MM_VIS_BUSY  0x01u
+#define MM_MOD_BUSY  0x02u
+#define MM_VIS_START 0x0FFFFFFFC0000000Eull
+#define MM_MOD_START 0x000000003FFFFFFFDull
 
 al16 struct ELEM_IGS { // 16 bytes
    f1p15x4 tc; // Texture coordinates : 1p15
@@ -92,25 +92,25 @@ al8 struct CELL { // 40 bytes
 };
 
 al16 struct MAPDIMS_ICB { // 16 bytes   ---   Map Cells and Chunk Cells not needed?
-   ui64     dimData[2];
-   CELL_DGS oobCell;
+   ui64 dimData[2];
    // Map dimensions: X, Y, Z cell counts - 1     --- 30 bits -- [..][..][..][30]
    // Chunk dimensions: X, Y, Z cell counts - 1   --- 18 bits -- [..][..][16][32]
    // Map Cells: Total cells per map - 1          --- 30 bits -- [..][14][32][..]
    // Chunk Cells: Total cells per chunk - 1      --- 18 bits -- [..][32][..][..]
    // Map chunks: X, Y, Z chunk counts - 1        --- 21 bits -- [21][..][..][..]
    // flag                                        ---  1 bits -- [22][..][..][..]
-   // zso: Z spawning offset - 1                  --- 10 bits -- [32][..][..][..]
-   void setMapDims(csi32 value0, csi32 value1, csi32 value2) { dimData[0] = ui64(value0 & 0x03FFu) | (ui64(value1 & 0x03FFu) << 10u) | (ui64(value2 & 0x03FFu) << 20u) | (dimData[0] & 0x0FFFFFFFFC0000000u); }
+   // zso: Default Z spawning offset - 1          --- 10 bits -- [32][..][..][..]
+   CELL_DGS oobCell; // Cell data for out-of-bounds references
+   void setMapDims(csi32 value0, csi32 value1, csi32 value2) { dimData[0] = ui64(value0 & 0x03FFu) | (ui64(value1 & 0x03FFu) << 10u) | (ui64(value2 & 0x03FFu) << 20u) | (dimData[0] & 0x0FFFFFFFFC0000000ull); }
    void setChunkDims(csi32 value0, csi32 value1, csi32 value2) { dimData[0] = (ui64(value0 & 0x03Fu) << 30u) | (ui64(value1 & 0x03Fu) << 36u) | (ui64(value2 & 0x03Fu) << 42u) | (dimData[0] & 0x03FFFFFFFu); }
-   void setMapCells(csi64 value) { dimData[0] = (ui64(value & 0x0FFFFu) << 48u) | (dimData[0] & 0x0FFFFFFFFFFFFu); dimData[1] = ui64((value >> 16) & 0x03FFFu) | (dimData[1] & 0x0FFFFFFFFFFFFC000u); }
-   void setChunkCells(csi64 value) { dimData[1] = ui64(value << 14u) | (dimData[1] & 0x0FFFFFFFF00003FFFu); }
-   void setMapChunks(csi32 value0, csi32 value1, csi32 value2) { dimData[1] = (ui64(value0 & 0x07Fu) << 32u) | (ui64(value1 & 0x07Fu) << 39u) | (ui64(value2 & 0x07Fu) << 46u) | (dimData[1] & 0x0FFE00000FFFFFFFFu); }
-   void setFlag(cbool value) { dimData[1] = dimData[1] | (dimData[1] & 0x0FFDFFFFFFFFFFFFFu); }
-   void setSpawnOffset(csi16 value) { dimData[1] = (ui64(value) << 54u) | (dimData[1] & 0x03FFFFFFFFFFFFFu); }
+   void setMapCells(csi64 value) { dimData[0] = (ui64(value & 0x0FFFFu) << 48u) | (dimData[0] & 0x0FFFFFFFFFFFFull); dimData[1] = ui64((value >> 16) & 0x03FFFu) | (dimData[1] & 0x0FFFFFFFFFFFFC000ull); }
+   void setChunkCells(csi64 value) { dimData[1] = ui64(value << 14u) | (dimData[1] & 0x0FFFFFFFF00003FFFull); }
+   void setMapChunks(csi32 value0, csi32 value1, csi32 value2) { dimData[1] = (ui64(value0 & 0x07Fu) << 32u) | (ui64(value1 & 0x07Fu) << 39u) | (ui64(value2 & 0x07Fu) << 46u) | (dimData[1] & 0x0FFE00000FFFFFFFFull); }
+   void setFlag(cbool value) { constexpr ui64 mval = 1ull << 53; if (value) dimData[1] |= mval; else dimData[1] &= ~mval; }
+   void setSpawnOffset(csi16 value) { dimData[1] = (ui64(value) << 54u) | (dimData[1] & 0x03FFFFFFFFFFFFFull); }
 };
 
-// Cell-realted return values (for input processing)
+// Cell-related return values (for input processing)
 al32 struct MAP_CELL_RV {
    AVX8Ds32 activeElements;
    union {
@@ -196,14 +196,14 @@ al32 struct MAP { // 256 bytes
    CELL_DGS    *pDGS;     // Pointer to array for GPU's geometry shader
    CELL_DPS    *pDPS;     // Pointer to array for GPU's pixel shader
    CELL        *cell;     // Pointer to cell data array
-   ui64        *chunkVis; // 1-bit chunk visiblity array
+   ui64        *chunkVis; // 1-bit chunk visibility array
    ui64        *chunkMod; // 1-bit chunk activity array
    CELL         oob;      // Properties for out-of-bounds area
    ui64         RES;
    MAP_DESC     desc;     // Map descriptors
 };
 
-///--- !!! Add WORLD struct; add world chunk data funcitonality !!!
+///--- !!! Add WORLD struct; add world chunk data functionality !!!
 al32 struct WORLD { // 64 bytes
    MAP       **map;       // Pointer to world's maps
    ELEM_TABLE *perTable;  // Pointer to world's periodic table
@@ -216,7 +216,7 @@ al32 struct WORLD { // 64 bytes
    si32        maxMaps;   // Maximum map count
 };
 
-// Paramters for queued rendering
+// Paramaters for queued rendering
 struct MAP_PARAMS {
    csi32    (&gpuBuf)[5];
    csi32    (&vertBuf)[MAX_MAP_LOD];
@@ -276,7 +276,6 @@ al32 struct MAP_PTRSc { // 64 bytes
    };
 };
 
-typedef const ELEM_TABLE                  cELEM_TABLE;
 typedef const CELL                        cCELL;
 typedef       CELL                *       CELLptr;
 typedef const CELL                *       cCELLptr;

@@ -8,6 +8,7 @@
  **********************************************************/
 #pragma once
 
+#define AE_PTR_LIB
 /*/
  *  Library of pointers to classes and resources
  *  --------------------------------------------
@@ -29,10 +30,13 @@
  * 14==Active MAP_DESC information
  * 15==Active GUI_DESC information
 /*/
-#define AE_PTR_LIB
 extern cptr ptrLib[16];
+enum AE_PTR_LIB_ENUM : ui8 {
+   FileOps = 0, MainTimer, GPUManager, RES_3, GUIManager, CamManager, MapManager, EntityManager,
+   RES_8, RES_9, RES_10, RES_11, RES_12, RES_13, MapDesc, GUIDesc
+};
 
-#define AE_D3D11_2
+#define AE_D3D11_4
 extern SYSTEM_DATA   sysData;      // Automated tracking of system data
 extern CLASS_FILEOPS files;        // File handler
 extern CLASS_TIMER   mainTimer;    // Primary (single) timer

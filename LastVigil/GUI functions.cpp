@@ -9,13 +9,6 @@
  ************************************************************/
 
 #include "master header.h"
-#include "data tracking.h"
-#include "typedefs.h"
-#include "Vector structures.h"
-#include "Data structures.h"
-#include "thread flags.h"
-#include "main thread.h"
-#include "Common functions.h"
 #include "class_timers.h"
 #include "Direct3D11 thread.h"
 #include "Direct3D11 functions.h"
@@ -612,7 +605,7 @@ void TempMenuGen(cptrc argList) {
       elementDesc.text.cCount = 32;
       elementDesc.text.align  = UI_ALIGN_T;
       elementDesc.text.mods   = UI_TEXT;
-      cui32 t_PropertiesType = gui.CreateText(elementDesc);
+      cui32 t_PropertiesViewPos = gui.CreateText(elementDesc);
       // Text: size label
       elementDesc.viewPos = { 0.0f, 0.0625f };
       elementDesc.parent  = p_Properties;
@@ -622,7 +615,7 @@ void TempMenuGen(cptrc argList) {
       elementDesc.text.cCount = 32;
       elementDesc.text.align  = UI_ALIGN_T;
       elementDesc.text.mods   = UI_TEXT;
-      cui32 t_PropertiesType = gui.CreateText(elementDesc);
+      cui32 t_PropertiesSize = gui.CreateText(elementDesc);
       // Text: activeCoords label
       elementDesc.viewPos = { 0.5f, 0.0625f };
       elementDesc.parent  = p_Properties;
@@ -632,7 +625,7 @@ void TempMenuGen(cptrc argList) {
       elementDesc.text.cCount = 32;
       elementDesc.text.align  = UI_ALIGN_T;
       elementDesc.text.mods   = UI_TEXT;
-      cui32 t_PropertiesType = gui.CreateText(elementDesc);
+      cui32 t_PropertiesActiveCoords = gui.CreateText(elementDesc);
       // Input panel: viewPos
       
       // Input panel: size (derivative of activeCoords)

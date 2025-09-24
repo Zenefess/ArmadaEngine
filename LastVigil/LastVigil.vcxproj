@@ -44,6 +44,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <EnableASAN>true</EnableASAN>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -85,7 +86,6 @@
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
     <CodeAnalysisRuleSet>NativeMinimumRules.ruleset</CodeAnalysisRuleSet>
     <MultiProcFXC>true</MultiProcFXC>
-    <LinkIncremental>false</LinkIncremental>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <CopyLocalDebugSymbols>true</CopyLocalDebugSymbols>
   </PropertyGroup>
@@ -136,7 +136,6 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <RemoveUnreferencedCodeData>false</RemoveUnreferencedCodeData>
       <FloatingPointExceptions>true</FloatingPointExceptions>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <ScanSourceForModuleDependencies>true</ScanSourceForModuleDependencies>
@@ -144,11 +143,11 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(CoreLibraryDependencies);winmm.lib;dwmapi.lib;d3d11.lib;d3dx11.lib;d3dx10.lib;d3dcompiler.lib;dinput8.lib;dxgi.lib;dxguid.lib;OpenAL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(SolutionDir)$(Project)$(Platform).The Last Vigil\$(TargetName)$(TargetExt)</OutputFile>
       <AssemblyDebug>true</AssemblyDebug>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <ResourceCompile>
       <Culture>0x0c09</Culture>
@@ -162,6 +161,9 @@
       <ObjectFileOutput>$(OutDir)shaders\%(Filename).cso</ObjectFileOutput>
       <TreatWarningAsError>false</TreatWarningAsError>
     </FxCompile>
+    <PostBuildEvent>
+      <Command>copy /Y "$(VCToolsInstallDir)bin\HostX64\x64\clang_rt.asan_dynamic-x86_64.dll" "$(TargetDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -215,6 +217,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\include\DirectInput8 keyboard scan codes.h" />
+    <ClInclude Include="..\..\..\include\SIMD management.h" />
     <ClInclude Include="Include\Armada Intelligence\class_entitymanager.h" />
     <ClInclude Include="Include\Armada Intelligence\class_gui.h" />
     <ClInclude Include="Include\Armada Intelligence\class_mapmanager.h" />

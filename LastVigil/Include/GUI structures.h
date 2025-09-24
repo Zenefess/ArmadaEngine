@@ -378,7 +378,7 @@ al32 struct GUI_EL_DESC { // 190 of 192 bytes
    }
 };
 
-// Defined in "DirectInput8 thread.h"
+// Declared in "DirectInput8 thread.h"
 extern vGLOBALCTRLVARS gcv;
 
 #define TriggerInputProcessing gcv.misc[7] |= 0x080

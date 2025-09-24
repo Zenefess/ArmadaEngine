@@ -6,6 +6,7 @@
  *                                                          *
  * Copyright (c) David William Bull.   All rights reserved. *
  ************************************************************/
+
 #include "master header.h"
 #include <stdio.h>
 #include "Command queue.h"
@@ -18,23 +19,23 @@
 
 extern void WorldGenThread(ptr);
 extern void Direct3D11Thread(ptr);
-extern void OpenAL1_1Thread(ptr);
+extern unsigned int __stdcall OpenAL1_1Thread(ptr);
 extern void DirectInput8Thread(ptr);
 
 #ifdef DATA_TRACKING
 SYSTEM_DATA sysData = { 1024u, true };
 #endif
 //COMMAND_MANAGER cmd;
-cptr          ptrLib[16];
+cptr          ptrLib[16];               // System-wide library for important classes & resources
 CLASS_FILEOPS files       = ptrLib;
 CLASS_TIMER   mainTimer   = &ptrLib[1];
 vGLOBALCOORDS gco         = {};
-THREAD_PROPS  thread      = 5u;    // Thread properties
-vui64         THREAD_LIFE = 0x0u;  // 'Thread active' flags
+THREAD_PROPS  thread      = 5u;         // Thread properties
+vui64         THREAD_LIFE = 0x0u;       // 'Thread active' flags
 wchar         stErrorFilename[64];
-wchptr        stThrdStat;          // Debug output
-HINSTANCE     hInst;               // Current instance's handle
-HANDLE        hErrorOutput;        // File handle for error output
+wchptr        stThrdStat;               // Debug output
+HINSTANCE     hInst;                    // Current instance's handle
+HANDLE        hErrorOutput;             // File handle for error output
 HRESULT       hr;
 
 int __cdecl wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPTSTR lpCmdLine, _In_ int nCmdShow) {
@@ -84,7 +85,8 @@ int __cdecl wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
    // Begin audio rendering thread
    THREAD_LIFE |= AUDIO_THREAD_ALIVE;
-   thread.handle[ss_audio] = (ptr)_beginthread(OpenAL1_1Thread, 0, NULL);
+//   thread.handle[ss_audio] = (ptr)_beginthread(OpenAL1_1Thread, 0, NULL);
+   thread.handle[ss_audio] = (ptr)_beginthreadex(nullptr, 0, OpenAL1_1Thread, nullptr, 0, nullptr);
    Sleep(100);
    SetThreadIdealProcessor(thread.handle[ss_audio], thread.idealProcessor[ss_audio]);
    SetThreadPriority(thread.handle[ss_audio], thread.priority[ss_audio]);

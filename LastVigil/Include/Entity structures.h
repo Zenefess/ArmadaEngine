@@ -8,7 +8,7 @@
  ************************************************************/
 #pragma once
 
-#include "..\master header.h"
+#include "../master header.h"
 
 // Header elements of immutable structured buffer for predefined objects
 al4 struct OBJECT_IGS {

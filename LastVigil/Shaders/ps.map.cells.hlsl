@@ -10,13 +10,6 @@
 #include "common.hlsli"
 #include "ps.full register access.hlsli"
 
-struct _LIGHT { // 32 bytes (2 vectors)
-   float3 position;
-   float  range;
-   uint2  col_hl;   // 0-47==RGB: s7p8, 48-55==Highlight size : 0p8-1, 56-63==Highlight intensity : 4p4-1
-   uint2  RES;
-};
-
 struct LIGHT { // 32 bytes (2 vectors)
    float3 position;
    float  range;
@@ -77,35 +70,7 @@ float4 main(in const GOut g) : SV_Target {
    const float  fEmission = (fTexMask.w * 2.0f - 1.0039215686274509803921568627451f) * fScalar.w + fGEV;
    // Calculate light
    float3 fLight = 0.0f, fHighlight = 0.0f;
-   [unroll] for(uint i = 0; i < 32; i += 4) { // (i < 32): No stutter    (i < 40): Minor stuter    (i < 64): stutter    ??? Shader code exceeeding cache ??? Partially unroll
-/*
-      // Unpack colour variable
-      const float4x3 fColour = float4x3(uint4x3(uint3(l[i].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF, uint3(l[i + 1].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF,
-                                                uint3(l[i + 2].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF, uint3(l[i + 3].col_hl.xxy >> uint3(0, 16, 0)) & 0x0FFFF)) * rcp256 - 128.0f;
-      // Unpack highlight variables
-      const float2x4 fHL     = float2x4(uint2x4((l[i].col_hl.y >> uint2(16, 24)) & 0x0FF,     (l[i + 1].col_hl.y >> uint2(16, 24)) & 0x0FF,
-                                                (l[i + 2].col_hl.y >> uint2(16, 24)) & 0x0FF, (l[i + 3].col_hl.y >> uint2(16, 24)) & 0x0FF)
-                                      + uint2x4(257, 1, 257, 1, 257, 1, 257, 1))
-                             * float2x4(rcp512, rcp16, rcp512, rcp16, rcp512, rcp16, rcp512, rcp16);
-      // Process each light
-      const float4   range   = float4(l[i].range, l[i + 1].range, l[i + 2].range, l[i + 3].range);
-      const float4x3 vToL    = float4x3(l[i].position, l[i + 1].position, l[i + 2].position, l[i + 3].position) - float4x3(g.position, g.position, g.position, g.position);
-      const float4   distToL = float4(length(vToL[0]), length(vToL[1]), length(vToL[2]), length(vToL[3]));
-
-      const float4 range2 = range * range;
-      const float4 att    = min(1.0f, float4(distToL / range + (distToL / (range2))) * 0.5f);
-
-      const float4x3 ang = saturate(float4x3(dot(vToL[0] / distToL[0], fNormal.xyz).xxx, dot(vToL[1] / distToL[1], fNormal.xyz).xxx,
-                                             dot(vToL[2] / distToL[2], fNormal.xyz).xxx, dot(vToL[3] / distToL[3], fNormal.xyz).xxx));
-
-      const float4x3 lum  = (1.0f - float4x3(att[0].xxx, att[1].xxx, att[2].xxx, att[3].xxx)) * ang;
-      const float4x3 occ  = (1.0f - ang) * float4x3(fTexMask.xxx, fTexMask.xxx, fTexMask.xxx, fTexMask.xxx) * lum;
-      const float4x3 l4x3 = max(0.0f, (lum - occ) * fColour);
-      
-      fLight     += l4x3[0] + l4x3[1] + l4x3[2] + l4x3[3];
-      fHighlight += max(0.0f, (fTexMask.y - (1.0f - fHL[0].x)) * lum[0] * fColour[0] * fHL[0].y) + max(0.0f, (fTexMask.y - (1.0f - fHL[0].z)) * lum[1] * fColour[1] * fHL[0].w) +
-                    max(0.0f, (fTexMask.y - (1.0f - fHL[1].x)) * lum[2] * fColour[2] * fHL[1].y) + max(0.0f, (fTexMask.y - (1.0f - fHL[1].z)) * lum[3] * fColour[3] * fHL[1].w);
-*/
+   [unroll] for(uint i = 0; i < 32; i += 4) { // On 2080Ti -> (i < 32): No stutter    (i < 40): Minor stuter    (i < 64): stutter    ??? Shader code exceeeding cache ??? Partially unroll
       const uint3 lOS = i + uint3(1u, 2u, 3u);
       // Unpack highlight variables
       const float2x4 fHL     = float2x4(uint2x4((l[i].hls_hli >> uint2(0, 16u)) & 0x0FFFFu,     (l[lOS.x].hls_hli >> uint2(0, 16u)) & 0x0FFFFu,

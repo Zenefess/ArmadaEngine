@@ -90,7 +90,8 @@ inline static HRESULT PollMouse(void) {
    gcvLocal.mouse.z += mseState[0].z / 120;
    gcvLocal.mouse.w += mseState[0].w / 120;
 
-   ///--- !!! This isn't assembly; do better !!!
+   ///== This isn't assembly; do better!!!
+   if(!ptrLib[2]) return hr; ///-- Quick & dirty fix
    cVEC2Du16 &backBufRes = *((VEC2Du16*)ptrLib[2] + 180u); // CLASS_GPU::backBufRes
    gcvLocal.scrCoord = { fl32(gcv.curCoords.x) / fl32(backBufRes.x), fl32(gcv.curCoords.y) / fl32(backBufRes.y) };
 
@@ -187,7 +188,7 @@ inline static HRESULT PollGamepad(cui32 gamepadIndex) {
    // Convert axes to floats
    gcvLocal.faxis32[gamepadIndex] = _mm256_mul_ps(_mm256_cvtepi32_ps(gcvLocal.iaxis32[gamepadIndex]), padScale[gamepadIndex]);
 #else
-   cui32  index   = gamepadIndex << 1u
+   cui32  index   = gamepadIndex << 1u;
    cui32  index_1 = index + 1;
    csi128 axes[2] = _mm_sub_epi32(padState[0][gamepadIndex].xmm[0], padOS[gamepadIndex]);
    csi128 zone[2] = { _mm_set1_epi32(padDeadZone.vec2D[gamepadIndex].x), _mm_set1_epi32(padDeadZone.vec2D[gamepadIndex].y) };
@@ -361,7 +362,7 @@ inline static csi16 ModifyCharBuffer(void) {
          textBuffer.temp.byteOffset = 0;
          textBuffer.temp.byteCount  = 0;
       }
-      Stream16(textBuffer.source.p, textBuffer.temp.p, RoundUpToNearest16(ui64(textBuffer.source.byteOffset))); // Redundant; figure out why it's needed.
+      Stream16(textBuffer.source.p, textBuffer.temp.p, RoundUpToNearest16(ui64(textBuffer.source.byteOffset))); /// !!! Redundant; figure out why it's needed. !!!
       textBuffer.temp.byteOffset = textBuffer.source.byteOffset;
       textBuffer.temp.byteCount  = textBuffer.source.byteCount;
       textBuffer.source.bitField = 0x02; // Deactivate
@@ -444,7 +445,7 @@ Reinitialise_:
    THREAD_LIFE |= INPUT_THREAD_DONE;
 
    ///
-   /// Primary rendering loop
+   /// Primary processing loop
    ///
    do {
       threadLife = THREAD_LIFE;
@@ -577,7 +578,7 @@ Reinitialise_:
             if(gcvLocal.imm.b64[i] & j)
                inputsImmediate._ui16[k++] = keyCode;
 
-///--- Old input system ---///
+///--- Old input system for debugging; temporary ---///
       for(i = 0; i < 256; i++) {
          // Key has changed state since last poll
          if(keyState[0][i] != keyState[1][i]) {
@@ -644,7 +645,7 @@ Reinitialise_:
             0;
          }
       }
-///--- Old input system ---///
+///--- Old input system for debugging; temporary  ---///
 
       ProcessInputs(gcvLocal);
 

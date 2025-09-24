@@ -9,8 +9,6 @@
 #pragma once
 
 #include "..\master header.h"
-#include "Data structures.h"
-#include "File operations.h"
 #include "class_render.h"
 #include "Direct3D11 functions\class_config.h"
 #include "Direct3D11 functions\class_buffers.h"
@@ -24,8 +22,7 @@
 #include "D3D11SDKLayers.h"
 #endif
 
- //   cui32 flags = (NDEBUG ? NULL : D3D11_CREATE_DEVICE_DEBUG);
-constexpr cui32 flags = (NDEBUG ? D3D11_CREATE_DEVICE_SINGLETHREADED : D3D11_CREATE_DEVICE_SINGLETHREADED | D3D11_CREATE_DEVICE_DEBUG);// | D3D11_CREATE_DEVICE_PREVENT_INTERNAL_THREADING_OPTIMIZATIONS);
+constexpr cui32 flags = (NDEBUG ? D3D11_CREATE_DEVICE_SINGLETHREADED : D3D11_CREATE_DEVICE_SINGLETHREADED | D3D11_CREATE_DEVICE_DEBUG);
 
 inline  void     MessagePump(void);
 LRESULT CALLBACK RndrWndProc(HWND, UINT, WPARAM, LPARAM);
@@ -298,7 +295,7 @@ public:
 
       backBufRes = { ui16(curDimData.width), ui16(curDimData.height) };
    }
-
+/*
    void SetBorderedWindow(cHWND hWindow, RESOLUTION &resData) {
       if(curWinState) {
          if(resData.state == 2)
@@ -317,7 +314,8 @@ public:
          data.md.Format           = data.bbFormat;
          data.md.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
          data.md.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
-         curWinState         = resData.state = 0;
+         resData.rcpDims          = {2.0f / resData.window.width, 2.0f / resData.window.height};
+         curWinState              = resData.state = 0;
 
          ResizeBackbuffer(ScrRes, ae_windowed);
       }
@@ -340,7 +338,8 @@ public:
          data.md.Format           = data.bbFormat;
          data.md.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
          data.md.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
-         curWinState         = resData.state = 1;
+         resData.rcpDims          = {2.0f / resData.window.width, 2.0f / resData.window.height};
+         curWinState              = resData.state = 1;
 
          ResizeBackbuffer(ScrRes, ae_borderless);
       }
@@ -362,10 +361,67 @@ public:
          data.md.Format           = data.bbFormat;
          data.md.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
          data.md.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
-         curWinState         = resData.state = 2;
+         resData.rcpDims          = { 2.0f / resData.window.width, 2.0f / resData.window.height };
+         curWinState              = resData.state = 2;
 
          ResizeBackbuffer(ScrRes, ae_fullscreen);
       }
+   }
+*/
+   void SetRenderWindowState(cHWND hWindow, RESOLUTION &resData, AE_WINDOW_STATE target) {
+      if((ui32)target > 2u) return;
+      if(curWinState == target) return;
+
+      cbool leavingFullscreen = (resData.state == ae_fullscreen) && (target != ae_fullscreen);
+      if(leavingFullscreen) Try(stSetFullscr, ren.swapchain->SetFullscreenState(false, NULL), ss_video);
+
+      EnableWindow(hWindow, false);
+
+      switch(target) {
+      case ae_windowed: {
+         SetWindowLongPtrW(hWindow, GWL_EXSTYLE, WS_EX_NOREDIRECTIONBITMAP);
+         SetWindowLongPtrW(hWindow, GWL_STYLE, WS_CAPTION | WS_MAXIMIZEBOX);
+         SetWindowPos     (hWindow, HWND_NOTOPMOST, (int)resData.windowOS.x - 8, (int)resData.windowOS.y - 31,
+                           (int)resData.window.width + 16, (int)resData.window.height + 39, SWP_DEFERERASE | SWP_NOCOPYBITS | SWP_NOREDRAW | SWP_FRAMECHANGED);
+      } break;
+
+      case ae_borderless: {
+         SetWindowLongPtrW(hWindow, GWL_EXSTYLE, WS_EX_NOREDIRECTIONBITMAP | WS_EX_OVERLAPPEDWINDOW);
+         SetWindowLongPtrW(hWindow, GWL_STYLE, 0);
+         SetWindowPos(hWindow, HWND_TOPMOST, 0, 0, (int)resData.borderless.width, (int)resData.borderless.height,
+//                      SWP_NOSIZE | SWP_DEFERERASE | SWP_NOCOPYBITS | SWP_NOREDRAW | SWP_FRAMECHANGED);
+                      SWP_DEFERERASE | SWP_NOCOPYBITS | SWP_NOREDRAW | SWP_FRAMECHANGED);
+      } break;
+
+      case ae_fullscreen: {
+         SetWindowLongPtrW(hWindow, GWL_EXSTYLE, WS_EX_NOREDIRECTIONBITMAP);
+         SetWindowLongPtrW(hWindow, GWL_STYLE, 0);
+         SetWindowPos(hWindow, HWND_TOPMOST, 0, 0, (int)resData.full.width, (int)resData.full.height,
+                      SWP_NOMOVE | SWP_NOSIZE | SWP_DEFERERASE | SWP_NOCOPYBITS | SWP_NOREDRAW | SWP_FRAMECHANGED);
+      } break;
+      }
+
+      ShowWindow(hWindow, SW_SHOWNORMAL);
+      EnableWindow(hWindow, true);
+
+      if(target == ae_fullscreen)
+         Try(stSetFullscr, ren.swapchain->SetFullscreenState(true, NULL), ss_video);
+
+      const RESDATA &rd = (target == ae_windowed)   ? resData.window
+                        : (target == ae_borderless) ? resData.borderless
+                        : resData.full;
+
+      data.md.Width            = (UINT)rd.width;
+      data.md.Height           = (UINT)rd.height;
+      data.md.RefreshRate      = { 0, 1 };
+      data.md.Format           = data.bbFormat;
+      data.md.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+      data.md.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
+
+      resData.rcpDims = { 2.0f / rd.width, 2.0f / rd.height }; // was window dims in originals
+      curWinState = resData.state = target;
+
+      ResizeBackbuffer(ScrRes, target);
    }
 
    inline void DestroyBuffers(void) {

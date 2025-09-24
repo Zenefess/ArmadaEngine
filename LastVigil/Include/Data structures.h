@@ -258,7 +258,7 @@ al32 struct TEXTBUFFER {
       ui32 index = 0;
 
       // Find entry
-      while(temp.p != location[index] && allocations >= index)
+      while(allocations < index && temp.p != location[index])
          index++;
 
       // Is the pointer valid?
@@ -453,7 +453,7 @@ al16 struct RESDATA { // 32 bytes
    ui8  msaaQ;   // Multisample quality
 };
 
-al16 struct RESOLUTION { // 112 bytes
+al16 struct RESOLUTION { // 128 bytes
    union {
       RESDATA dims[3];
       struct {
@@ -462,11 +462,12 @@ al16 struct RESOLUTION { // 112 bytes
          RESDATA full;
       };
    };
+   struct RCP_DIMS { fl32 w, h; } rcpDims; // Set to 2.0f / dims[state]
    VEC2Du16 windowOS;
    VEC2Du16 borderlessOS;
    rn3216   refreshRate;
    si8      state;        // 0 == Windowed | 1 == Borderless | 2 = Fullscreen
-//   ui8      RES;
+//   ui8      RES[9];
 };
 
 al32 union THREAD_PROPS {

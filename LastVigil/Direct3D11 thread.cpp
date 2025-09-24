@@ -17,7 +17,7 @@
 #include "Armada Intelligence/GUI functions.h"
 #include "Armada Intelligence/class_gui.h"
 
- // For development only. Insert <0,0>~<1,1> into slot#0 for non-texture panels --- !!! Now obsolete !!!
+// For development only. Insert <0,0>~<1,1> into slot#0 for non-texture panels --- !!! Now obsolete !!!
 al32 struct GUI_SPRITE_DEFAULTS { cchptrc name; VEC4Df tc; VEC2Df aa; } defaultUISprite[82] = {
    { "Procedural", { 0.0f, 0.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
    { "Opaque 2048x88r6", { 0.0f, 0.765625f, 1.0f, 0.80859375f }, { 2004.0f / 2048.0f, 44.0f / 88.0f } },                             // 0
@@ -122,7 +122,7 @@ al16 HWND    hWnd; // Main window's handle
 RESOLUTION ScrRes = { 3600, 1600, 16.0f / 36.0f, 36.0f / 16.0f, 1.0f, DXGI_FORMAT_R10G10B10A2_UNORM, DXGI_FORMAT_D24_UNORM_S8_UINT, 8, 1, 0,
                       3840, 2160, 9.0f / 16.0f, 16.0f / 9.0f, 1.0f, DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_D32_FLOAT, 8, 1, 0,
                       3840, 2160, 9.0f / 16.0f, 16.0f / 9.0f, 2.2f, DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_D32_FLOAT, 8, 1, 0,
-                      120, 360, 0, 0, 0, 0 };
+                      768, 384, 0, 0, 0, 0 };
 
 #include <dxgidebug.h>
 
@@ -439,9 +439,10 @@ Reinitialise_:
    gpu.cam.UploadProjections(0x0, 0);
 
    // Display the render window
-   gpu.SetBorderedWindow(hWnd, ScrRes);
+//   gpu.SetBorderedWindow(hWnd, ScrRes);
 //   gpu.SetBorderlessWindow(hWnd, ScrRes);
 //   gpu.SetFullscreenWindow(hWnd, ScrRes);
+   gpu.SetRenderWindowState(hWnd, ScrRes, ae_windowed);
 
 // Initialise timers
    frameTimer.Reset(1.0);
@@ -504,9 +505,9 @@ Reinitialise_:
 
       // Clamp camera rotation
       if(gpu.cam.data32[0].fXrot < -1.0f) gpu.cam.data32[0].fXrot = -1.0f;
-      if(gpu.cam.data32[0].fXrot > 1.0f) gpu.cam.data32[0].fXrot = 1.0f;
+      if(gpu.cam.data32[0].fXrot >  1.0f) gpu.cam.data32[0].fXrot = 1.0f;
       if(gpu.cam.data32[0].fYrot < -1.0f) gpu.cam.data32[0].fYrot = -1.0f;
-      if(gpu.cam.data32[0].fYrot > 1.0f) gpu.cam.data32[0].fYrot = 1.0f;
+      if(gpu.cam.data32[0].fYrot >  1.0f) gpu.cam.data32[0].fYrot = 1.0f;
 
       // Update local copy of global control variables
       Stream64(ptr(&gcv), &gcvLocal, 448u);
@@ -541,7 +542,7 @@ Reinitialise_:
       cui128 mapManThreadData = gpuHelper.map.WaitThenUploadAndRender(0, 0);
       uiVisChunks = mapManThreadData.m128i_u32[0];
 
-      // Update UI readouts
+      // Update debug UI readouts
       snprintf(textBuffer[0], 128, "Pos/Rot: <%.2f, %.2f, %.2f / %.2f, %.2f, %.2f>   Cull<Cells:%.3fms Ent:%.3fms>   Map cells: %d   Entities: %d",
                gpu.cam.data32[0].fXpos, gpu.cam.data32[0].fYpos, gpu.cam.data32[0].fZpos, gpu.cam.data32[0].fXrot, gpu.cam.data32[0].fYrot, gpu.cam.data32[0].fZrot,
                sysData.culling.map.time, sysData.culling.entity.time, sysData.culling.map.vis[0], sysData.culling.entity.vis[0]);

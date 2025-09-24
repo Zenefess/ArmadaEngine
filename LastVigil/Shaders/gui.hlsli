@@ -49,7 +49,7 @@ struct GUI_EL_DYN { // 96 bytes (6 vectors)
    float  width_at0; // Text:    Total width of vertex's text in view space
                      // Element: First duration of animation cycle
    uint   taos_at1;  // Text:    0~25==Offset into text array (div.by 16), 26~31==Vertex's char count
-                     // Element: Second duration of anination cycle (cast from float)
+                     // Element: Second duration of animation cycle (cast from float)
    uint   ind_type;  // Text:    0~15==Offset into alphabet buffer
                      // Element: 0==Fade, 1==Zoom, 2==???, 3==Rotate, 4&5==Swing X&Y, 6~7==(Quantum=0, Linear=1, Smoothstep=2, ???=3), 8~15==???
                      // Both:    16~23==Runtime index of atlas texture, 24~31==Element type
