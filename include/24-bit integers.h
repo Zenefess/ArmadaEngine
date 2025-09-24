@@ -1,6 +1,6 @@
 /****************************************************************
  * File: 24-bit integers.h                  Created: 2024/05/13 *
- *                                    Last modified: 2024/05/27 *
+ *                                    Last modified: 2025/09/09 *
  *                                                              *
  * Desc: Both signed & unsigned data types.                     *
  *                                                              *
@@ -36,29 +36,28 @@ struct ui24 {
    ui24(cui16 value) { (ui16 &)data = (ui16 &)value; data[2] = 0; }
    ui24(csi16 value) { (ui16 &)data = (ui16 &)value; data[2] = (value & 0x08000) ? 0x0FF : 0; }
    ui24(cui8_3 value) { (ui16 &)data = (ui16 &)value[0]; data[2] = value[2]; }
-   ui24(cui32 value) { (ui16 &)data = (ui16 &)value; data[2] = ((ui8_3)value)[2]; }
-   ui24(csi32 value) { (ui16 &)data = (ui16 &)value; data[2] = ((ui8_3)value)[2]; }
-   ui24(cfl32 value) { cui32 temp = (ui32)value; (ui16 &)data = (ui16 &)temp; data[2] = ((ui8_3)temp)[2]; }
-   ui24(cfl64 value) { cui32 temp = (ui32)value; (ui16 &)data = (cui16 &)temp; data[2] = ((ui8_3)temp)[2]; }
+   ui24(cui32 value) { (ui16 &)data = (ui16 &)value; data[2] = ui8(value >> 16); }
+   ui24(csi32 value) { (ui16 &)data = (ui16 &)value; data[2] = ui8(value >> 16); }
+   ui24(cfl32 value) { cui32 temp = (ui32)value; (ui16 &)data = (ui16 &)temp; data[2] = ui8(temp >> 16); }
+   ui24(cfl64 value) { cui32 temp = (ui32)value; (ui16 &)data = (cui16 &)temp; data[2] = ui8(temp >> 16); }
 
-   operator ptrc(void) const { return *this; }
    operator cbool(void) const { return ((ui32 &)data & 0x0FFFFFFu) != 0; }
    operator cui8(void) const { return (ui8 &)data; }
    operator csi8(void) const { return (si8 &)data; }
    operator cui16(void) const { return (ui16 &)data; }
    operator csi16(void) const { return (si16 &)data; }
    operator cui8_3(void) const { return (ui8_3 &)data; }
-   operator cui32(void) const { return (ui32 &)data & 0x0FFFFFF; }
-   operator csi32(void) const { return (si32 &)data & 0x0FFFFFF; }
-   operator cui64(void) const { return (ui64 &)data & 0x0FFFFFF; }
-   operator csi64(void) const { return (si64 &)data & 0x0FFFFFF; }
-   operator cfl32(void) const { return fl32((si32 &)data & 0x0FFFFFF); }
-   operator cfl64(void) const { return fl64((si32 &)data & 0x0FFFFFF); }
+   operator cui32(void) const { return (ui32 &)data & 0x0FFFFFFu; }
+   operator csi32(void) const { ui32 temp = (ui32 &)data & 0x0FFFFFFu; if(temp & 0x0800000u) temp |= 0x0FF000000u; return temp; }
+   operator cui64(void) const { return (ui64 &)data & 0x0FFFFFFu; }
+   operator csi64(void) const { ui64 temp = (ui64 &)data & 0x0FFFFFFu; if(temp & 0x0800000u) temp |= 0x0FFFFFFFFFF000000ull; return temp; }
+   operator cfl32(void) const { return fl32((si32 &)data & 0x0FFFFFFu); }
+   operator cfl64(void) const { return fl64((si32 &)data & 0x0FFFFFFu); }
 
    inline cui24 &operator&(void) const { return *this; }
    inline cui24 &operator()(void) const { return *this; }
    inline cui24 operator~(void) const { return (ui32 &)data ^ 0x0FFFFFF; }
-   inline cui24 operator-(void) const { return (ui32 &)data ^ 0x0FFFFFF; }
+   inline cui24 operator-(void) const { return 0 - (ui32 &)data & 0x0FFFFFF; }
 
    inline cui24 operator++(void) { ((ui16 &)data)++; data[2] += ((ui16 &)data == 0); return *this; }
    inline cui24 operator++(int) { cui24 temp = data; ((ui16 &)data)++; data[2] += ((ui16 &)data == 0); return temp; }

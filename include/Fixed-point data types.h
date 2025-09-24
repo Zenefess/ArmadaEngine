@@ -1,6 +1,6 @@
 /**********************************************************************
  * File: Fixed-point data types.h                 Created: 2024/05/11 *
- *                                          Last modified: 2024/06/26 *
+ *                                          Last modified: 2025/01/20 *
  *                                                                    *
  * Desc: Provides sizes of 8, 16, 24, and 32 bits. All sizes have     *
  *       support for fixed, normalised, and custom value ranges.      *
@@ -34,8 +34,8 @@ typedef AVX16Du16 i16x16; // For 32-byte return value
 typedef AVX16Df32 f32x16; // For 64-byte return value
 typedef AVX16Ds32 i32x16; // For 64-byte return value
 #else
-typedef al8 union { struct { fl32, u, v; } struct { fl32 x, y; }; fl32 _fl[2]; }              f32x2;  // For 2-scalar return value
-typedef     union { struct { ui16 x, y, z; } struct { ui16 r, g, b; }; ui16 _ui[3]; }         i16x3;  // For 3-scalar return value
+typedef al8 union { struct { fl32 u, v; }; struct { fl32 x, y; }; fl32 _fl[2]; }              f32x2;  // For 2-scalar return value
+typedef     union { struct { ui16 x, y, z; }; struct { ui16 r, g, b; }; ui16 _ui[3]; }        i16x3;  // For 3-scalar return value
 typedef     union { csi256 ymm; csi128 xmm[2]; csi64 _si[4]; cui64 _ui[4]; }                  i64x4;  // For 32-byte return value
 typedef     union { fl32x8 ymm; fl32x4 xmm[2]; fl32 _fl[8]; }                                 f32x8;  // For 32-byte return value
 typedef     union { csi256 ymm; csi128 xmm[2]; cui16 _ui[16]; }                               i16x16; // For 32-byte return value
@@ -61,22 +61,18 @@ typedef const f32x16 cf32x16; // For 64-byte packed floating-point return value
 #endif
 
 #ifdef _FPDT_AVX512_
-
 static cfl32x16 _fpdt_65535div3fx16    = _mm512_set1_ps(21845.0f);
 static cfl32x16 _fpdt_2div65535fx16    = _mm512_set1_ps(3.0f / 65535.0f);
 static cui512   _fpdt_shuffle16sAVX512 = { .m512i_u64 = { 0x00D0C090805040100u, 0x01D1C191815141110u, 0x02D2C292825242120u, 0x03D3C393835343130u, 0, 0, 0, 0 } };
-
 #endif
 
 #ifdef _FPDT_AVX2_
-
 static cfl32x8 _fpdt_65535div3fx8   = _mm256_set1_ps(21845.0f);
 static cfl32x8 _fpdt_rcp255fx8      = _mm256_set1_ps(1.0f / 255.0f);
 static cfl32x8 _fpdt_3div65535fx8   = _mm256_set1_ps(3.0f / 65535.0f);
 static cui256  _fpdt_1x16           = _mm256_set1_epi16(0x01);
 static cui128  _fpdt_shuffle16sAVX0 = { .m128i_u64 = { 0x00D0C090805040100u, 0 } };
 static cui128  _fpdt_shuffle16sAVX1 = { .m128i_u64 = { 0x01D1C191815141110u, 0 } };
-
 #endif
 
 static cfl32x4 _fpdt_32768fx4     = _mm_set_ps1(32768.0f);

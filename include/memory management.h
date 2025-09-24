@@ -1,6 +1,6 @@
 /************************************************************
  * File: memory management.h            Created: 2008/12/08 *
- *                                Last modified: 2024/07/23 *
+ *                                Last modified: 2025/02/19 *
  *                                                          *
  * Notes: 2024/05/02: Added support for data tracking.      *
  *                                                          *
@@ -10,14 +10,17 @@
 
 #pragma intrinsic(_InterlockedExchange64)
 
+#include <windows.h>
 #include <corecrt_malloc.h>
 #include "typedefs.h"
-#include "Common functions.h"
+#include "common functions.h"
 
 #ifdef DATA_TRACKING
 #include "data tracking.h"
 extern SYSTEM_DATA sysData;
 #endif
+
+#define _MEMORY_MANAGER_
 
 #define malloc1(byteCount)  malloc(byteCount, 1u)
 #define malloc2(byteCount)  malloc(byteCount, 2u)
@@ -75,15 +78,15 @@ extern SYSTEM_DATA sysData;
 #define declare2d64z(dataType, variableName, dim1, dim2) \
    dataType (*const variableName)[dim2] = (dataType (*)[dim2])salloc(RoundUpToNearest64(sizeof(dataType) * ((dim1) * (dim2))), 64u, null128)
 
-// Declare 1-dimensional array at 16-byte boundary, then the entire array to a repeating pattern of 8~512 bits
+// Declare 1-dimensional array at 16-byte boundary, then set the entire array to a repeating pattern of 8~512 bits
 #define declare1d16s(dataType, variableName, dim, bitPattern) \
    dataType *const variableName = (dataType *)salloc(RoundUpToNearest16(sizeof(dataType) * (dim)), 16u, bitPattern)
 
-// Declare 1-dimensional array at 32-byte boundary, then the entire array to a repeating pattern of 8~512 bits
+// Declare 1-dimensional array at 32-byte boundary, then set the entire array to a repeating pattern of 8~512 bits
 #define declare1d32s(dataType, variableName, dim, bitPattern) \
    dataType *const variableName = (dataType *)salloc(RoundUpToNearest32(sizeof(dataType) * (dim)), 32u, bitPattern)
 
-// Declare 1-dimensional array at 64-byte boundary, then the entire array to a repeating pattern of 8~512 bits
+// Declare 1-dimensional array at 64-byte boundary, then set the entire array to a repeating pattern of 8~512 bits
 #define declare1d64s(dataType, variableName, dim, bitPattern) \
    dataType *const variableName = (dataType *)salloc(RoundUpToNearest64(sizeof(dataType) * (dim)), 64u, bitPattern)
 
@@ -173,22 +176,22 @@ extern SYSTEM_DATA sysData;
 
 // Allocates RAM at 64-byte boundary, then sets the entire array to zero
 #define zalloc1d64(dataType, dim) \
-   (dataType *)salloc(RoundUpToNearest64(sizeof(dataType) * (dim)), 64u, null128)
+   (dataType *)salloc(RoundUpToNearest64(sizeof(dataType) * (dim)), 64u, null256)
 
 // Allocates RAM at 64-byte boundary, then sets the entire array to zero
 #define zalloc2d64(dataType, dim1, dim2) \
-   (dataType (*)[dim2])salloc(RoundUpToNearest64(sizeof(dataType) * ((dim1) * (dim2))), 64u, null128)
+   (dataType (*)[dim2])salloc(RoundUpToNearest64(sizeof(dataType) * ((dim1) * (dim2))), 64u, null256)
 #else
 // Allocates RAM at 64-byte boundary, then sets the entire array to zero
 #define zalloc64(byteCount) salloc(byteCount, 64, null128)
 
 // Allocates RAM at 64-byte boundary, then sets the entire array to zero
 #define zalloc1d64(dataType, dim) \
-   (dataType *)salloc(RoundUpToNearest64(sizeof(dataType) * (dim)), 64u, null512)
+   (dataType *)salloc(RoundUpToNearest64(sizeof(dataType) * (dim)), 64u, null128)
 
 // Allocates RAM at 64-byte boundary, then sets the entire array to zero
 #define zalloc2d64(dataType, dim1, dim2) \
-   (dataType (*)[dim2])salloc(RoundUpToNearest64(sizeof(dataType) * ((dim1) * (dim2))), 64u, null512)
+   (dataType (*)[dim2])salloc(RoundUpToNearest64(sizeof(dataType) * ((dim1) * (dim2))), 64u, null128)
 #endif
 #endif
 
@@ -351,21 +354,22 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui512 bitPattern) {
 inline cui64 mdealloc(ptrc pointer) {
    if(pointer) {
 #ifdef DATA_TRACKING
-      cui32     allocations = sysData.mem.allocations;
-      vptrcptrc location    = sysData.mem.location;
+      cui32    allocations = sysData.mem.allocations;
+      vptrptrc location    = sysData.mem.location;
 
       ui32 index = 0;
 
       // Find entry
-      while(pointer != location[index] && allocations >= index) index++;
+      while(allocations < index && pointer != location[index]) index++;
 
       // Is the pointer invalid?
       if(index >= allocations) return false;
 
-      sysData.mem.allocations--;
+      --sysData.mem.allocations;
       sysData.mem.allocated -= sysData.mem.byteCount[index];
-      sysData.mem.location[index] = NULL;
+      sysData.mem.location[index]  = 0;
       sysData.mem.byteCount[index] = 0;
+      location[index] = 0;
 #endif
       _aligned_free(pointer);
       return true;
@@ -381,19 +385,20 @@ inline cui64 mdealloc_(ptr pointer, ...) {
    for(; (ui64 &)pointer != -1; pointer = va_arg(val, ptrc)) {
       if(pointer) {
 #ifdef DATA_TRACKING
-         cui32     allocations = sysData.mem.allocations;
-         vptrcptrc location    = sysData.mem.location;
-         ui32      index       = 0;
+         cui32    allocations = sysData.mem.allocations;
+         vptrptrc location    = sysData.mem.location;
+         ui32     index       = 0;
 
          // Find entry
-         while(pointer != location[index] && allocations >= index) index++;
+         while(allocations < index && pointer != location[index]) index++;
          // Is the pointer invalid?
          if(index >= allocations) continue;
 
-         sysData.mem.allocations--;
+         --sysData.mem.allocations;
          sysData.mem.allocated -= sysData.mem.byteCount[index];
-         sysData.mem.location[index] = NULL;
+         sysData.mem.location[index]  = 0;
          sysData.mem.byteCount[index] = 0;
+         location[index] = 0;
 #endif
          _aligned_free(pointer);
          retVal |= ptrBit;
