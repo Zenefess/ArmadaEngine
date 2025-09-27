@@ -1,6 +1,6 @@
 /************************************************************
  * File: vector structures.h            Created: 2022/12/05 *
- *                                Last modified: 2025/01/23 *
+ *                                Last modified: 2025/09/27 *
  *                                                          *
  * Notes: 2023/04/27: Added constant vector typedefs.       *
  *        2024/04/04: Added support for 24-bit integers.    *
@@ -888,6 +888,25 @@ al64 union AVX512matrix {
    fl32   fl[16];
 };
 
+al32 union AVXmatrix2 {
+   struct { AVXmatrix view, inverse; };
+   AVXmatrix mat[2];
+   __m256    ymm[2][2];
+   __m128    xmm[2][4];
+   VEC4Df    vector[2][4];
+   fl32      fl[2][16];
+};
+
+al64 union AVX512matrix2 {
+   struct { AVX512matrix view, inverse; };
+   AVX512matrix mat[2];
+   __m512       zmm[2];
+   __m256       ymm[2][2];
+   __m128       xmm[2][4];
+   VEC4Df       vector[2][4];
+   fl32         fl[2][16];
+};
+
 // Constant vector types
 typedef const VEC2Du8   cVEC2Du8;
 typedef const VEC2Ds8   cVEC2Ds8;
@@ -974,8 +993,10 @@ typedef const AVX32Df16 cAVX32Df16;
 typedef const AVX64Du8  cAVX64Du8;
 typedef const AVX64Ds8  cAVX64Ds8;
 
-typedef const AVXmatrix    cAVXmatrix;
-typedef const AVX512matrix cAVX512matrix;
+typedef const AVXmatrix     cAVXmatrix;
+typedef const AVXmatrix2    cAVXmatrix2;
+typedef const AVX512matrix  cAVX512matrix;
+typedef const AVX512matrix2 cAVX512matrix2;
 
 // Volatile vector types
 typedef vol VEC2Du8   vVEC2Du8;

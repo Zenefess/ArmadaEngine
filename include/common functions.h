@@ -12,6 +12,7 @@
 #include <vector structures.h>
 #include <corecrt_math.h>
 #include "SIMD management.h"
+//#include "string_func_avx2.h"
 
 #define _COMMON_FUNCTIONS_
 
@@ -163,32 +164,12 @@ inline cfl32 Max (cSSE4Df32& vector) { return max(max(vector.vector.x, vector.ve
 inline cfl32 Max3(cVEC4Df &vector)   { return max(max(vector.x, vector.y), vector.z); }
 inline cfl32 Max3(cSSE4Df32 &vector) { return max(max(vector.vector.x, vector.vector.y), vector.vector.z); }
 
-inline cfl32 magnitudeV3(cfl32x4 vector) { return sqrtf(_mm_dp_ps(vector, vector, 0x071).m128_f32[0]); }
-
-inline void normaliseV3(fl32x4 &vector) {
-   cfl32 mag = sqrtf(_mm_dp_ps(vector, vector, 0x071).m128_f32[0]);
-   vector = _mm_div_ps(vector, cfl32x4{ mag, mag, mag, 1.0f });
-}
-
-inline void normaliseV3(SSE4Df32 &vector) {
-   cfl32 mag = sqrtf(_mm_dp_ps(vector.xmm, vector.xmm, 0x071).m128_f32[0]);
-   vector.xmm = _mm_div_ps(vector.xmm, cfl32x4{ mag, mag, mag, 1.0f });
-}
-
-inline void normaliseV4(fl32x4 &vector) {
-   cfl32 mag = sqrtf(_mm_dp_ps(vector, vector, 0x071).m128_f32[0]);
-   vector = _mm_div_ps(vector, _mm_set_ps1(mag));
-}
-
-inline void normaliseV4(SSE4Df32 &vector) {
-   cfl32 mag = sqrtf(_mm_dp_ps(vector.xmm, vector.xmm, 0x071).m128_f32[0]);
-   vector.xmm = _mm_div_ps(vector.xmm, _mm_set_ps1(mag));
-}
-
+#if defined(USE_OLD_CODE)
 inline cui32 rand_ui31(cui32 index) {
    cui32 i = (index << 13u) ^ index;
    return (i * (i * i * 15731u + 789221u) + 1376312589u) & 0x07FFFFFFF;
 }
+#endif
 
 inline cbool AllTrue(cui128 source, cui128 compare) { return _mm_testc_si128(source, compare); }
 

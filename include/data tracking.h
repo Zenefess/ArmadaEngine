@@ -1,6 +1,6 @@
 /************************************************************
  * File: Data tracking.h                Created: 2024/03/30 *
- *                                Last modified: 2025/02/02 *
+ *                                Last modified: 2025/09/25 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -161,11 +161,6 @@ public:
    }
 
    ~SYSTEM_DATA(void) {
-      // Free all memory still allocated?
-      if(freeAllAllocations)
-         for(ui32 i = 0; i < mem.allocations; i++)
-            if(mem.location[i])
-               _aligned_free((ptr)mem.location[i]);
       _aligned_free(folderProgramData);
       _aligned_free((ptr)mem.byteCount);
       _aligned_free(mem.location);

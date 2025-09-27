@@ -17,7 +17,6 @@
 
 #ifdef DATA_TRACKING
 #include "data tracking.h"
-extern SYSTEM_DATA sysData;
 #endif
 
 #define _MEMORY_MANAGER_
@@ -196,13 +195,14 @@ extern SYSTEM_DATA sysData;
 #endif
 
 // Allocate RAM at aligned boundary
-inline ptrc malloc(csize_t byteCount, csize_t alignment) {
-   ptrc pointer = _aligned_malloc(byteCount, alignment);
+inline ptrc malloc(csize_t numBytes, csize_t alignment) {
+   ptrc pointer = _aligned_malloc(numBytes, alignment);
 #ifdef DATA_TRACKING
    if(pointer) {
-      sysData.mem.byteCount[sysData.mem.allocations]  = byteCount;
-      sysData.mem.location[sysData.mem.allocations++] = pointer;
-      sysData.mem.allocated += byteCount;
+      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
+      sysData.mem.location[sysData.mem.allocations]  = pointer;
+      sysData.mem.allocated += numBytes;
+      sysData.mem.allocations++;
    }
 #endif
    return pointer;
@@ -213,9 +213,10 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui8 bitPattern) {
    ptrc pointer = _aligned_malloc(numBytes, alignment);
    if(pointer) {
 #ifdef DATA_TRACKING
-      sysData.mem.byteCount[sysData.mem.allocations]  = numBytes;
-      sysData.mem.location[sysData.mem.allocations++] = pointer;
+      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
+      sysData.mem.location[sysData.mem.allocations]  = pointer;
       sysData.mem.allocated += numBytes;
+      sysData.mem.allocations++;
 #endif
       cui64 bitPat8  = ui64(bitPattern);
       cui64 bitPat16 = bitPat8  | (bitPat8 << 8u);
@@ -235,9 +236,10 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui16 bitPattern) {
    ptrc pointer = _aligned_malloc(numBytes, alignment);
    if(pointer) {
 #ifdef DATA_TRACKING
-      sysData.mem.byteCount[sysData.mem.allocations]  = numBytes;
-      sysData.mem.location[sysData.mem.allocations++] = pointer;
+      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
+      sysData.mem.location[sysData.mem.allocations]  = pointer;
       sysData.mem.allocated += numBytes;
+      sysData.mem.allocations++;
 #endif
       cui64 bitPat16 = ui64(bitPattern);
       cui64 bitPat32 = bitPat16 | (bitPat16 << 16u);
@@ -256,9 +258,10 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui32 bitPattern) {
    ptrc pointer = _aligned_malloc(numBytes, alignment);
    if(pointer) {
 #ifdef DATA_TRACKING
-      sysData.mem.byteCount[sysData.mem.allocations]  = numBytes;
-      sysData.mem.location[sysData.mem.allocations++] = pointer;
+      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
+      sysData.mem.location[sysData.mem.allocations]  = pointer;
       sysData.mem.allocated += numBytes;
+      sysData.mem.allocations++;
 #endif
       cui64 bitPat32 = ui64(bitPattern);
       cui64 bitPat64 = bitPat32 | (bitPat32 << 32u);
@@ -276,9 +279,10 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui64 bitPattern) {
    ptrc pointer = _aligned_malloc(numBytes, alignment);
    if(pointer) {
 #ifdef DATA_TRACKING
-      sysData.mem.byteCount[sysData.mem.allocations]  = numBytes;
-      sysData.mem.location[sysData.mem.allocations++] = pointer;
+      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
+      sysData.mem.location[sysData.mem.allocations]  = pointer;
       sysData.mem.allocated += numBytes;
+      sysData.mem.allocations++;
 #endif
       cui64 limit = numBytes >> 3;
       ui64  os;
@@ -294,9 +298,10 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui128 bitPattern) {
    ptrc pointer = _aligned_malloc(numBytes, alignment);
    if(pointer) {
 #ifdef DATA_TRACKING
-      sysData.mem.byteCount[sysData.mem.allocations]  = numBytes;
-      sysData.mem.location[sysData.mem.allocations++] = pointer;
+      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
+      sysData.mem.location[sysData.mem.allocations]  = pointer;
       sysData.mem.allocated += numBytes;
+      sysData.mem.allocations++;
 #endif
       cui64 limit = numBytes >> 4;
       ui64  os;
@@ -312,9 +317,10 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui256 bitPattern) {
    ptrc pointer = _aligned_malloc(numBytes, alignment);
    if(pointer) {
 #ifdef DATA_TRACKING
-      sysData.mem.byteCount[sysData.mem.allocations]  = numBytes;
-      sysData.mem.location[sysData.mem.allocations++] = pointer;
+      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
+      sysData.mem.location[sysData.mem.allocations]  = pointer;
       sysData.mem.allocated += numBytes;
+      sysData.mem.allocations++;
 #endif
       cui64 limit = numBytes >> 5;
       ui64  os;
@@ -330,9 +336,10 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui512 bitPattern) {
    ptrc pointer = _aligned_malloc(numBytes, alignment);
    if(pointer) {
 #ifdef DATA_TRACKING
-      sysData.mem.byteCount[sysData.mem.allocations]  = numBytes;
-      sysData.mem.location[sysData.mem.allocations++] = pointer;
+      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
+      sysData.mem.location[sysData.mem.allocations]  = pointer;
       sysData.mem.allocated += numBytes;
+      sysData.mem.allocations++;
 #endif
       cui64 limit = numBytes >> 6;
       ui64  os;
@@ -344,8 +351,22 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui512 bitPattern) {
    return pointer;
 }
 
+inline cui64 mdealloc(ptrc pointer);
+
 // Frees a pointer and returns true if successful.
-#define mfree1(pointer) mdealloc(pointer)
+inline constexpr cui64 mfree1(ptr pointer) {
+    if(pointer) {
+        mdealloc(pointer);
+#if defined(DATA_TRACKING)
+        int x = 0;
+        for(; sysData.mem.location[x] != pointer && x << sysData.mem.allocations; x++)
+        if(sysData.mem.location[x] != pointer) sysData.mem.location[x] = 0;
+#endif
+        return true;
+    }
+    return false;
+}
+//#define mfree1(pointer) mdealloc(pointer)
 
 // Frees a variable number of pointers. Each bit represents each pointer (in argument order), and will be true if the relevant pointer is freed.
 #define mfree(pointer, ...) mdealloc_(pointer, __VA_ARGS__, -1ll)
@@ -792,5 +813,3 @@ inline void LockedMoveAndClear(vptrc source, vptrc dest, csi32 byteCount) {
    for(si32 i = 0; i < j; i++)
       ((vsi64ptr)dest)[i] = _InterlockedExchange64(&((vsi64ptr)source)[i], 0);
 }
-
-#undef bitPatternx8
