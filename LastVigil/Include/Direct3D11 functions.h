@@ -126,7 +126,8 @@ public:
    }
 
 ///--- !!! Rewrite based on new version below !!!
-   HANDLE InitialiseBackbuffer(cHWND hWindow, cfl32 width, cfl32 height, cfl32 gamma, cui32 formatBackBuffer, cui32 formatDepthBuffer, cui8 msaa, cui8 msaaQuality, cui8 swapBuffers, cAE_WINDOW_STATE windowState) {
+   HANDLE InitialiseBackbuffer(cHWND hWindow, cfl32 width, cfl32 height, cfl32 gamma, cui32 formatBackBuffer, cui32 formatDepthBuffer, cui8 msaa,
+                               cui8 msaaQuality, cui8 swapBuffers, cAE_WINDOW_STATE windowState) {
       for(ui8 xx = 1; xx < 33; xx++)
          Try(stCheckMSQL, dev->CheckMultisampleQualityLevels((DXGI_FORMAT)formatBackBuffer, xx, &data.msaaQlevel[xx]), ss_video);
       data.scd1.Width       = (UINT)width;
@@ -203,7 +204,8 @@ public:
       data.scd1.Scaling     = (curDimData.msaa > 1 ? DXGI_SCALING_STRETCH : DXGI_SCALING_NONE);
       data.scd1.SwapEffect  = (curDimData.msaa > 1 ? DXGI_SWAP_EFFECT_DISCARD : DXGI_SWAP_EFFECT_FLIP_DISCARD);
       data.scd1.AlphaMode   = DXGI_ALPHA_MODE_UNSPECIFIED;
-      data.scd1.Flags       = (windowState <= 1 ? curDimData.msaa > 1 ? 0 : DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT : DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+      data.scd1.Flags       = (windowState <= 1 ? curDimData.msaa > 1 ? 0 : DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING |DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT
+                              : DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
 
       data.scfd.RefreshRate      = (DXGI_RATIONAL &)(VEC2Du32)resData.refreshRate;
       data.scfd.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
@@ -295,7 +297,8 @@ public:
 
       backBufRes = { ui16(curDimData.width), ui16(curDimData.height) };
    }
-/*
+
+#if defined(USE_OLD_CODE)
    void SetBorderedWindow(cHWND hWindow, RESOLUTION &resData) {
       if(curWinState) {
          if(resData.state == 2)
@@ -367,7 +370,8 @@ public:
          ResizeBackbuffer(ScrRes, ae_fullscreen);
       }
    }
-*/
+#endif
+
    void SetRenderWindowState(cHWND hWindow, RESOLUTION &resData, AE_WINDOW_STATE target) {
       if((ui32)target > 2u) return;
       if(curWinState == target) return;

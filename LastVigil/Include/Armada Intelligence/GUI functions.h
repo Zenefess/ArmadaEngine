@@ -13,13 +13,13 @@
 #include "GUI structures.h"
 
 enum AE_DEF_FUNC_ENUM : ui16 {
-   Null, OnHoverDefault, OffHoverDefault,
+   Null,                    OnHoverDefault,          OffHoverDefault,
    Activate00DefaultButton, Activate01DefaultButton, Activate00DefaultToggle, Activate01DefaultToggle,
    Activate00DefaultScalar, Activate01DefaultScalar, Activate10DefaultScalar, Activate11Default,
-   PassiveDefaultInput, Activate00DefaultInput, Activate01DefaultInput, Activate10DefaultInput,
-   OnHoverDefaultArray, OffHoverDefaultArray, Activate00DefaultArray, Activate01DefaultArray, Activate10DefaultArray,
-   Activate01NewButton, Activate01SaveButton, Activate01LoadButton, Activate01EditorsButton, Activate01OptionsButton, Activate01ExitButton,
-   Activate01UIEditorButton
+   PassiveDefaultInput,     Activate00DefaultInput,  Activate01DefaultInput,  Activate10DefaultInput,
+   OnHoverDefaultArray,     OffHoverDefaultArray,    Activate00DefaultArray,  Activate01DefaultArray,  Activate10DefaultArray,
+   Activate01NewButton,     Activate01SaveButton,    Activate01LoadButton,    Activate01EditorsButton, Activate01OptionsButton,
+   Activate01ExitButton,    Activate01UIEditorButton
 };
 typedef const AE_DEF_FUNC_ENUM cAE_DEF_FUNC_ENUM;
 

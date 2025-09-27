@@ -512,6 +512,104 @@ public:
       return (SSE4Df32 &)_mm_fmadd_ps(coords.xmm, _mm_set_ps1(0.5f), _mm_set_ps1(0.5f));
    }
 
+#if !defined(USE_OLD_CODE)
+   // Compute the (x,y) origin for the current text vertex from prior glyphs.
+   // Inputs:
+   //  - firstVert: index of the first vertex of this text run
+   //  - curVert:   index of the vertex whose origin we want
+   //  - alphabetIndex: which alphabet to use for glyph metrics
+   // Returns: origin in view space. X advances by summed glyph widths; Y is unchanged.
+   //
+   // Data layout notes:
+   //  - element_dgs[v].origin[0] is the stored origin for vertex v. :contentReference[oaicite:1]{index=1}
+   //  - element_dgs[v].size.x is the X scale for text. :contentReference[oaicite:2]{index=2}
+   //  - element_dgs[v].charBankOS packs two things:
+   //      bits 0..25 = byte-offset/16 into textBuffer; bits 26..31 = vertex char count. :contentReference[oaicite:3]{index=3}
+   //  - alphabet[alphabetIndex].pIMMos is the base offset into alphabet_pIMM (glyph IMM table). :contentReference[oaicite:4]{index=4}
+   //  - alphabet_pIMM[k].width is fp16 normalized [0..1]; multiply by 1/65535 to get float. :contentReference[oaicite:5]{index=5}
+   inline cVEC2Df CalculateTextOrigin(csi16 firstVert, csi16 curVert, csi16 alphabetIndex) const {
+      // Base case: the first vertex already stores its origin.
+      if(firstVert == curVert) return element_dgs[firstVert].origin[0];
+
+      // Look one vertex back; we will advance from its origin by the widths we see.
+      cui32   uiPrevVert   = ui32(curVert) - 1u;
+      cVEC2Df uiPrevOrigin = element_dgs[uiPrevVert].origin[0];
+
+      // Decode text buffer pointer:
+      //  - Mask off low 26 bits of charBankOS (offset/16), then <<4 to get a byte offset.
+      cui32      uiBufIndex = (element_dgs[uiPrevVert].charBankOS & 0x03FFFFFFu) << 4u;
+      const auto charData   = reinterpret_cast<cui8ptr>(&textBuffer[uiBufIndex]);
+
+      // Load up to 32 glyph bytes. Each byte is a glyph index; non-positive means "inactive" (end/control).
+      cui256  glyphBlock   = _mm256_loadu_si256(reinterpret_cast<cui256ptr>(charData)); // unaligned OK
+      // positiveMask bit = 1 where byte > 0
+      cui256  positiveMask = _mm256_cmpgt_epi8(glyphBlock, _mm256_setzero_si256());
+      // Pack the 32 sign bits into a mask. Bit i corresponds to charData[i].
+      cui32   activeMask   = ui32(_mm256_movemask_epi8(positiveMask));
+      // Inactive where byte <= 0
+      cui32   inactiveMask = ~activeMask;
+      ui32    glyphCount;
+
+      // Find first inactive position. That is our glyph count in this 32-byte block.
+      if(inactiveMask) {
+      #if defined(_MSC_VER)
+          DWORD bitIndex = 0u;   _BitScanForward(&bitIndex, inactiveMask);   glyphCount = bitIndex; // index of lowest 1-bit
+      #else
+          glyphCount = ui32(__builtin_ctz(inactiveMask)); // count trailing zeros
+      #endif
+      } else glyphCount = 32u; // all 32 bytes active
+
+      // If no active glyphs precede us, keep prior origin.
+      if(glyphCount == 0u) return { uiPrevOrigin.x, uiPrevOrigin.y };
+
+      // Resolve alphabet base. Some indices remap through pIMMos; otherwise use the raw value.
+      cui32 alphabetRaw  = ui32(ui16(alphabetIndex));
+      cui32 alphabetBase = (alphabetRaw < MAX_ALPHABETS) ? alphabet[alphabetRaw].pIMMos : alphabetRaw;
+
+      // Pointer to the packed width table for gathers. We read 32-bit words and mask low 16 bits.
+      const auto widthBase = reinterpret_cast<const int*>(&alphabet_pIMM[alphabetBase].width.data);
+
+      // Vector constants:
+      cui256  mask16    = _mm256_set1_epi32(0x0000FFFF);   // extract 16-bit width
+      cfl32x8 rcp65535  = _mm256_set1_ps(_fpdt_rcp65535f); // 1/65535 as float
+      fl32x8  accum     = _mm256_setzero_ps();
+      ui32    processed = 0u;
+
+      // Fast path: sum widths for 8 glyphs per iteration using AVX2 gathers.
+      for(; processed + 8u <= glyphCount; processed += 8) {
+          // Load 8 glyph indices (u8) from charData[processed..processed+7].
+          cui128  glyphIndices = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(charData + processed));
+          // Zero-extend to u32 and scale by 4 to index 32-bit slots in widthBase.
+          cui256  offsets      = _mm256_slli_epi32(_mm256_cvtepu8_epi32(glyphIndices), 2);
+          // Gather eight 32-bit entries; each holds width in its low 16 bits.
+          cui256  packed       = _mm256_i32gather_epi32(widthBase, offsets, 4);
+          // Convert low-16 to float fraction and accumulate.
+          cfl32x8 widths       = _mm256_mul_ps(_mm256_cvtepi32_ps(_mm256_and_si256(packed, mask16)), rcp65535);
+                  accum        = _mm256_add_ps(accum, widths);
+      }
+
+      // Horizontal sum of the 8-lane accumulator.
+      fl32 fOffset = 0.0f;
+      if(processed) {
+          fl32x4 sum128  = _mm_add_ps(_mm256_castps256_ps128(accum), _mm256_extractf128_ps(accum, 1));
+                 sum128  = _mm_add_ps(sum128, _mm_movehl_ps(sum128, sum128));
+                 sum128  = _mm_add_ss(sum128, _mm_shuffle_ps(sum128, sum128, 0x55));
+                 fOffset = _mm_cvtss_f32(sum128);
+      }
+
+      // Remainder glyphs (0..7). Scalar add for simplicity.
+      for(; processed < glyphCount; ++processed)
+          fOffset += alphabet_pIMM[size_t(alphabetBase) + charData[processed]].width; // implicit fp16->float
+
+      // Convert summed glyph width to view-space X:
+      //   newX = prevX + fOffset * element scale.x
+      fl32x4 offsetVec = _mm_set_ss(fOffset);
+             offsetVec = _mm_fmadd_ss(offsetVec, _mm_set_ss(element_dgs[firstVert].size.x), _mm_set_ss(uiPrevOrigin.x));
+
+      // Y stays aligned to previous line.
+      return { _mm_cvtss_f32(offsetVec), uiPrevOrigin.y };
+   };
+#else
    inline cVEC2Df CalculateTextOrigin(csi16 firstVert, csi16 curVert, csi16 alphabetIndex) const {
       if(firstVert == curVert) return element_dgs[firstVert].origin[0];
 
@@ -526,6 +624,7 @@ public:
 
       return { fOffset * element_dgs[firstVert].size.x + uiPrevOrigin.x, uiPrevOrigin.y };
    };
+#endif
 
    // Returns first vertex, or 0x0FFFFFFFF if insufficient text buffer space
    cui32 CreateTextVertices(cGUI_EL_DESC &desc, ui32 textSize, cbool forTextArray) {
@@ -1737,6 +1836,7 @@ public:
       element[elementIndex.y].textEntry = si16(element_dgs[curElement.textArray[0]].viewPos.y);
    }
 
+#if defined(USE_OLD_CODE)
    inline void UpdateText(cchptrc text, cui32 elementIndex) {
       GUI_ELEMENT &curElement = element[elementIndex];
 
@@ -1783,6 +1883,78 @@ public:
       for(ui8 i = textBlockSize; i < curElement.vertexCount[1]; ++i)
          element_dgs[vertexIndex + i].align |= 0x080;
    }
+#else
+   inline void UpdateText(cchptrc text, cui32 elementIndex) {
+      GUI_ELEMENT &curElement = element[elementIndex];
+
+      csi32   vertexIndex   = curElement.vertexIndex;
+      csi32   textBufferOS  = (element_dgs[vertexIndex].charBankOS & 0x03FFFFFF) << 4;
+      csi32   stringLength  = si32(strlen(text));
+      csi32   textBlockSize = max(1, (stringLength + 31) >> 5);
+      chptr   dst           = &textBuffer[textBufferOS];
+      cui8ptr srcBytes      = reinterpret_cast<cui8ptr>(text);
+      ui8ptr  dstBytes      = reinterpret_cast<ui8ptr>(dst);
+      size_t  srcLen        = size_t(stringLength < 0 ? 0 : stringLength);
+      cbool   truncated     = textBlockSize >= csi32(curElement.vertexCount[1]);
+      size_t  blockBytes    = truncated ? ((size_t(curElement.vertexCount[1]) << 5) - 1u) : srcLen;
+      size_t  copyBytes     = truncated ? (srcLen < blockBytes ? srcLen : blockBytes) : srcLen;
+      size_t  offset        = 0u;
+
+      for(; offset + 32u <= copyBytes; offset += 32u) {
+         _mm256_storeu_si256(reinterpret_cast<ui256ptr>(dstBytes + offset),
+                             _mm256_loadu_si256(reinterpret_cast<cui256ptr>(srcBytes + offset)));
+      }
+      if(copyBytes > offset) memcpy(dstBytes + offset, srcBytes + offset, copyBytes - offset);
+
+      if(truncated) {
+         if(copyBytes < blockBytes) memset(dstBytes + copyBytes, 0, blockBytes - copyBytes);
+         dstBytes[blockBytes]      = 0;
+         curElement.charCount      = min(stringLength, textBlockSize << 5);
+         curElement.vertexCount[0] = curElement.vertexCount[1];
+      } else {
+         curElement.charCount      = stringLength;
+         curElement.vertexCount[0] = ui16(textBlockSize);
+         csi32 deltaIndex = (textBufferOS + stringLength) & 0x01F;
+         if(deltaIndex) {
+            if(deltaIndex < 24) {
+               csi32 textBlockEnd = textBufferOS + (textBlockSize << 5);
+               textBuffer[textBlockEnd - 8] = 0;
+               if(deltaIndex < 16) {
+                  textBuffer[textBlockEnd - 16] = 0;
+                  if(deltaIndex < 8) textBuffer[textBlockEnd - 24] = 0;
+               }
+            }
+         } else dstBytes[stringLength] = 0;
+      }
+
+      cui32  charBankBase = ui32(textBufferOS >> 4u);
+      cui32  activeVerts  = curElement.vertexCount[0];
+      cui32  baseVertex   = ui32(vertexIndex);
+      cui32  stringLenU   = ui32(stringLength < 0 ? 0 : stringLength);
+      cui128 wideOrigin   = _mm_castps_si128(_mm_set_ps1(16384.0f));
+      csi16  firstVertex  = csi16(vertexIndex);
+
+      for(ui32 i = 0; i < activeVerts; ++i) {
+         cui32       offsetIndex = baseVertex + i;
+         GUI_EL_DGS &vertex      = element_dgs[offsetIndex];
+         ui32        remaining   = (stringLenU > (i << 5u)) ? (stringLenU - (i << 5u)) : 0u;
+         ui32        charCount   = remaining > 32u ? 32u : remaining;
+
+         vertex.align      &= 0x07Fu;
+         vertex.charBankOS  = (i << 1u) + charBankBase + (charCount << 26u);
+         vertex.origin[0]   = CalculateTextOrigin(firstVertex, csi16(offsetIndex), csi16(vertex.alphabetIndex));
+
+         if(remaining > 8u)  _mm_storel_epi64(reinterpret_cast<__m128i *>(&vertex.origin[1]), wideOrigin);
+         else vertex.origin[1] = vertex.origin[0];
+         if(remaining > 16u) _mm_storel_epi64(reinterpret_cast<__m128i *>(&vertex.origin[2]), wideOrigin);
+         else vertex.origin[2] = vertex.origin[1];
+         if(remaining > 24u) _mm_storel_epi64(reinterpret_cast<__m128i *>(&vertex.origin[3]), wideOrigin);
+         else vertex.origin[3] = vertex.origin[2];
+      }
+
+      for(ui32 i = ui32(textBlockSize); i < curElement.vertexCount[1]; ++i) element_dgs[vertexIndex + i].align |= 0x080;
+   }
+#endif
 
    inline void UpdateText(cchptrc text, cVEC2Du32 elementIndex) {
       GUI_ELEMENT &curElement = element[elementIndex.y];

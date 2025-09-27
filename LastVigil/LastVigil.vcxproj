@@ -216,8 +216,13 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\include\common functions.h" />
     <ClInclude Include="..\..\..\include\DirectInput8 keyboard scan codes.h" />
+    <ClInclude Include="..\..\..\include\geometry_math_avx2.h" />
+    <ClInclude Include="..\..\..\include\matrix_math_avx2.h" />
     <ClInclude Include="..\..\..\include\SIMD management.h" />
+    <ClInclude Include="..\..\..\include\spinlocks.h" />
+    <ClInclude Include="..\..\..\include\string_func_avx2.h" />
     <ClInclude Include="Include\Armada Intelligence\class_entitymanager.h" />
     <ClInclude Include="Include\Armada Intelligence\class_gui.h" />
     <ClInclude Include="Include\Armada Intelligence\class_mapmanager.h" />
@@ -227,7 +232,6 @@
     <ClInclude Include="Include\class_render.h" />
     <ClInclude Include="Include\class_timers.h" />
     <ClInclude Include="Include\Command queue.h" />
-    <ClInclude Include="Include\Common functions.h" />
     <ClInclude Include="Include\D3D11 error testing.h" />
     <ClInclude Include="Include\DI8 error testing.h" />
     <ClInclude Include="Include\Input codes.h" />

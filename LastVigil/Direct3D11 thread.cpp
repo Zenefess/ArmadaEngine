@@ -439,9 +439,6 @@ Reinitialise_:
    gpu.cam.UploadProjections(0x0, 0);
 
    // Display the render window
-//   gpu.SetBorderedWindow(hWnd, ScrRes);
-//   gpu.SetBorderlessWindow(hWnd, ScrRes);
-//   gpu.SetFullscreenWindow(hWnd, ScrRes);
    gpu.SetRenderWindowState(hWnd, ScrRes, ae_windowed);
 
 // Initialise timers

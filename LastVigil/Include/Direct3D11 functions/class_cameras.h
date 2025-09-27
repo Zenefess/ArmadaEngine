@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_camera.h                 Created: 2022/10/20 *
- *                                Last modified: 2025/09/23 *
+ *                                Last modified: 2025/09/27 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -8,6 +8,7 @@
  ************************************************************/
 #pragma once
 
+#include <geometry_math_avx2.h>
 #include "Direct3D11 thread.h"
 #include "Direct3D11 functions\class_buffers.h"
 
@@ -133,21 +134,66 @@ al32 struct CLASS_CAM {
       mProj[cam][3] = (aemtrx)DX::XMMatrixOrthographicLH(data32[cam].fSize, data32[cam].fSize, data32[cam].fNearZ, data32[cam].fFarZ);
    }
 
+#if !defined(USE_OLD_CODE)
+   inline void TransformCamera(cui8 cam, cbool squareAspect) {
+      cfl32x4 vCamPos    = _mm_setr_ps(data32[cam].fXpos, data32[cam].fYpos, data32[cam].fZpos, 0.0f);
+      cmatrix mCamRot    = MatrixRotationRollPitchYaw(data32[cam].fXrot, data32[cam].fYrot, -data32[cam].fZrot);
+      cfl32x4 vCamRotPos = Transform3D(vCamPos, mCamRot);
+
+      vCamUp  = TransformNormal3D(vUp, mCamRot);
+      vCamDir = TransformNormal3D(vForward, mCamRot);
+
+      cmatrix     mLookAtFromOrigin    = MatrixLookAtLH(vOrigin, vCamDir, vCamUp);
+      cfl32x4     vCamRotPosFromOrigin = Transform3D(vCamRotPos, mLookAtFromOrigin);
+      cAVXmatrix2 viewFrame            = BuildViewFrame(vCamRotPosFromOrigin, vCamDir, vCamUp);
+
+      mCamera[cam]        = viewFrame.view;
+      mInverseCamera[cam] = viewFrame.inverse;
+
+      cmatrix &projPerspective = mProj[cam][(squareAspect ? 2 : 0)];
+      cmatrix &projOrtho       = mProj[cam][(squareAspect ? 3 : 1)];
+
+      mProjCamera[cam]  = MatrixMultiply(viewFrame.view, projPerspective);
+      mOrthoCamera[cam] = MatrixMultiply(viewFrame.view, projOrtho);
+
+      cmatrix &projCam = mProjCamera[cam];
+      fl32x4   col0    = projCam.xmm[0], col1 = projCam.xmm[1], col2 = projCam.xmm[2], col3 = projCam.xmm[3];
+
+      _MM_TRANSPOSE4_PS(col0, col1, col2, col3);
+
+      cfl32x8 col01  = _mm256_insertf128_ps(_mm256_castps128_ps256(col0), col1, 1);
+      cfl32x8 col3x2 = _mm256_insertf128_ps(_mm256_castps128_ps256(col3), col3, 1);
+      cfl32x8 ones   = _mm256_set1_ps(1.0f);
+
+      data32[cam].frustum.ymm[0] = _mm256_fmadd_ps(col01, ones, col3x2);
+      data32[cam].frustum.ymm[1] = _mm256_fnmadd_ps(col01, ones, col3x2);
+
+      cfl32x4 ones128 = _mm_set1_ps(1.0f);
+
+      data32[cam].frustum.xmm[4] = _mm_fmadd_ps(col2, ones128, col3);
+      data32[cam].frustum.xmm[5] = _mm_fnmadd_ps(col2, ones128, col3);
+
+      for(ui8 i = 0; i < 6; i++) {
+         cfl32 mag = sqrtf(_mm_dp_ps(data32[cam].frustum.xmm[i], data32[cam].frustum.xmm[i], 0x071).m128_f32[0]);
+         data32[cam].frustum.xmm[i] = _mm_div_ps(data32[cam].frustum.xmm[i], _mm_set_ps1(mag));
+      }
+   }
+#else
    inline void TransformCamera(cui8 cam, cbool squareAspect) {
       cfl32x4 vCamPos    = { data32[cam].fXpos, data32[cam].fYpos, data32[cam].fZpos, 0.0f };
-      cmatrix mCamRot    = (aemtrx)DX::XMMatrixRotationRollPitchYaw(data32[cam].fXrot, data32[cam].fYrot, -data32[cam].fZrot);
-      cfl32x4 vCamRotPos = DX::XMVector3Transform(vCamPos, (dxmtrx)mCamRot);
+      cmatrix mCamRot    = MatrixRotationRollPitchYaw(data32[cam].fXrot, data32[cam].fYrot, -data32[cam].fZrot);
+      cfl32x4 vCamRotPos = Transform3D(vCamPos, mCamRot);
 
-      vCamUp  = DX::XMVector3TransformNormal(vUp, (dxmtrx)mCamRot);
-      vCamDir = DX::XMVector3TransformNormal(vForward, (dxmtrx)mCamRot);
+      vCamUp  = TransformNormal3D(vUp, mCamRot);
+      vCamDir = TransformNormal3D(vForward, mCamRot);
 
-      cmatrix mLookAtFromOrigin    = (aemtrx)DX::XMMatrixLookAtLH(vOrigin, vCamDir, vCamUp);
-      cfl32x4 vCamRotPosFromOrigin = DX::XMVector3Transform(vCamRotPos, (dxmtrx)mLookAtFromOrigin);
+      cmatrix mLookAtFromOrigin    = MatrixLookAtLH(vOrigin, vCamDir, vCamUp);
+      cfl32x4 vCamRotPosFromOrigin = Transform3D(vCamRotPos, mLookAtFromOrigin);
 
       mCamera[cam]        = (aemtrx)DX::XMMatrixLookToLH(vCamRotPosFromOrigin, vCamDir, vCamUp);
       mInverseCamera[cam] = (aemtrx)DX::XMMatrixInverse(NULL, (dxmtrx)mCamera[cam]);
-      mProjCamera[cam]    = (aemtrx)DX::XMMatrixMultiply((dxmtrx)mCamera[cam], (dxmtrx)mProj[cam][(squareAspect ? 2 : 0)]);
-      mOrthoCamera[cam]   = (aemtrx)DX::XMMatrixMultiply((dxmtrx)mCamera[cam], (dxmtrx)mProj[cam][(squareAspect ? 3 : 1)]);
+      mProjCamera[cam]    = MatrixMultiply(mCamera[cam], mProj[cam][(squareAspect ? 2 : 0)]);
+      mOrthoCamera[cam]   = MatrixMultiply(mCamera[cam], mProj[cam][(squareAspect ? 3 : 1)]);
 
       cAVX8Df32 (&mFrustum)[2] = (cAVX8Df32(&)[2])mProjCamera[cam];
 
@@ -158,20 +204,21 @@ al32 struct CLASS_CAM {
 
       cfl32x8 &mw = (cfl32x8 &)_mm256_broadcastsi128_si256((cui128 &)m[1].xmm[1]);
 
-#ifdef __AVX__
+ #ifdef __AVX__
       data32[cam].frustum.ymm[0] = _mm256_add_ps(mw, m[0].ymm);
       data32[cam].frustum.ymm[1] = _mm256_sub_ps(mw, m[0].ymm);
-#else
+ #else
       data32[cam].frustum.xmm[0] = _mm_add_ps(m[1].xmm1, m[0].xmm0);
       data32[cam].frustum.xmm[1] = _mm_add_ps(m[1].xmm1, m[0].xmm1);
       data32[cam].frustum.xmm[2] = _mm_sub_ps(m[1].xmm1, m[0].xmm0);
       data32[cam].frustum.xmm[3] = _mm_sub_ps(m[1].xmm1, m[0].xmm1);
-#endif
+ #endif
       data32[cam].frustum.xmm[4] = _mm_add_ps(m[1].xmm1, m[1].xmm0);
       data32[cam].frustum.xmm[5] = _mm_sub_ps(m[1].xmm1, m[1].xmm0);
 
-      for(ui8 i = 0; i < 6; i++) normaliseV4(data32[cam].frustum.xmm[i]);
+      for(ui8 i = 0; i < 6; i++) Normalize3D(data32[cam].frustum.xmm[i]);
    }
+#endif
 
    inline void UploadProjections(cui64 bits, cui8 cam) {
       cbProj[cam] = { (aemtrx)DX::XMMatrixTranspose((dxmtrx)mProj[cam][0]), (aemtrx)DX::XMMatrixTranspose((dxmtrx)mProj[cam][1]), { ScrRes.dims[ScrRes.state].aspect, 1.0f }, bits };
@@ -209,77 +256,6 @@ al32 struct CLASS_CAM {
       return sqrtf(square.m128_f32[0] + square.m128_f32[1] + square.m128_f32[2]);
    }
 
-   inline cfl32 RaySphereIntersect(vector rayOri, vector rayDir, fl32 radius) {
-      // Calculate the a, b, and c coefficients
-      cfl32 a = _mm_dp_ps(rayDir, rayDir, 0x071).m128_f32[0];
-      cfl32 b = _mm_dp_ps(rayDir, rayOri, 0x071).m128_f32[0];
-      cfl32 c = _mm_dp_ps(rayOri, rayOri, 0x071).m128_f32[0] - (radius * radius);
-      // Returns discriminant; if result is negative the picking ray missed the sphere
-      return b - (a * c);
-   }
-
-   inline fl32 RayPlaneIntersect(cfl32x4 rayOri, cfl32x4 rayDir, cfl32x4 planeOri, cfl32x4 planeDir) {
-      cfl32x4 vDenom = DX::XMVector3Dot(planeDir, rayDir);
-
-      if(vDenom.m128_f32[0] != 0.0f) {
-         cfl32x4 vDiff = DX::XMVectorSubtract(planeOri, rayOri);
-         cfl32x4 vT    = DX::XMVector3Dot(vDiff, planeDir);
-         cfl32   fT    = vT.m128_f32[0] / vDenom.m128_f32[0];
-
-         if(fT > 0.0f) return fT;
-      }
-      return vDenom.m128_f32[0];
-   }
-
-   // Return values are 0x080000001 if target is beyond horizon
-#if defined(USE_OLD_CODE)
-   inline VEC2Ds32 __vectorcall RayLayerIntersect(cfl32x4 rayOri, cfl32x4 rayDir, si32 layer) {
-      cfl32x4 planeDir = { 0.0f, 0.0f, 1.0f };
-      cfl32x4 planeOri = { 0.0f, 0.0f, fl32(layer)};
-      cfl32x4 vDenom   = DX::XMVector3Dot(planeDir, rayDir);
-
-      if(vDenom.m128_f32[0] != 0.0f) {
-         cfl32x4 vDiff = DX::XMVectorSubtract(planeOri, rayOri);
-         cfl32x4 vT    = DX::XMVector3Dot(vDiff, planeDir);
-         cfl32   fT    = vT.m128_f32[0] / vDenom.m128_f32[0];
-
-         if(fT > 0.0f) {
-            //--- Calculate 2D coordinate
-            cVEC2Df   fStep = { rayDir.m128_f32[0] * fT, rayDir.m128_f32[1] * fT };
-            cVEC2Ds32 vCell = { si32(floorf(rayOri.m128_f32[0] + fStep.x)), si32(floorf(rayOri.m128_f32[1] + fStep.y)) };
-
-            return vCell;
-         }
-      }
-      return { (si32)0x080000001, (si32)0x080000001 };
-   }
-#else
-   inline VEC2Ds32 __vectorcall RayLayerIntersect(cfl32x4 rayOri, cfl32x4 rayDir, si32 layer) const {
-    cfl32 coordZ = fl32(layer);
-    // z lanes
-    cfl32x4 oz   = _mm_shuffle_ps(rayOri, rayOri, _MM_SHUFFLE(2, 2, 2, 2));
-    cfl32x4 dz   = _mm_shuffle_ps(rayDir, rayDir, _MM_SHUFFLE(2, 2, 2, 2));
-    cfl32   oriZ = _mm_cvtss_f32(oz);
-    cfl32   dirZ = _mm_cvtss_f32(dz);
-
-    if (dirZ == 0.0f) return { (si32)0x080000001, (si32)0x080000001 };
-
-    // (optional: rcp + 1 NR step if profiling favors it)
-    cfl32 t = (coordZ - oriZ) / dirZ;
-    if (t <= 0.0f) return { (si32)0x080000001, (si32)0x080000001 };
-
-    cfl32x4 T   = _mm_set1_ps(t);
-    cfl32x4 hit = simd::fmadd_ps(rayDir, T, rayOri); // dir * t + ori
-    // floor(x,y) -> int
-    cfl32x4 flo = _mm_floor_ps(hit);         // SSE4.1
-    cui128  ixy = _mm_cvttps_epi32(flo);
-    csi32    ix = _mm_cvtsi128_si32(ixy);    // x
-    csi32    iy = _mm_extract_epi32(ixy, 1); // y
-
-    return { ix, iy };
-}
-#endif
-
    inline cfl32 CursorSphereIntersect(cfl32x4 &sphere, cVEC2Ds32 curPos, cVEC2Du8 camProj) const {
       cmatrix mInvertedCam = mInverseCamera[camProj.x];
       cVEC2Df vScreen      = { curPos.x * ScrRes.rcpDims.w - 1.0f, 1.0f - (curPos.y * ScrRes.rcpDims.h) };
@@ -300,7 +276,7 @@ al32 struct CLASS_CAM {
       return b - (a * c);
    }
 
-   // First return values are 0x080000001 if target is beyond horizon
+   // Return values are rayMissed if target is beyond horizon
    inline cVEC2Ds32 __vectorcall CursorLayerIntersect(csi32 layer, cfl32x4 camOffset, cVEC2Ds32 curPos, cui8 cam, cui8 proj) const noexcept {
       cmatrix mInvertedCam = mInverseCamera[cam];
       cVEC2Df vScreen      = { curPos.x * ScrRes.rcpDims.w - 1.0f, 1.0f - (curPos.y * ScrRes.rcpDims.h) };
@@ -331,7 +307,7 @@ al32 struct CLASS_CAM {
             return vCell;
          }
       }
-      return { (si32)0x080000001 };
+      return { rayMissed, rayMissed };
    }
 
    // First return value is (quiet) NaN if target is beyond horizon

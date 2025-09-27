@@ -29,6 +29,7 @@
    #include <Fixed-point data types.h>
    #include <memory management.h>
    #include <Common functions.h>
+   #include <spinlocks.h>
    #include <stdlib.h>
    #include <tchar.h>
    #include <thread flags.h>

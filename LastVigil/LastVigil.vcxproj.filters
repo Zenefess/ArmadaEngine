@@ -102,9 +102,6 @@
     <ClInclude Include="Include\File operations.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Common functions.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Include\D3D11 error testing.h">
       <Filter>Header Files\Threads</Filter>
     </ClInclude>
@@ -157,6 +154,21 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\include\SIMD management.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\spinlocks.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\string_func_avx2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\geometry_math_avx2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\common functions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\include\matrix_math_avx2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

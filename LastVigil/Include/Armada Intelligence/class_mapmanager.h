@@ -1,13 +1,13 @@
-/************************************************************
- * File: class_mapmanager.h             Created: 2022/11/29 *
- *                                Last modified: 2025/09/16 *
- *                                                          *
- * Desc:                                                    *
- *                                                          *
- * To do: Change Read/WriteFile to files. equivalents.      *
- *                                                          *
- *  Copyright (c) David William Bull. All rights reserved.  *
- ************************************************************/
+/*
+ * File: class_mapmanager.h             Created: 2022/11/29
+ *                                Last modified: 2025/09/25
+ *
+ * Desc:
+ *
+ * To do: Change Read/WriteFile to files. equivalents.
+ *
+ *  Copyright (c) David William Bull. All rights reserved.
+ */
 #pragma once
 
 #include "master header.h"
@@ -1141,6 +1141,206 @@ static void _MM_Cull_Unchanged(ptr threadData) {
    } while(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x08);
 }
 
+#if !defined(USE_OLD_CODE)
+static void _MM_Cull_Nonvisible_and_Unchanged(ptr threadData) {
+      static si64 frequencyTics, startTics, endTics;
+      QueryPerformanceFrequency((LARGE_INTEGER *)&frequencyTics);
+
+   CLASS_CAM    &camMan = *(CLASS_CAM *)ptrLib[5];
+   CLASS_MAPMAN &mapMan = *(CLASS_MAPMAN *)ptrLib[6];
+
+   cMMTDcptrc dataVis = (cMMTDcptrc)threadData;
+   cMMTDcptrc dataMod = dataVis + 1;
+   MAP       *map     = dataVis->map;
+
+   cSSE4Ds32 mapChunksH = { .vector = { map->desc.chunkCount.x >> 1, map->desc.chunkCount.y >> 1, (map->desc.chunkCount.z + 1) >> 1, 1 } };
+   cSSE4Ds32 mapChunksL = { .vector = { mapChunksH.vector.x - map->desc.chunkCount.x, mapChunksH.vector.y - map->desc.chunkCount.y,
+                                        mapChunksH.vector.z - map->desc.chunkCount.z, 1 } };
+
+   cui32 chunkCount = map->desc.mapChunks;
+
+   ui32ptrc nearCells = dataVis->chunkVis[0];
+   ui32ptrc medCells  = dataVis->chunkVis[1];
+   ui32ptrc farCells  = dataVis->chunkVis[2];
+   ui32ptrc modCells  = dataMod->chunkMod;
+
+   ui64 modCount, nearCount, medCount, farCount;
+
+   cAVX8Ds32 laneOffsets = { .vector = { 0, 1, 2, 3, 4, 5, 6, 7 } };
+   cAVX8Ds32 ones        = { .vector = { 1, 1, 1, 1, 1, 1, 1, 1 } };
+   cAVX8Df32 zeroF       = { .vector = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f } };
+
+   csi32 chunkMinX = mapChunksL.vector.x;
+   csi32 chunkMinY = mapChunksL.vector.y;
+   csi32 chunkMinZ = mapChunksL.vector.z;
+   csi32 chunkMaxX = mapChunksH.vector.x;
+   csi32 chunkMaxY = mapChunksH.vector.y;
+   csi32 chunkMaxZ = mapChunksH.vector.z;
+
+   MAPMAN_THREAD_STATUS.m128i_u8[0] |= 0x0C;
+
+   do {
+      while(!(MAPMAN_THREAD_STATUS.m128i_u8[0] & 0x03)) _mm_pause(); ///== Change to new spinlock
+
+      QueryPerformanceCounter((LARGE_INTEGER *)&startTics);
+
+      camMan.SetDimsf(map->desc.chunkDim, map->desc.chunkCount, 0);
+
+      nearCount = medCount = farCount = modCount = 0;
+
+      cSSE4Df32 camPosSSE = camMan.data32[0].pos;
+      cAVX8Df32 camPosX   = { .ymm = _mm256_set1_ps(camPosSSE.vector.x) };
+      cAVX8Df32 camPosY   = { .ymm = _mm256_set1_ps(camPosSSE.vector.y) };
+      cAVX8Df32 camPosZ   = { .ymm = _mm256_set1_ps(camPosSSE.vector.z) };
+
+      cui64 chunkQWords = (chunkCount + 63u) >> 6;
+      ui64  qwordIndex  = 0;
+      al32 ui64 modMaskBuf[4];
+
+      for(; qwordIndex + 4 <= chunkQWords; qwordIndex += 4) {
+         cAVX4Du64 modVec = { .ymm = _mm256_loadu_si256((const __m256i *)&map->chunkMod[qwordIndex]) };
+
+         if(_mm256_testz_si256(modVec.ymm, modVec.ymm)) continue;
+
+         _mm256_store_si256((__m256i *)modMaskBuf, modVec.ymm);
+
+         for(ui32 lane = 0; lane < 4; lane++) {
+            ui64  mask      = modMaskBuf[lane];
+            cui32 baseIndex = (ui32)((qwordIndex + lane) << 6);
+
+            if(baseIndex >= chunkCount) {
+               map->chunkMod[qwordIndex + lane] = 0;
+               continue;
+            }
+
+            cui32 remaining = chunkCount - baseIndex;
+            if(!remaining) {
+               map->chunkMod[qwordIndex + lane] = 0;
+               continue;
+            }
+
+            if(remaining < 64u) mask &= (ui64(1) << remaining) - 1ull;
+            if(!mask) continue;
+
+            ui64 clearMask = mask;
+
+            while(mask) {
+               cui32 bitIndex = (cui32)_tzcnt_u64(mask);
+               mask &= mask - 1ull;
+               cui32 chunkIndexValue = baseIndex + bitIndex;
+               if(chunkIndexValue < chunkCount) modCells[modCount++] = chunkIndexValue;
+            }
+
+            map->chunkMod[qwordIndex + lane] ^= clearMask;
+         }
+      }
+
+      for(; qwordIndex < chunkQWords; qwordIndex++) {
+         ui64 mask = map->chunkMod[qwordIndex];
+
+         if(!mask) continue;
+
+         cui32 baseIndex = (ui32)(qwordIndex << 6);
+         if(baseIndex >= chunkCount) {
+            map->chunkMod[qwordIndex] = 0;
+            continue;
+         }
+
+         cui32 remaining = chunkCount - baseIndex;
+         if(!remaining) {
+            map->chunkMod[qwordIndex] = 0;
+            continue;
+         }
+
+         if(remaining < 64u) mask &= (ui64(1) << remaining) - 1ull;
+         if(!mask) continue;
+
+         ui64 clearMask = mask;
+
+         while(mask) {
+            cui32 bitIndex = (cui32)_tzcnt_u64(mask);
+            mask &= mask - 1ull;
+            cui32 chunkIndexValue = baseIndex + bitIndex;
+            if(chunkIndexValue < chunkCount) modCells[modCount++] = chunkIndexValue;
+         }
+
+         map->chunkMod[qwordIndex] ^= clearMask;
+      }
+
+      al32 si32 activeMaskBuf[8];
+
+      for(si32 chunkZ = chunkMinZ; chunkZ < chunkMaxZ; chunkZ++) {
+         cAVX8Df32 chunkZf = { .ymm = _mm256_set1_ps((fl32)chunkZ) };
+
+         for(si32 chunkY = chunkMinY; chunkY < chunkMaxY; chunkY++) {
+            cAVX8Df32 chunkYf = { .ymm = _mm256_set1_ps((fl32)chunkY) };
+
+            for(si32 chunkX = chunkMinX; chunkX < chunkMaxX; chunkX += 8) {
+               cSSE4Ds32 chunkBase = { .vector = { chunkX, chunkY, chunkZ, 0 } };
+               cui8      visible   = camMan.ChunkFrustumIntersect8(chunkBase, 0);
+
+               if(!visible) continue;
+
+               AVX8Ds32 chunkXVec = { .ymm = _mm256_add_epi32(_mm256_set1_epi32(chunkX), laneOffsets.ymm) };
+               AVX8Ds32 rangeMask = { .ymm = _mm256_cmpgt_epi32(_mm256_set1_epi32(chunkMaxX), chunkXVec.ymm) };
+               AVX8Ds32 visibleVec = { .ymm = _mm256_srlv_epi32(_mm256_set1_epi32(visible), laneOffsets.ymm) };
+               visibleVec.ymm = _mm256_and_si256(visibleVec.ymm, ones.ymm);
+               visibleVec.ymm = _mm256_cmpeq_epi32(visibleVec.ymm, ones.ymm);
+               AVX8Ds32 activeMask = { .ymm = _mm256_and_si256(rangeMask.ymm, visibleVec.ymm) };
+
+               if(_mm256_testz_si256(activeMask.ymm, activeMask.ymm)) continue;
+
+               AVX8Df32 chunkXf  = { .ymm = _mm256_cvtepi32_ps(chunkXVec.ymm) };
+               AVX8Df32 diffX    = { .ymm = _mm256_sub_ps(chunkXf.ymm, camPosX.ymm) };
+               AVX8Df32 diffY    = { .ymm = _mm256_sub_ps(chunkYf.ymm, camPosY.ymm) };
+               AVX8Df32 diffZ    = { .ymm = _mm256_sub_ps(chunkZf.ymm, camPosZ.ymm) };
+               AVX8Df32 distSq   = { .ymm = _mm256_mul_ps(diffX.ymm, diffX.ymm) };
+               distSq.ymm = _mm256_fmadd_ps(diffY.ymm, diffY.ymm, distSq.ymm);
+               distSq.ymm = _mm256_fmadd_ps(diffZ.ymm, diffZ.ymm, distSq.ymm);
+               AVX8Df32 distance = { .ymm = _mm256_sqrt_ps(distSq.ymm) };
+               AVX8Ds32 distanceMask = { .ymm = _mm256_castps_si256(_mm256_cmp_ps(distance.ymm, zeroF.ymm, _CMP_GE_OQ)) };
+
+               activeMask.ymm = _mm256_and_si256(activeMask.ymm, distanceMask.ymm);
+
+               if(_mm256_testz_si256(activeMask.ymm, activeMask.ymm)) continue;
+
+               _mm256_store_si256((__m256i *)activeMaskBuf, activeMask.ymm);
+
+               for(ui32 lane = 0; lane < 8; lane++) {
+                  if(!activeMaskBuf[lane]) continue;
+
+                  VEC3Ds32 laneCoord = { ._si32 = { chunkXVec._si32[lane], chunkY, chunkZ } };
+                  cui32    chunkIndexUnsigned = mapMan.CalcChunkIndex((cVEC3Ds32 &)laneCoord, 0, 0);
+                  if(chunkIndexUnsigned == 0x080000001u || chunkIndexUnsigned >= chunkCount) continue;
+
+                  cui32 qwordOS = chunkIndexUnsigned >> 6;
+                  cui64 bitOS   = ui64(0x01) << (chunkIndexUnsigned & 0x03F);
+
+                  if(map->chunkVis[qwordOS] & bitOS) {
+//                     if(distance < 128.0f)
+                        nearCells[nearCount++] = chunkIndexUnsigned;
+//                   else if(distance < 512.0f)
+//                      medCells[medCount++] = chunkIndexUnsigned;
+//                   else if(distance < 2048.0f)
+//                      farCells[farCount++] = chunkIndexUnsigned;
+                  }
+               }
+            }
+         }
+      }
+
+      MAPMAN_THREAD_STATUS.m128i_u64[0] = (medCount << 34) | (nearCount << 4) | 0x0C;
+      MAPMAN_THREAD_STATUS.m128i_u64[1] = (modCount << 30) | farCount;
+
+      QueryPerformanceCounter((LARGE_INTEGER *)&endTics);
+      sysData.culling.map.time   = double(endTics - startTics) / double(frequencyTics) * 1000.0;
+      sysData.culling.map.mod    = (ui32)modCount;
+      sysData.culling.map.vis[0] = (ui32)nearCount;
+      sysData.culling.map.vis[1] = (ui32)medCount;
+      sysData.culling.map.vis[2] = (ui32)farCount;
+   } while(MAPMAN_THREAD_STATUS.m128i_u64[0] & 0x0C);
+}
+#else
 static void _MM_Cull_Nonvisible_and_Unchanged(ptr threadData) {
       static si64 frequencyTics, startTics, endTics;
       QueryPerformanceFrequency((LARGE_INTEGER *)&frequencyTics);
@@ -1226,3 +1426,4 @@ static void _MM_Cull_Nonvisible_and_Unchanged(ptr threadData) {
       sysData.culling.map.vis[2] = (ui32)farCount;
    } while(MAPMAN_THREAD_STATUS.m128i_u64[0] & 0x0C);
 }
+#endif
