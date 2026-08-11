@@ -1,139 +1,126 @@
 /*
- * File: spinlocks.h                           Created: 2025-09-25
- *                                       Last Modified: 2025-09-26
- *
- * Description: Three spin-lock implementations optimized for
- *              different use cases (low-power, balanced, high-
- *              accuracy) on x86-64 (AVX2) systems.
- *
- * To Do: 1. Tune pause/backoff parameters per CPU architecture.
- *        2. Add optional timeout or deadlock detection if needed.
- *
- * Owner: David William Bull                        Version: v0.1
- * Dependencies: typedefs.h (intrinsics), Windows API (Sleep)
- * ISA: x86-64 (AVX2, SSE2)
- * Thread-safety: Yes (intended for multi-thread use)
- *
- * License: MIT                      Copyright: David William Bull
+ * File: spinlocks.h
+ * Version: v1.0.0
+ * Owner: David William Bull
+ * Created: 2026-08-11
+ * Last Modified: 2026-08-11
+ * Description: User-space spin locks for x86-64 MSVC builds: three acquisition profiles, try-acquire, and full-barrier release.
+ * To Do: 1) Tune backoff and yield thresholds per CPU architecture; record results in bench/ per bd1.
+ *        2) Add optional acquisition timeout and debug-build deadlock detection.
+ *        3) Add a cache-line-padded lock type for lock arrays, to prevent false sharing.
+ * Dependencies: typedefs.h, windows.h, intrin.h
+ * ISA: AVX2
+ * Thread-safety: MT-safe
+ * Reviewers: David William Bull
+ * License: MIT  Copyright: David William Bull
  */
 #pragma once
 
-#ifdef _WIN32
-#include <Windows.h>
-#endif
+#include <windows.h>
+#include <intrin.h>
 #include "typedefs.h"
 
-// Constants
-static cui32 SPIN_BACKOFF_MIN     = 16;     // initial pause iterations for backoff
-static cui32 SPIN_BACKOFF_MAX     = 1024;   // maximum pause iterations for backoff
-static cui32 SPIN_YIELD_THRESHOLD = 10000;  // spin iterations before yielding CPU (low-power)
-static cui64 SPIN_CYCLE_THRESHOLD = 100000; // CPU cycle threshold to trigger yield (high-accuracy)
+#pragma intrinsic(_InterlockedCompareExchange, _InterlockedExchange)
 
-/// SpinLockMin
-/// 
-/// Spin-lock acquisition optimized for long idle waits. Uses a test-and-test-and-set loop 
-/// with periodic pauses and yields to minimize CPU usage during extended waits. After spinning 
-/// for a short time, the thread yields its timeslice (using `Sleep(0)` or `Sleep(1)`) to allow 
-/// other threads (including lower-priority ones) to run. This is suitable for locks expected to 
-/// be held for longer durations or when conserving power/CPU is more important than minimal latency.
-/// 
-/// @param lock  Pointer to a volatile 32-bit lock flag (0 = unlocked, 1 = locked). The flag should 
-///              be initially 0. This function will set the flag to 1 when the lock is acquired.
-inline void SpinLockMin(vui32ptr lock) {
+// GCS a2/a3 build guards: the CPU baseline is AVX2+FMA3+BMI2, compiled with /arch:AVX2
+#ifndef __AVX2__
+#error spinlocks.h: compile with /arch:AVX2 -- GCS a2 sets the CPU baseline to AVX2+FMA3+BMI2.
+#endif
+static_assert(__AVX2__, "GCS a3 build guard: __AVX2__ must be defined and non-zero.");
+
+//== Tuning constants
+
+constexpr cui32 SPIN_BACKOFF_MIN     = 16u;     // Initial ceiling of the randomised backoff window; power of two
+constexpr cui32 SPIN_BACKOFF_MAX     = 1024u;   // Final ceiling of the randomised backoff window; power of two
+constexpr cui32 SPIN_YIELD_THRESHOLD = 10000u;  // Pause iterations before SpinLockMin yields the CPU
+constexpr cui64 SPIN_CYCLE_THRESHOLD = 100000u; // TSC-cycle delta before SpinLockMax's starvation-escape yield
+
+static_assert(SPIN_BACKOFF_MIN && !(SPIN_BACKOFF_MIN & (SPIN_BACKOFF_MIN - 1u)), "SPIN_BACKOFF_MIN must be a power of two: mask-based jitter.");
+static_assert(SPIN_BACKOFF_MAX && !(SPIN_BACKOFF_MAX & (SPIN_BACKOFF_MAX - 1u)), "SPIN_BACKOFF_MAX must be a power of two: mask-based jitter.");
+static_assert(SPIN_BACKOFF_MIN <= SPIN_BACKOFF_MAX, "Backoff window is inverted.");
+
+//== Lock operations
+
+/// Acquires a spin lock; conserves power and CPU during long waits.
+/// Test-and-test-and-set with _mm_pause, escalating to Sleep(0) and then Sleep(1) after SPIN_YIELD_THRESHOLD
+/// pause iterations, so ready threads of equal and then lower priority (including a pre-empted lock holder)
+/// are able to run. Best when the lock may be held for a long time, or when conserving power and CPU matters
+/// more than acquisition latency.
+/// @param lock  32-bit lock flag: 0 == unlocked, 1 == locked. Must be initialised to 0 and naturally aligned.
+/// @note Acquisition is a full barrier (LOCK CMPXCHG): reads and writes after the call cannot move before it.
+/// @note Sleep(1) surrenders the rest of the timeslice; the actual delay is >= the system timer period (~1ms-15.6ms).
+inline void SpinLockMin(vui32ptrc lock) {
+   ui32 spinCount  = 0;
    bool firstYield = true;
-   ui32 spinCount = 0;
-   // Loop until lock is acquired
+
    for(;;) {
-      // Spin-wait while lock is taken, but yield periodically to save power
-      while(*lock == 1) {
-         _mm_pause();  // short pause to reduce power consumption in tight loop:contentReference[oaicite:4]{index=4}
-         if (++spinCount >= SPIN_YIELD_THRESHOLD) {
-            // Yield CPU after a threshold of spins (low-power strategy)
-            if (firstYield) {
-               Sleep(0);   // yield to any thread of equal priority
+      // Read-only wait: no interlocked traffic while the lock is observed held
+      while(*lock) {
+         _mm_pause();
+         if(++spinCount >= SPIN_YIELD_THRESHOLD) {
+            if(firstYield) {
+               Sleep(0);             // Yield to ready threads of equal priority
                firstYield = false;
-            } else Sleep(1);   // sleep a minimal time slice to allow lower-priority threads to run
+            } else Sleep(1);         // Surrender the timeslice; lower-priority threads may run
             spinCount = 0;
          }
       }
-      // Attempt to acquire the lock (0 -> 1). If successful, exit loop.
-      if(_InterlockedCompareExchange((long*)lock, 1, 0) == 0) break;
-      // If another thread snatched the lock, yield to avoid busy-waiting in contention
-      if(firstYield) {
-         Sleep(0);
-         firstYield = false;
-      } else Sleep(1);
-      // Loop continues if lock not acquired
+      // The lock was observed free; attempt to acquire it: 0 -> 1
+      if(_InterlockedCompareExchange((vol long *)lock, 1, 0) == 0) return;
    }
 }
 
-/// SpinLock
-/// 
-/// Spin-lock acquisition with balanced behavior for general short critical sections. This implementation 
-/// uses a test-and-test-and-set loop with *exponential backoff* and jitter to handle moderate contention. 
-/// Each time the lock acquisition fails, the thread waits using an increasing number of `_mm_pause()` 
-/// instructions (up to a limit), potentially randomized, to reduce bus contention and the "thundering herd" effect. 
-/// This strategy provides a compromise between CPU usage and latency, making it suitable for typical critical sections.
-/// 
-/// @param lock  Pointer to a volatile 32-bit lock flag (0 = unlocked, 1 = locked). The flag should 
-///              be initially 0. This function will set the flag to 1 when the lock is acquired.
-inline void SpinLock(vui32ptr lock) {
-   ui32 currentBackoff = SPIN_BACKOFF_MIN;
-   // Loop until lock is acquired
-   for (;;) {
-      // First, spin-wait (read-only) until lock appears free to avoid cache contention
-      while (*lock == 1) _mm_pause();
-      // Attempt to acquire the lock atomically
-      if (_InterlockedCompareExchange((long*)lock, 1, 0) == 0) {
-         break;  // acquired successfully
-      }
-      // Lock was free but another thread got it first -> contention encountered
-      // Perform exponential backoff with a bit of randomness to reduce contention:contentReference[oaicite:5]{index=5}:contentReference[oaicite:6]{index=6}
-      ui64 tsc = __rdtsc();
-      // Random pause count between 1 and currentBackoff (inclusive)
-      ui32 pauseCount = (ui32)(tsc & (currentBackoff - 1)) + 1;
-      for (ui32 i = 0; i < pauseCount; ++i) _mm_pause();
-      // Exponentially increase backoff, up to a maximum
-      if (currentBackoff < SPIN_BACKOFF_MAX) {
-         currentBackoff <<= 1;  // double the backoff interval
-         if (currentBackoff > SPIN_BACKOFF_MAX)
-            currentBackoff = SPIN_BACKOFF_MAX;
-      }
-      // Loop continues to retry acquiring the lock
+/// Acquires a spin lock; balanced latency versus contention behaviour for typical short critical sections.
+/// Test-and-test-and-set with bounded, TSC-jittered exponential backoff after each failed acquisition,
+/// reducing coherence traffic and thundering-herd retries under moderate contention.
+/// @param lock  32-bit lock flag: 0 == unlocked, 1 == locked. Must be initialised to 0 and naturally aligned.
+/// @note Acquisition is a full barrier (LOCK CMPXCHG): reads and writes after the call cannot move before it.
+inline void SpinLock(vui32ptrc lock) {
+   ui32 backoff = SPIN_BACKOFF_MIN;
+
+   for(;;) {
+      // Read-only wait: no interlocked traffic while the lock is observed held
+      while(*lock) _mm_pause();
+      // The lock was observed free; attempt to acquire it: 0 -> 1
+      if(_InterlockedCompareExchange((vol long *)lock, 1, 0) == 0) return;
+      // Lost the race: pause 1~backoff times, jittered by the TSC, then widen the window up to SPIN_BACKOFF_MAX
+      cui32 pauses = (ui32(__rdtsc()) & (backoff - 1u)) + 1u;
+      for(ui32 i = 0; i < pauses; ++i) _mm_pause();
+      if(backoff < SPIN_BACKOFF_MAX) backoff <<= 1u;
    }
 }
 
-/// SpinLockMax
-/// 
-/// A highly aggressive spin-lock acquisition optimized for hot-path scenarios with very short critical sections and 
-/// frequent contention. This implementation busy-waits in a tight loop with minimal backoff, favoring immediate 
-/// lock acquisition at the cost of CPU usage. It includes explicit memory fencing to ensure memory order around the 
-/// lock, and uses a timing threshold to avoid pathological starvation. If the spin loop exceeds a cycle threshold 
-/// (indicating an unusually long wait, possibly due to priority inversion), the thread yields once to allow the lock holder 
-/// to proceed, then resumes aggressive spinning. This lock should be used only when lock hold times are expected to be 
-/// extremely brief and minimizing lock latency is critical.
-/// 
-/// @param lock  Pointer to a volatile 32-bit lock flag (0 = unlocked, 1 = locked). The flag should 
-///              be initially 0. This function will set the flag to 1 when the lock is acquired.
-inline void SpinLockMax(vui32ptr lock) {
-   // Record start time stamp counter for timing-based escape
-   const unsigned __int64 startTSC = __rdtsc();
-   // Loop until lock is acquired
-   for (;;) {
-      // Test-and-test-and-set: busy-wait until lock seems free
-      while (*lock == 1) {
+/// Acquires a spin lock; minimum-latency acquisition for very short, hot critical sections.
+/// Tight test-and-test-and-set with no backoff. If the wait exceeds SPIN_CYCLE_THRESHOLD cycles -- e.g. the
+/// holder was pre-empted -- the thread yields once via Sleep(0), re-arms the threshold, and resumes spinning.
+/// @param lock  32-bit lock flag: 0 == unlocked, 1 == locked. Must be initialised to 0 and naturally aligned.
+/// @note Acquisition is a full barrier (LOCK CMPXCHG): reads and writes after the call cannot move before it;
+///       no separate fence is required.
+inline void SpinLockMax(vui32ptrc lock) {
+   ui64 refTSC = __rdtsc();
+
+   for(;;) {
+      // Read-only wait: no interlocked traffic while the lock is observed held
+      while(*lock) {
          _mm_pause();
-         // If spinning too long, yield once to avoid live-lock (e.g., priority inversion)
-         if (__rdtsc() - startTSC > SPIN_CYCLE_THRESHOLD) Sleep(0);  // brief yield to allow another thread to run if needed
+         if(__rdtsc() - refTSC > SPIN_CYCLE_THRESHOLD) {
+            Sleep(0);                // Starvation escape: the holder may have been pre-empted
+            refTSC = __rdtsc();      // Re-arm the threshold, then resume spinning
+         }
       }
-      // Attempt to acquire the lock atomically
-      if (_InterlockedCompareExchange((long*)lock, 1, 0) == 0) {
-         // Lock acquired – enforce a full memory fence to ensure all prior memory operations 
-         // by other threads are visible, and subsequent operations by this thread occur after the lock:
-         _mm_mfence();
-         break;
-      }
-      // If acquisition failed (contention at the exact moment of lock release), loop continues.
-      // (On failure, we continue the tight spin without expanding backoff, to prioritize latency.)
+      // The lock was observed free; attempt to acquire it: 0 -> 1
+      if(_InterlockedCompareExchange((vol long *)lock, 1, 0) == 0) return;
    }
 }
+
+/// Attempts to acquire a spin lock without waiting.
+/// @param lock  32-bit lock flag: 0 == unlocked, 1 == locked. Must be initialised to 0 and naturally aligned.
+/// @return true if the lock was acquired, otherwise false.
+/// @note A successful attempt is a full barrier (LOCK CMPXCHG); a failed attempt imposes no ordering.
+inline cbool SpinLockTry(vui32ptrc lock) { return _InterlockedCompareExchange((vol long *)lock, 1, 0) == 0; }
+
+/// Releases a spin lock acquired by SpinLockMin, SpinLock, SpinLockMax, or SpinLockTry.
+/// @param lock  32-bit lock flag: 1 == locked on entry; 0 == unlocked on return.
+/// @note Release is a full barrier (XCHG): every write inside the critical section is globally visible before
+///       the flag clears, independent of the /volatile:ms|iso compiler mode. Call only while holding the lock.
+inline void SpinUnlock(vui32ptrc lock) { _InterlockedExchange((vol long *)lock, 0); }
