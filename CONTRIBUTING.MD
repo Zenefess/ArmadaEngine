@@ -1,7 +1,5 @@
 ## Coding Standard
 
-Default lint standard: **Guild Coding Standard v1.1.2 (GCS v1.1.2)** via https://github.com/Zenefess/GDC/blob/main/GDC%20--%20Guild%20Coding%20Standard%20v1.1.2%20Charter.docx
+Default lint standard: **Guild Coding Standard v1.1.4 (GCS v1.1.4)** via `GDC_GCS_v1_1_4.md`
 
-All submissions are reviewed against GCS v1.1.2.  
-Intentional deviations must include an inline note:
-`// RULE-DEV:<rule-id> <reason>`.
+All submissions are reviewed against GCS v1.1.4.  
