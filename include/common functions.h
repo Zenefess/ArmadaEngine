@@ -1,10 +1,18 @@
 /*
- * File: Common functions.h             Created: 2023/02/02
- *                                    Last mod.: 2025/09/18
- *
- * Desc:
- *
- * MIT license             Copyright (c) David William Bull
+ * File: common functions.h
+ * Version: v1.1.0
+ * Owner: David William Bull
+ * Created: 2023-02-02
+ * Last Modified: 2026-08-12
+ * Description: Inline scalar and SIMD utility functions: constants, swaps, min/max, 2D rotation, sincos, vector tests, and power-of-2 rounding.
+ * To Do: 1) Add /// API documentation with @param/@return tags to all public functions (d1)
+ *        2) Rename PascalCase macros (RoundUpToNearest, UNLOOPx2/4/8/16) to UPPER_SNAKE per r12
+ *        3) Add unit tests for RoundUpToNearest*, AllTrue, AllFalse, Min/Max, and sincos in tests/
+ * Dependencies: typedefs.h, vector structures.h, corecrt_math.h, SIMD management.h
+ * ISA: Scalar | SSE4.2 | AVX2
+ * Thread-safety: Reentrant
+ * Reviewers: David William Bull
+ * License: MIT  Copyright: David William Bull
  */
 #pragma once
 
@@ -14,7 +22,7 @@
 #include "SIMD management.h"
 //#include "string_func_avx2.h"
 
-#define _COMMON_FUNCTIONS_
+static_assert(__AVX2__, "GCS a3: x86-64 AVX2+FMA3+BMI2 baseline required; compile with /arch:AVX2 or -mavx2 -mfma -mbmi2");
 
 constexpr cfl32 rcp1p5f   = 2.0f / 3.0f;
 constexpr cfl32 rcp3f     = 1.0f / 3.0f;
@@ -38,43 +46,26 @@ constexpr cui64 max64  = -1;
 
 constexpr cVEC3Df null3Df = { 0.0f, 0.0f, 0.0f };
 
-///--- Change all entries to constexpr ---///
-static cfl32x4 null128f     = _mm_setzero_ps();
-static cfl32x4 ones32x4f    = _mm_set_ps1(1.0f);
-static cfl32x4 negOnes32x4f = _mm_set_ps1(-1.0f);
-static cui128  null128      = _mm_setzero_si128();
-static cui128  ones32x4     = _mm_set1_epi32(1u);
-static cui128  max128       = _mm_set1_epi32(-1);
-#ifdef __AVX__
-static cfl32x8 null256f     = _mm256_setzero_ps();
-static cfl32x8 ones32x8f    = _mm256_set1_ps(1.0f);
-static cfl32x8 negOnes32x8f = _mm256_set1_ps(-1.0f);
-static cui256  null256      = _mm256_setzero_si256();
-static cui256  ones32x8     = _mm256_set1_epi32(1u);
-static cui256  max256       = _mm256_set1_epi32(-1);
-#else
-static cfl32x8 null256f     = {};
-static cfl32x8 ones32x8f    = { .m256_f32 = { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 } };
-static cfl32x8 negOnes32x8f = { .m256_f32 = { -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0 } };
-static cui256  null256      = {};
-static cui256  ones32x8     = { .m256i_u32 = { 1, 1, 1, 1, 1, 1, 1, 1 } };
-static cui256  max256       = { .m256i_i32 = { -1, -1, -1, -1, -1, -1, -1, -1 } };
-#endif
-#ifdef __AVX512__
-static cfl32x16 null512f      = _mm512_setzero_ps();
-static cfl32x16 ones32x16f    = _mm512_set1_ps(1.0f);
-static cfl32x16 negOnes32x16f = _mm512_set1_ps(-1.0f);
-static cui512   null512       = _mm512_setzero_si512();
-static cui512   ones32x16     = _mm512_set1_epi32(1u);
-static cui512   max512        = _mm512_set1_epi32(-1);
-#else
-static cfl32x16 null512f      = {};
-static cfl32x16 ones32x16f    = { .m512_f32 = { 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 } };
-static cfl32x16 negOnes32x16f = { .m512_f32 = { -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0 } };
-static cui512   null512       = {};
-static cui512   ones32x16     = { .m512i_u32 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 } };
-static cui512   max512        = { .m512i_i32 = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 } };
-#endif
+constexpr cfl32x4  null128f      = {};
+constexpr cfl32x4  ones32x4f     = { .m128_f32 = { 1.0f, 1.0f, 1.0f, 1.0f } };
+constexpr cfl32x4  negOnes32x4f  = { .m128_f32 = { -1.0f, -1.0f, -1.0f, -1.0f } };
+constexpr cui128   null128       = {};
+constexpr cui128   ones32x4      = { .m128i_u32 = { 1, 1, 1, 1 } };
+constexpr cui128   max128        = { .m128i_i32 = { -1, -1, -1, -1 } };
+constexpr cfl32x8  null256f      = {};
+constexpr cfl32x8  ones32x8f     = { .m256_f32 = { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f } };
+constexpr cfl32x8  negOnes32x8f  = { .m256_f32 = { -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f } };
+constexpr cui256   null256       = {};
+constexpr cui256   ones32x8      = { .m256i_u32 = { 1, 1, 1, 1, 1, 1, 1, 1 } };
+constexpr cui256   max256        = { .m256i_i32 = { -1, -1, -1, -1, -1, -1, -1, -1 } };
+constexpr cfl32x16 null512f      = {};
+constexpr cfl32x16 ones32x16f    = { .m512_f32 = { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+                                                   1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f } };
+constexpr cfl32x16 negOnes32x16f = { .m512_f32 = { -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f,
+                                                   -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f } };
+constexpr cui512   null512       = {};
+constexpr cui512   ones32x16     = { .m512i_u32 = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 } };
+constexpr cui512   max512        = { .m512i_i32 = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 } };
 
 ///--- Unloop macros
 #define UNLOOPx2(code)  code code
@@ -93,17 +84,6 @@ inline void swap(ui32& a, ui32& b) { ui32 tmp = a; a = b; b = tmp; }
 inline void swap(ui64& a, ui64& b) { ui64 tmp = a; a = b; b = tmp; }
 inline void swap(fl32& a, fl32& b) { fl32 tmp = a; a = b; b = tmp; }
 inline void swap(fl64& a, fl64& b) { fl64 tmp = a; a = b; b = tmp; }
-
-#ifdef ALLOW_ANCIENT_CODE
-///--- Remnants of the distant past (slower since the 486) ---///
-inline void old_swap(ui8 &a, ui8 &b) { a ^= b; b ^= a; a ^= b; }
-inline void old_swap(ui16 &a, ui16 &b) { a ^= b; b ^= a; a ^= b; }
-inline void old_swap(ui32 &a, ui32 &b) { a ^= b; b ^= a; a ^= b; }
-inline void old_swap(ui64 &a, ui64 &b) { a ^= b; b ^= a; a ^= b; }
-inline void old_swap(fl32 &a, fl32 &b) { (ui32 &)a ^= (ui32 &)b; (ui32 &)b ^= (ui32 &)a; (ui32 &)a ^= (ui32 &)b; }
-inline void old_swap(fl64 &a, fl64 &b) { (ui64 &)a ^= (ui64 &)b; (ui64 &)b ^= (ui64 &)a; (ui64 &)a ^= (ui64 &)b; }
-///--- Remnants of the distant past (slower since the 486) ---///
-#endif
 
 inline void transrotate(VEC2Df &coord, cfl32 angle, cfl32 dist) {
    coord.x -= dist * sinf(angle);
@@ -125,24 +105,21 @@ inline void transrotate(VEC2Df &coord, cVEC2Df origin, cfl32 angle) {
              (temp.x * rots.x) + (temp.y * rots.y) + origin.y };
 }
 
-inline cVEC2Df sincos(cfl32 angle) {   cfl32 fSinX = sinf(angle);   return { fSinX, sqrtf(1.0f - fSinX * fSinX) }; }
+inline cVEC2Df sincos(cfl32 angle) {   return { sinf(angle), cosf(angle) }; }
 
 inline void sincos(cfl32 angle, fl32 &sinval, fl32 &cosval) {
-   cfl32 fSinX = sinf(angle);
-   sinval = fSinX;
-   cosval = sqrtf(1.0f - fSinX * fSinX);
+   sinval = sinf(angle);
+   cosval = cosf(angle);
 }
 
 inline void sincos(cfl32 angle, fl64 &sinval, fl64 &cosval) {
-   cfl64 dSinX = sin(cfl64(angle));
-   sinval = dSinX;
-   cosval = sqrt(1.0 - dSinX * dSinX);
+   sinval = sin(cfl64(angle));
+   cosval = cos(cfl64(angle));
 }
 
 inline void sincos(cfl64 angle, fl64 &sinval, fl64 &cosval) {
-   cfl64 dSinX = sin(angle);
-   sinval = dSinX;
-   cosval = sqrt(1.0 - dSinX * dSinX);
+   sinval = sin(angle);
+   cosval = cos(angle);
 }
 
 inline void mov24(ui8 (&dest)[3], cui32 value) { (ui16 &)dest = (ui16 &)value;   dest[2] = ((ui8 (&)[3])value)[2]; }
@@ -150,70 +127,77 @@ inline void mov24(ui8 (&dest)[3], cui32 value) { (ui16 &)dest = (ui16 &)value;  
 inline void mulV3(VEC3Df &vector, cfl32 multiplier) { vector.x *= multiplier;   vector.y *= multiplier;   vector.z *= multiplier; }
 inline void mulV3(fl32x4 &vector, cfl32 multiplier) { vector = _mm_mul_ps(vector, cfl32x4{ multiplier, multiplier, multiplier, 1.0f }); }
 
-#ifndef max
-#define max(a,b)   (((a) > (b)) ? (a) : (b))
-#endif
+inline constexpr cui8  Min(cui8  a, cui8  b) { return a < b ? a : b; }
+inline constexpr cui16 Min(cui16 a, cui16 b) { return a < b ? a : b; }
+inline constexpr cui32 Min(cui32 a, cui32 b) { return a < b ? a : b; }
+inline constexpr cui64 Min(cui64 a, cui64 b) { return a < b ? a : b; }
+inline constexpr csi8  Min(csi8  a, csi8  b) { return a < b ? a : b; }
+inline constexpr csi16 Min(csi16 a, csi16 b) { return a < b ? a : b; }
+inline constexpr csi32 Min(csi32 a, csi32 b) { return a < b ? a : b; }
+inline constexpr csi64 Min(csi64 a, csi64 b) { return a < b ? a : b; }
+inline constexpr cfl32 Min(cfl32 a, cfl32 b) { return a < b ? a : b; }
+inline constexpr cfl64 Min(cfl64 a, cfl64 b) { return a < b ? a : b; }
 
-#ifndef min
-#define min(a,b)   (((a) < (b)) ? (a) : (b))
-#endif
+inline constexpr cui8  Max(cui8  a, cui8  b) { return a > b ? a : b; }
+inline constexpr cui16 Max(cui16 a, cui16 b) { return a > b ? a : b; }
+inline constexpr cui32 Max(cui32 a, cui32 b) { return a > b ? a : b; }
+inline constexpr cui64 Max(cui64 a, cui64 b) { return a > b ? a : b; }
+inline constexpr csi8  Max(csi8  a, csi8  b) { return a > b ? a : b; }
+inline constexpr csi16 Max(csi16 a, csi16 b) { return a > b ? a : b; }
+inline constexpr csi32 Max(csi32 a, csi32 b) { return a > b ? a : b; }
+inline constexpr csi64 Max(csi64 a, csi64 b) { return a > b ? a : b; }
+inline constexpr cfl32 Max(cfl32 a, cfl32 b) { return a > b ? a : b; }
+inline constexpr cfl64 Max(cfl64 a, cfl64 b) { return a > b ? a : b; }
 
-inline cfl32 Max (cVEC3Df &vector)   { return max(max(vector.x, vector.y), vector.z); }
-inline cfl32 Max (cVEC4Df& vector)   { return max(max(vector.x, vector.y), max(vector.z, vector.w)); }
-inline cfl32 Max (cSSE4Df32& vector) { return max(max(vector.vector.x, vector.vector.y), max(vector.vector.z, vector.vector.w)); }
-inline cfl32 Max3(cVEC4Df &vector)   { return max(max(vector.x, vector.y), vector.z); }
-inline cfl32 Max3(cSSE4Df32 &vector) { return max(max(vector.vector.x, vector.vector.y), vector.vector.z); }
-
-#if defined(USE_OLD_CODE)
-inline cui32 rand_ui31(cui32 index) {
-   cui32 i = (index << 13u) ^ index;
-   return (i * (i * i * 15731u + 789221u) + 1376312589u) & 0x07FFFFFFF;
-}
-#endif
+inline cfl32 Max (cVEC3Df &vector)   { return Max(Max(vector.x, vector.y), vector.z); }
+inline cfl32 Max (cVEC4Df& vector)   { return Max(Max(vector.x, vector.y), Max(vector.z, vector.w)); }
+inline cfl32 Max (cSSE4Df32& vector) { return Max(Max(vector.vector.x, vector.vector.y), Max(vector.vector.z, vector.vector.w)); }
+inline cfl32 Max3(cVEC4Df &vector)   { return Max(Max(vector.x, vector.y), vector.z); }
+inline cfl32 Max3(cSSE4Df32 &vector) { return Max(Max(vector.vector.x, vector.vector.y), vector.vector.z); }
 
 inline cbool AllTrue(cui128 source, cui128 compare) { return _mm_testc_si128(source, compare); }
 
 inline cbool AllTrue(cui128 source[3], cui128 compare[3]) {
-   return (_mm_testc_si128(source[0], compare[0]) | _mm_testc_si128(source[1], compare[1]) | _mm_testc_si128(source[2], compare[2]));
+   return (_mm_testc_si128(source[0], compare[0]) & _mm_testc_si128(source[1], compare[1]) & _mm_testc_si128(source[2], compare[2]));
 }
 
 inline cbool AllTrue(cui256 source, cui256 compare) { return _mm256_testc_si256(source, compare); }
 
 inline cbool AllTrue(cui256 source[2], cui256 compare[2]) {
-   return (_mm256_testc_si256(source[0], compare[0]) | _mm256_testc_si256(source[1], compare[1]));
+   return (_mm256_testc_si256(source[0], compare[0]) & _mm256_testc_si256(source[1], compare[1]));
 }
 
 inline cbool AllTrue(cui512 &source, cui512 &compare) {
-   return (_mm256_testc_si256(((ui256ptr)&source)[0], ((ui256ptr)&compare)[0]) |
-           _mm256_testc_si256(((ui256ptr)&source)[1], ((ui256ptr)&compare)[1]));
+   return (_mm256_testc_si256(((cui256ptr)&source)[0], ((cui256ptr)&compare)[0]) &
+           _mm256_testc_si256(((cui256ptr)&source)[1], ((cui256ptr)&compare)[1]));
 }
 
 inline cbool AllFalse(cui128 source, cui128 compare) { return _mm_testz_si128(source, compare); }
 
 inline cbool AllFalse(cui128 source[3], cui128 compare[3]) {
-   return (_mm_testz_si128(source[0], compare[0]) | _mm_testz_si128(source[1], compare[1]) | _mm_testz_si128(source[2], compare[2]));
+   return (_mm_testz_si128(source[0], compare[0]) & _mm_testz_si128(source[1], compare[1]) & _mm_testz_si128(source[2], compare[2]));
 }
 
 inline cbool AllFalse(cui256 source, cui256 compare) { return _mm256_testz_si256(source, compare); }
 
 inline cbool AllFalse(cui256 source[2], cui256 compare[2]) {
-   return (_mm256_testz_si256(source[0], compare[0]) | _mm256_testz_si256(source[1], compare[1]));
+   return (_mm256_testz_si256(source[0], compare[0]) & _mm256_testz_si256(source[1], compare[1]));
 }
 
 inline cbool AllFalse(cui512 &source, cui512 &compare) {
-   return (_mm256_testz_si256(((ui256ptr)&source)[0], ((ui256ptr)&compare)[0]) |
-           _mm256_testz_si256(((ui256ptr)&source)[1], ((ui256ptr)&compare)[1]));
+   return (_mm256_testz_si256(((cui256ptr)&source)[0], ((cui256ptr)&compare)[0]) &
+           _mm256_testz_si256(((cui256ptr)&source)[1], ((cui256ptr)&compare)[1]));
 }
 
-#define RoundUpToNearest(x, A) ((x + (A - 1)) & ~(A - 1))
+#define RoundUpToNearest(x, A) (((x) + ((A) - 1)) & ~((A) - 1))
 inline csi32 RoundUpToNearest4(csi32 input)  { return (input + 3)     & 0x0FFFFFFFC; }
 inline cui32 RoundUpToNearest4(cui32 input)  { return (input + 3u)    & 0x0FFFFFFFCu; }
 inline csi64 RoundUpToNearest4(csi64 input)  { return (input + 3ll)   & 0x0FFFFFFFFFFFFFFFCll; }
 inline cui64 RoundUpToNearest4(cui64 input)  { return (input + 3ull)  & 0x0FFFFFFFFFFFFFFFCull; }
-inline csi32 RoundUpToNearest8(csi32 input)  { return (input + 7)     & 0x0FFFFFFF7; }
-inline cui32 RoundUpToNearest8(cui32 input)  { return (input + 7u)    & 0x0FFFFFFF7u; }
-inline csi64 RoundUpToNearest8(csi64 input)  { return (input + 7ll)   & 0x0FFFFFFFFFFFFFFF7ll; }
-inline cui64 RoundUpToNearest8(cui64 input)  { return (input + 7ull)  & 0x0FFFFFFFFFFFFFFF7ull; }
+inline csi32 RoundUpToNearest8(csi32 input)  { return (input + 7)     & 0x0FFFFFFF8; }
+inline cui32 RoundUpToNearest8(cui32 input)  { return (input + 7u)    & 0x0FFFFFFF8u; }
+inline csi64 RoundUpToNearest8(csi64 input)  { return (input + 7ll)   & 0x0FFFFFFFFFFFFFFF8ll; }
+inline cui64 RoundUpToNearest8(cui64 input)  { return (input + 7ull)  & 0x0FFFFFFFFFFFFFFF8ull; }
 inline csi32 RoundUpToNearest16(csi32 input) { return (input + 15)    & 0x0FFFFFFF0; }
 inline cui32 RoundUpToNearest16(cui32 input) { return (input + 15u)   & 0x0FFFFFFF0u; }
 inline csi64 RoundUpToNearest16(csi64 input) { return (input + 15ll)  & 0x0FFFFFFFFFFFFFFF0ll; }
