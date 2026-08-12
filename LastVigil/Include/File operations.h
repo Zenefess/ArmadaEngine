@@ -19,7 +19,7 @@
 #include "typedefs.h"
 #include "class_timers.h"
 
-extern vui64       THREAD_LIFE;
+extern al16 vui64  THREAD_LIFE;
 extern HANDLE      hErrorOutput;
 extern CLASS_TIMER mainTimer;
 

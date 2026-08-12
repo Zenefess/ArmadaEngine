@@ -8,6 +8,8 @@
  ************************************************************/
 #pragma once
 
+#pragma intrinsic(_InterlockedOr64, _InterlockedAnd64)
+
  /*   'Thread active' flags
 
     bit 00-01: Main thread
@@ -15,13 +17,17 @@
         07-11: Audio renderer thread
         12-16: Input thread
         17-19: World generation thread
-        18-20: World generation sub-thread
-        21-23: AI thread
-        24-25: 1st AI sub-thread
+        20-21: World generation sub-thread
+        22-24: AI thread
+        25-26: 1st AI sub-thread
         ...
         57-58: 17th AI sub-thread
-        59-63: Developer thread
+        59-62: Developer thread
+           63: Main thread (MAIN_THREAD_OVER)
  */
+// THREAD_LIFE memory order (GCS p3): all cross-thread modification via _InterlockedOr64/_InterlockedAnd64
+// (lock-prefixed RMW; full barrier). Plain |= / &= / ^= are forbidden on this word.
+// Reads are aligned 8-byte volatile loads: atomic on x86-64; acquire under /volatile:ms (the x64 default).
 constexpr cui64  MAIN_THREAD_ALIVE = 0x00000000000000001u;
 constexpr cui64  MAIN_THREAD_DIED  = 0x00000000000000002u;
 constexpr cui64  MAIN_THREAD       = 0x00000000000000003u;

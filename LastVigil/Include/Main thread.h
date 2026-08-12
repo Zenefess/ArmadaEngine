@@ -41,7 +41,7 @@ extern SYSTEM_DATA   sysData;      // Automated tracking of system data
 extern CLASS_FILEOPS files;        // File handler
 extern CLASS_TIMER   mainTimer;    // Primary (single) timer
 extern THREAD_PROPS  thread;       // Thread properties
-extern vui64         THREAD_LIFE;  // 'Thread active' flags
+extern al16 vui64    THREAD_LIFE;  // 'Thread active' flags
 extern wchptr        stThrdStat;   // Debug output
 extern HINSTANCE     hInst;        // Current instance's handle
 extern HWND          hWnd;         // Main window's handle
