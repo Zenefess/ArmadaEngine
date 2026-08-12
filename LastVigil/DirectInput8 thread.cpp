@@ -409,11 +409,11 @@ void DirectInput8Thread(ptr ArgList) {
    bool        povState;
 
    // Prevent thread from shutting down (after engine reset)
-   THREAD_LIFE &= ~INPUT_THREAD_DIED;
+   _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~INPUT_THREAD_DIED);
 
 Reinitialise_:
 
-   THREAD_LIFE &= ~INPUT_THREAD_RESET;
+   _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~INPUT_THREAD_RESET);
 
    Sleep(1000);
 
@@ -442,7 +442,7 @@ Reinitialise_:
    inputTimer.Reset(1.0);
    cfl64 dCurrentFrameTime = 0.0;
 
-   THREAD_LIFE |= INPUT_THREAD_DONE;
+   _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)INPUT_THREAD_DONE);
 
    ///
    /// Primary processing loop
@@ -635,7 +635,7 @@ Reinitialise_:
                gcvLocal.joy[0].t.x = 1.0f;
                continue;
             case DIK_RCONTROL:
-               THREAD_LIFE &= ~MAIN_THREAD_ALIVE;
+               _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~MAIN_THREAD_ALIVE);
                continue;
             default:
                gcvLocal.misc[3] |= 0x080;
@@ -658,6 +658,6 @@ Reinitialise_:
 
 //   Try(di8Key->Unacquire());
 //   Try(di8Mse->Unacquire());
-   THREAD_LIFE |= INPUT_THREAD_DIED;
+   _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)INPUT_THREAD_DIED);
    //_endthread();
 }

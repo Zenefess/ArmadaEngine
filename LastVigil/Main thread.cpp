@@ -16,21 +16,21 @@ void MainThread() {
 	al16 ui64 threadLife;
 
 	// Prevent thread from shutting down (after engine reset)
-	THREAD_LIFE &= ~MAIN_THREAD_DIED;
+   _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~MAIN_THREAD_DIED);
 
-	THREAD_LIFE |= MAIN_THREAD_ALIVE;
+   _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)MAIN_THREAD_ALIVE);
 
 	// Begin world generation thread
-	THREAD_LIFE |= GEN_THREAD_ALIVE;
+   _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)GEN_THREAD_ALIVE);
 	_beginthread(WorldGenThread, 0, NULL);
 	// Begin video rendering thread
-	THREAD_LIFE |= VIDEO_THREAD_ALIVE;
+   _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)VIDEO_THREAD_ALIVE);
 	_beginthread(Direct3D11Thread, 0, NULL);
 	// Begin audio rendering thread
-	THREAD_LIFE |= AUDIO_THREAD_ALIVE;
+   _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)AUDIO_THREAD_ALIVE);
 	_beginthread(OpenAL1_1Thread, 0, NULL);
 	// Begin inupt processing thread
-	THREAD_LIFE |= INPUT_THREAD_ALIVE;
+   _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)INPUT_THREAD_ALIVE);
 	_beginthread(DirectInput8Thread, 0, NULL);
 
 	// Primary application loop
@@ -41,28 +41,28 @@ void MainThread() {
 	} while (threadLife & MAIN_THREAD_ALIVE);
 
 	// Request input thread shutdown
-	THREAD_LIFE &= ~INPUT_THREAD_ALIVE;
+   _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~INPUT_THREAD_ALIVE);
 	do {
 		threadLife = THREAD_LIFE & INPUT_THREAD;
 		Sleep(8);
 	} while (!(threadLife & INPUT_THREAD_DIED));
 
 	// Request audio thread shutdown
-	THREAD_LIFE &= ~AUDIO_THREAD_ALIVE;
+   _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~AUDIO_THREAD_ALIVE);
 	do {
 		threadLife = THREAD_LIFE & AUDIO_THREAD;
 		Sleep(8);
 	} while (!(threadLife & AUDIO_THREAD_DIED));
 
 	// Request video thread shutdown
-	THREAD_LIFE &= ~VIDEO_THREAD_ALIVE;
+   _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~VIDEO_THREAD_ALIVE);
 	do {
 		threadLife = THREAD_LIFE & VIDEO_THREAD;
 		Sleep(8);
 	} while (!(threadLife & VIDEO_THREAD_DIED));
 
 	// Request world generation thread shutdown
-	THREAD_LIFE &= ~GEN_THREAD_ALIVE;
+   _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~GEN_THREAD_ALIVE);
 	do {
 		threadLife = THREAD_LIFE & GEN_THREADS;
 		Sleep(8);

@@ -147,12 +147,12 @@ void Direct3D11Thread(ptr argList) {
    ui32    iCurrentFrames = 0;
 
    // Prevent thread from shutting down (after engine reset)
-   THREAD_LIFE &= ~VIDEO_THREAD_DIED;
+   _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~VIDEO_THREAD_DIED);
 
    hWnd = hRndrWnd = gpu.CreateRenderWindow();
 
 Reinitialise_:
-   THREAD_LIFE &= ~VIDEO_THREAD_RESET;
+   _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~VIDEO_THREAD_RESET);
 
    cHANDLE waitGPU = gpu.InitialiseBackbuffer(hRndrWnd, ScrRes, ae_windowed);
 
@@ -460,7 +460,7 @@ Reinitialise_:
    fl32 fAvgFrameTime = 0;
    fl64 dTrisPerSec = 0;
 
-   THREAD_LIFE |= VIDEO_THREAD_DONE;
+   _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)VIDEO_THREAD_DONE);
 
    ///
    /// Primary rendering loop
@@ -570,7 +570,7 @@ Reinitialise_:
    hr = devDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
 
    Sleep(8);
-   THREAD_LIFE |= VIDEO_THREAD_DIED;
+   _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)VIDEO_THREAD_DIED);
    //_endthread();
 }
 
@@ -594,7 +594,7 @@ LRESULT CALLBACK RndrWndProc(HWND hWndw, UINT message, WPARAM wParam, LPARAM lPa
    case WM_DESTROY:
    case WM_CLOSE:
    case WM_QUIT:
-      THREAD_LIFE &= ~MAIN_THREAD_ALIVE;
+      _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~MAIN_THREAD_ALIVE);
       return 0;
    default:
       return DefWindowProc(hWndw, message, wParam, lParam);

@@ -40,6 +40,6 @@ void WorldGenThread(ptr argList) {
       Sleep(1);
    } while (threadLife & GEN_THREAD_ALIVE);
 
-   THREAD_LIFE |= GEN_THREAD_DIED;
+   _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)GEN_THREAD_DIED);
    //_endthread();
 }

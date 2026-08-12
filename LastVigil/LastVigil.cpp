@@ -31,7 +31,7 @@ CLASS_FILEOPS files       = ptrLib;
 CLASS_TIMER   mainTimer   = &ptrLib[1];
 vGLOBALCOORDS gco         = {};
 THREAD_PROPS  thread      = 5u;         // Thread properties
-vui64         THREAD_LIFE = 0x0u;       // 'Thread active' flags
+al16 vui64    THREAD_LIFE = 0x0u;       // 'Thread active' flags
 wchar         stErrorFilename[64];
 wchptr        stThrdStat;               // Debug output
 HINSTANCE     hInst;                    // Current instance's handle
@@ -67,9 +67,9 @@ int __cdecl wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
    thread.sleepTime[ss_worldgen]      = 1u;
 
    // Prevent thread from shutting down (after engine reset)
-   THREAD_LIFE &= ~MAIN_THREAD_DIED;
+   _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~MAIN_THREAD_DIED);
 
-   THREAD_LIFE |= MAIN_THREAD_ALIVE;
+   _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)MAIN_THREAD_ALIVE);
 
    // Adjust main thread
    thread.handle[ss_main] = GetCurrentThread();
@@ -77,14 +77,14 @@ int __cdecl wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
    SetThreadPriority(thread.handle[ss_main], thread.priority[ss_main]);
 
    // Begin video rendering thread
-   THREAD_LIFE |= VIDEO_THREAD_ALIVE;
+   _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)VIDEO_THREAD_ALIVE);
    thread.handle[ss_video] = (ptr)_beginthread(Direct3D11Thread, 0, NULL);
    Sleep(100);
    SetThreadIdealProcessor(thread.handle[ss_video], thread.idealProcessor[ss_video]);
    SetThreadPriority(thread.handle[ss_video], thread.priority[ss_video]);
 
    // Begin audio rendering thread
-   THREAD_LIFE |= AUDIO_THREAD_ALIVE;
+   _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)AUDIO_THREAD_ALIVE);
 //   thread.handle[ss_audio] = (ptr)_beginthread(OpenAL1_1Thread, 0, NULL);
    thread.handle[ss_audio] = (ptr)_beginthreadex(nullptr, 0, OpenAL1_1Thread, nullptr, 0, nullptr);
    Sleep(100);
@@ -92,14 +92,14 @@ int __cdecl wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
    SetThreadPriority(thread.handle[ss_audio], thread.priority[ss_audio]);
 
    // Begin input processing thread
-   THREAD_LIFE |= INPUT_THREAD_ALIVE;
+   _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)INPUT_THREAD_ALIVE);
    thread.handle[ss_input] = (ptr)_beginthread(DirectInput8Thread, 0, NULL);
    Sleep(100);
    SetThreadIdealProcessor(thread.handle[ss_input], thread.idealProcessor[ss_input]);
    SetThreadPriority(thread.handle[ss_input], thread.priority[ss_input]);
 
    // Begin world generation thread
-   THREAD_LIFE |= GEN_THREAD_ALIVE;
+   _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)GEN_THREAD_ALIVE);
    thread.handle[ss_worldgen] = (ptr)_beginthread(WorldGenThread, 0, NULL);
    Sleep(100);
    SetThreadIdealProcessor(thread.handle[ss_worldgen], thread.idealProcessor[ss_worldgen]);
@@ -107,7 +107,7 @@ int __cdecl wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
    // Wait for video, audio and input subsystems to finish initialising
    while((THREAD_LIFE & VAI_THREADS_DONE) != VAI_THREADS_DONE) _mm_pause();
-   THREAD_LIFE &= ~VAI_THREADS_DONE;
+   _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~VAI_THREADS_DONE);
 
    ///
    /// Primary application loop
@@ -121,28 +121,28 @@ int __cdecl wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
    } while (threadLife & MAIN_THREAD_ALIVE);
 
    // Request input thread shutdown
-   THREAD_LIFE &= ~INPUT_THREAD_ALIVE;
+   _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~INPUT_THREAD_ALIVE);
    do {
       threadLife = THREAD_LIFE & INPUT_THREAD;
       Sleep(8);
    } while (!(threadLife & INPUT_THREAD_DIED));
 
    // Request audio thread shutdown
-   THREAD_LIFE &= ~AUDIO_THREAD_ALIVE;
+   _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~AUDIO_THREAD_ALIVE);
    do {
       threadLife = THREAD_LIFE & AUDIO_THREAD;
       Sleep(8);
    } while (!(threadLife & AUDIO_THREAD_DIED));
 
    // Request video thread shutdown
-   THREAD_LIFE &= ~VIDEO_THREAD_ALIVE;
+   _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~VIDEO_THREAD_ALIVE);
    do {
       threadLife = THREAD_LIFE & VIDEO_THREAD;
       Sleep(8);
    } while (!(threadLife & VIDEO_THREAD_DIED));
 
    // Request world generation thread shutdown
-   THREAD_LIFE &= ~GEN_THREAD_ALIVE;
+   _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~GEN_THREAD_ALIVE);
    do {
       threadLife = THREAD_LIFE & GEN_THREADS;
       Sleep(8);
@@ -170,7 +170,7 @@ void WriteError(cchptrc text, cbool fatal) {
    if(fatal) {
       WriteFile(hErrorOutput, "   *** FATAL ERROR ***\n", 24, &dwBytes, NULL);
 
-      THREAD_LIFE |= MAIN_THREAD_DIED;
+      _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)MAIN_THREAD_DIED);
       Sleep(1000);
    } else
       WriteFile(hErrorOutput, "\n", 1, &dwBytes, NULL);

@@ -27,11 +27,11 @@ unsigned int __stdcall OpenAL1_1Thread(void* argList) {
    ui8                 uiNumBuffers = 4;
 
    // Prevent thread from shutting down (after engine reset)
-   THREAD_LIFE &= ~AUDIO_THREAD_DIED;
+   _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~AUDIO_THREAD_DIED);
 
 Reinitialise_:
 
-   THREAD_LIFE &= ~AUDIO_THREAD_RESET;
+   _InterlockedAnd64((vsi64ptr)&THREAD_LIFE, (si64)~AUDIO_THREAD_RESET);
 
    // Initialisation
    CoInitializeEx(nullptr, COINIT_MULTITHREADED);
@@ -65,7 +65,7 @@ Reinitialise_:
    siSound[0] = sndFiles.LoadWAV(L"mirrors.wav", L"sounds");
    //alSourcePlay(siSound[0]);
 
-   THREAD_LIFE |= AUDIO_THREAD_DONE;
+   _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)AUDIO_THREAD_DONE);
 
    ///
    /// Primary rendering loop
@@ -84,7 +84,7 @@ Reinitialise_:
    } while (threadLife & AUDIO_THREAD_ALIVE);
 
    CoUninitialize();
-   THREAD_LIFE |= AUDIO_THREAD_DIED;
+   _InterlockedOr64((vsi64ptr)&THREAD_LIFE, (si64)AUDIO_THREAD_DIED);
    //_endthread();
    return 0;
 }
