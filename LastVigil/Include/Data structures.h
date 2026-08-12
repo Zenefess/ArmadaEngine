@@ -1,6 +1,6 @@
 /************************************************************
  * File: Data structures.h              Created: 2022/10/20 *
- *                                Last modified: 2024/07/23 *
+ *                                Last modified: 2026/08/12 *
  *                                                          *
  * Desc:                                                    *
  *                                                          *
@@ -252,22 +252,7 @@ al32 struct TEXTBUFFER {
 
    ~TEXTBUFFER(void) {
 #ifdef DATA_TRACKING
-      cui32     allocations = sysData.mem.allocations;
-      vptrcptrc location    = sysData.mem.location;
-
-      ui32 index = 0;
-
-      // Find entry
-      while(allocations < index && temp.p != location[index])
-         index++;
-
-      // Is the pointer valid?
-      if(index < allocations) {
-         sysData.mem.allocations--;
-         sysData.mem.allocated -= sysData.mem.byteCount[index];
-         sysData.mem.location[index] = NULL;
-         sysData.mem.byteCount[index] = 0;
-      }
+      MemUntrack(temp.p);
 #endif
       _aligned_free(temp.p);
    }
