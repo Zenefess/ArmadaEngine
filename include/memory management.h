@@ -1,11 +1,31 @@
-/************************************************************
- * File: memory management.h            Created: 2008/12/08 *
- *                                Last modified: 2025/02/19 *
- *                                                          *
- * Notes: 2024/05/02: Added support for data tracking.      *
- *                                                          *
- *                         Copyright (c) David William Bull *
- ************************************************************/
+/*
+ * File: memory management.h
+ *
+ * Version: v1.1
+ *
+ * Owner: David William Bull
+ *
+ * Created: 2008-12-08
+ *
+ * Last Modified: 2026-08-12
+ *
+ * Description: Aligned allocators, pattern fill, zeroing, temporal and non-temporal copies, and interlocked transfers; optional allocation tracking.
+ *
+ * To Do: 1) Replace the retained #ifdef __AVX512__ forks with run-time CPUID dispatch per GCS a8; retire the pre-AVX fallback arms per a2.
+ *        2) Unit-test the salloc, mset, and mzero tail paths and the Copy and Stream families.
+ *        3) Benchmark the non-temporal Stream16/32/64 against temporal copies per bd1/bd2 before asserting a performance win.
+ *        4) Unify the truncation semantics of the two Copy64 overloads (const floors, volatile ceils; divergence is documented but unresolved).
+ *
+ * Dependencies: windows.h, corecrt_malloc.h, typedefs.h, common functions.h, data tracking.h (DATA_TRACKING builds only)
+ *
+ * ISA: Scalar | SSE4.2 | AVX2 | AVX-512
+ *
+ * Thread-safety: Reentrant
+ *
+ * Reviewers: David William Bull
+ *
+ * License: MIT  Copyright: David William Bull
+ */
 #pragma once
 
 #pragma intrinsic(_InterlockedExchange64)
@@ -345,8 +365,8 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui512 bitPattern) {
       ui64  os;
 
       for(os = 0; os < limit; os++) ((ui512ptr)pointer)[os] = bitPattern;
-      for(os <<= 3; os < (numBytes >> 3); os++) ((ui32ptr)pointer)[os] = ((ui8 (&)[16])bitPattern)[os & 0x0F];
-      for(os <<= 6; os < numBytes; os++) ((ui8ptr)pointer)[os] = ((ui8 (&)[64])bitPattern)[os & 0x03F];
+      for(os <<= 3; os < (numBytes >> 3); os++) ((ui64ptr)pointer)[os] = ((ui64 (&)[8])bitPattern)[os & 0x07];
+      for(os <<= 3; os < numBytes; os++) ((ui8ptr)pointer)[os] = ((ui8 (&)[64])bitPattern)[os & 0x03F];
    }
    return pointer;
 }
@@ -434,7 +454,7 @@ inline cui64 mdealloc_(ptr pointer, ...) {
 inline void mzero(ptrc addr, cui64 numBytes) {
    ui64 i;
 #ifdef __AVX512__
-   if(numBytes & 0x02Fu) {
+   if(numBytes & 0x03Fu) {
 #endif
 #ifdef __AVX__
       if(numBytes & 0x01Fu) {
@@ -471,7 +491,7 @@ inline void mzero(ptrc addr, cui64 numBytes) {
 inline void mzero(vptrc addr, cui64 numBytes) {
    ui64 i;
 #ifdef __AVX512__
-   if(numBytes & 0x02F) {
+   if(numBytes & 0x03Fu) {
 #endif
 #ifdef __AVX__
       if(numBytes & 0x01F) {
@@ -582,7 +602,7 @@ inline void mset(ptrc addr, cui64 numBytes, cui512 bitPattern) {
    ui64  os;
 
    for(os = 0; os < limit; os++) ((ui512ptr)addr)[os] = bitPattern;
-   for(os <<= 3; os < (numBytes >> 3); os++) ((ui64ptr)addr)[os] = bitPattern.m512i_u64[os & 0x0F];
+   for(os <<= 3; os < (numBytes >> 3); os++) ((ui64ptr)addr)[os] = bitPattern.m512i_u64[os & 0x07];
    for(os <<= 3; os < numBytes; os++) ((ui8ptr)addr)[os] = bitPattern.m512i_u8[os & 0x03F];
 }
 
@@ -634,16 +654,16 @@ inline void Copy(cptrc source, ptrc dest, cui64 byteCount) {
    ui64  i = 0;
 #ifdef __AVX512__
    cui64 j = byteCount >> 6;
-   for(; i < j; i++) ((ui512ptr)dest)[i] = _mm512_loadu_epi64(&((ui512ptr)source)[i]);
+   for(; i < j; i++) _mm512_storeu_epi64(&((ui512ptr)dest)[i], _mm512_loadu_epi64(&((ui512ptr)source)[i]));
    i <<= 4;
 #else
 #ifdef __AVX__
    cui64 j = byteCount >> 5;
-   for(; i < j; i++) ((ui256ptr)dest)[i] = _mm256_lddqu_si256(&((ui256ptr)source)[i]);
+   for(; i < j; i++) _mm256_storeu_si256(&((ui256ptr)dest)[i], _mm256_lddqu_si256(&((ui256ptr)source)[i]));
    i <<= 3;
 #else
    cui64 j = byteCount >> 4;
-   for(; i < j; i++) ((ui128ptr)dest)[i] = _mm_lddqu_si128(&((ui128ptr)source)[i]);
+   for(; i < j; i++) _mm_storeu_si128(&((ui128ptr)dest)[i], _mm_lddqu_si128(&((ui128ptr)source)[i]));
    i <<= 2;
 #endif
 #endif
@@ -713,7 +733,7 @@ inline void Copy64(cptrc source, ptrc dest, cui64 byteCount) {
 #endif
 }
 
-// Copy byteCount (rounded-down to the nearest 64) bytes of 512-bit-aligned data via SIMD instruction
+// Copy byteCount (rounded-up to the nearest 64) bytes of 512-bit-aligned data via SIMD instruction
 inline void Copy64(vptrc source, vptrc dest, cui64 byteCount) {
 #ifdef __AVX512__
    cui64 j = ui64((byteCount + 63) >> 6);
@@ -729,43 +749,43 @@ inline void Copy64(vptrc source, vptrc dest, cui64 byteCount) {
 #endif
 }
 
-// Non-temporally copy byteCount (rounded-down to the nearest 16) bytes of 128-bit-aligned data via SIMD instruction
+// Non-temporally copy byteCount (rounded-down to the nearest 16) bytes of 128-bit-aligned data via SIMD instruction.
+// NT stores are weakly ordered; the trailing _mm_sfence makes the writes globally visible before return.
 inline void Stream16(cptrc source, ptrc dest, cui64 byteCount) {
-#ifdef __AVX__
    cui64 j = byteCount >> 4;
-   for(ui64 i = 0; i < j; i++) ((ui128ptr)dest)[i] = _mm_stream_load_si128(&((ui128ptr)source)[i]);
-#else
-   cui64 j = byteCount >> 4;
-   for(ui64 i = 0; i < j; i++) _mm_stream_si128(&((ui128ptr)dest)[i], ((ui128ptr)source)[i]);
-#endif
+   for(ui64 i = 0; i < j; i++) _mm_stream_si128(&((ui128ptr)dest)[i], _mm_load_si128(&((ui128ptr)source)[i]));
+   _mm_sfence();
 }
 
-// Non-temporally copy byteCount (rounded-down to the nearest 32) bytes of 256-bit-aligned data via SIMD instruction
+// Non-temporally copy byteCount (rounded-down to the nearest 32) bytes of 256-bit-aligned data via SIMD instruction.
+// NT stores are weakly ordered; the trailing _mm_sfence makes the writes globally visible before return.
 inline void Stream32(cptrc source, ptrc dest, cui64 byteCount) {
 #ifdef __AVX__
    cui64 j = byteCount >> 5;
-   for(ui64 i = 0; i < j; i++) ((ui256ptr)dest)[i] = _mm256_stream_load_si256(&((ui256ptr)source)[i]);
+   for(ui64 i = 0; i < j; i++) _mm256_stream_si256(&((ui256ptr)dest)[i], _mm256_load_si256(&((ui256ptr)source)[i]));
 #else
    cui64 j = byteCount >> 4;
-   for(ui64 i = 0; i < j; i++) ((ui128ptr)dest)[i] = _mm_stream_load_si128(&((ui128ptr)source)[i]);
+   for(ui64 i = 0; i < j; i++) _mm_stream_si128(&((ui128ptr)dest)[i], _mm_load_si128(&((ui128ptr)source)[i]));
 #endif
+   _mm_sfence();
 }
 
-// Non-temporally copy byteCount (rounded-down to the nearest 64) bytes of 512-bit-aligned data via SIMD instruction
+// Non-temporally copy byteCount (rounded-up to the nearest 64) bytes of 512-bit-aligned data via SIMD instruction.
+// NT stores are weakly ordered; the trailing _mm_sfence makes the writes globally visible before return.
 inline void Stream64(cptrc source, ptrc dest, cui64 byteCount) {
 #ifdef __AVX512__
    cui64 j = ui64((byteCount + 63) >> 6);
-   for(ui64 i = 0; i < j; i++) ((ui512ptr)dest)[i] = _mm512_stream_load_epi32(&((ui512ptr)source)[i]);
+   for(ui64 i = 0; i < j; i++) _mm512_stream_si512(&((ui512ptr)dest)[i], _mm512_load_si512(&((ui512ptr)source)[i]));
 #else
 #ifdef __AVX__
    cui64 j = ui64((byteCount + 31) >> 5);
-   for(ui64 i = 0; i < j; i++)
-      ((ui256ptr)dest)[i] = _mm256_stream_load_si256(&((ui256ptr)source)[i]);
+   for(ui64 i = 0; i < j; i++) _mm256_stream_si256(&((ui256ptr)dest)[i], _mm256_load_si256(&((ui256ptr)source)[i]));
 #else
    cui64 j = ui64((byteCount + 15) >> 4);
-   for(ui64 i = 0; i < j; i++) ((ui128ptr)dest)[i] = _mm_stream_load_si128(&((ui128ptr)source)[i]);
+   for(ui64 i = 0; i < j; i++) _mm_stream_si128(&((ui128ptr)dest)[i], _mm_load_si128(&((ui128ptr)source)[i]));
 #endif
 #endif
+   _mm_sfence();
 }
 
 // (Non-temporally) Copy byteCount (rounded-up to the nearest 16/32/64) bytes of 128/256/512-bit-aligned data via SIMD instruction.
@@ -777,37 +797,37 @@ inline void Stream(cptrc source, ptrc dest, cui64 byteCount) {
    else                                                          Stream64(source, dest, RoundUpToNearest64(byteCount));
 }
 
-// Interlock copy byteCount (rounded-down to the nearest 8) bytes of data
+// Interlock copy byteCount (rounded-up to the nearest 8) bytes of data
 inline void LockedCopy(ptrc source, vptrc dest, csi32 byteCount) {
    csi32 j = (byteCount + 7) >> 3;
    for(si32 i = 0; i < j; i++) _InterlockedExchange64(&((vsi64ptr)dest)[i], ((si64ptr)source)[i]);
 }
 
-// Interlock copy byteCount (rounded-down to the nearest 8) bytes of data
+// Interlock copy byteCount (rounded-up to the nearest 8) bytes of data
 inline void LockedCopy(vptrc source, vptrc dest, csi32 byteCount) {
    csi32 j = (byteCount + 7) >> 3;
    for(si32 i = 0; i < j; i++) _InterlockedExchange64(&((vsi64ptr)dest)[i], ((si64ptr)source)[i]);
 }
 
-// Interlock swap byteCount (rounded-down to the nearest 8) bytes of data
+// Interlock swap byteCount (rounded-up to the nearest 8) bytes of data
 inline void LockedSwap(ptrc source1, vptrc source2, csi32 byteCount) {
    csi32 j = (byteCount + 7) >> 3;
    for(si32 i = 0; i < j; i++) ((vsi64ptr)source1)[i] = _InterlockedExchange64(&((vsi64ptr)source2)[i], ((si64ptr)source1)[i]);
 }
 
-// Interlock swap byteCount (rounded-down to the nearest 8) bytes of data
+// Interlock swap byteCount (rounded-up to the nearest 8) bytes of data
 inline void LockedSwap(vptrc source1, vptrc source2, csi32 byteCount) {
    csi32 j = (byteCount + 7) >> 3;
    for(si32 i = 0; i < j; i++) ((vsi64ptr)source1)[i] = _InterlockedExchange64(&((vsi64ptr)source2)[i], ((si64ptr)source1)[i]);
 }
 
-// Interlock move byteCount (rounded-down to the nearest 8) bytes of data and zeroes source
+// Interlock move byteCount (rounded-up to the nearest 8) bytes of data and zeroes source
 inline void LockedMoveAndClear(vptrc source, ptrc dest, csi32 byteCount) {
    csi32 j = (byteCount + 7) >> 3;
    for(si32 i = 0; i < j; i++) ((vsi64ptr)dest)[i] = _InterlockedExchange64(&((vsi64ptr)source)[i], 0);
 }
 
-// Interlock move byteCount (rounded-down to the nearest 8) bytes of data and zeroes source
+// Interlock move byteCount (rounded-up to the nearest 8) bytes of data and zeroes source
 inline void LockedMoveAndClear(vptrc source, vptrc dest, csi32 byteCount) {
    csi32 j = (byteCount + 7) >> 3;
    for(si32 i = 0; i < j; i++)

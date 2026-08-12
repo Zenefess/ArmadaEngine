@@ -1,13 +1,18 @@
-/************************************************************
- * File: Data tracking.h                Created: 2024/03/30 *
- *                                Last modified: 2025/09/25 *
- *                                                          *
- * Desc:                                                    *
- *                                                          *
- * To do: Add support for processor groups.                 *
- *                                                          *
- *                         Copyright (c) David William Bull *
- ************************************************************/
+/*
+ * File: data tracking.h
+ * Version: v1.0.1
+ * Owner: David William Bull
+ * Created: 2024-03-30
+ * Last Modified: 2026-08-12
+ * Description: System data aggregation: CPU topology, memory-allocation tracking, and run-time performance read-outs.
+ * To Do: 1) Add support for processor groups (>64 virtual cores) via GetLogicalProcessorInformationEx.
+ *        2) Add network (and APU?) read-out sections.
+ * Dependencies: typedefs.h, Shlobj.h
+ * ISA: SSE4.2
+ * Thread-safety: Reentrant
+ * Reviewers: Unassigned
+ * License: LicenseRef-Proprietary  Copyright: David William Bull
+ */
 #pragma once
 
 #include "typedefs.h"
@@ -18,15 +23,15 @@ al64 struct SYSTEM_DATA {
    ///--- APU read-outs?
    ///--- Network read-outs
    ///--- CPU read-outs
-   struct _CPU_ { // Hardware information
-      ui64 virtCoreMap[2]; // Bitmaps of available virtual cores; 0==Non-SMT, 1==SMT
-      ui32 cacheL1[2][2];  // Sizes of L1 code and data caches per core; [0==Non-SMT, 1==SMT][0==Code, 1==Data]
-      ui32 cacheL2[2];     // Size of L2 cache per core; 0==Non-SMT, 1==SMT
-      ui32 cacheL3;        // Size of L3 cache per core complex
-      ui16 coreCount[2];   // Number of physical cores; 0==Non-SMT, 1==SMT
-      ui16 virtCoreCount;  // Total number of virtual CPU cores
-      ui8  SMTCount;       // Number of virtual cores per physical SMT core
-      ui8  instructions;   // 1==SSE2, 2==SSE3, 3==SSSE3, 4==SSE4_1, 5==SSE4_2, 6==AVX, 7==AVX2, 8==AVX512F
+   struct CPU_INFO_BLOCK { // Hardware information
+      ui64 virtCoreMap[2] = {}; // Bitmaps of available virtual cores; 0==Non-SMT, 1==SMT
+      ui32 cacheL1[2][2]  = {}; // Sizes of L1 code and data caches per core; [0==Non-SMT, 1==SMT][0==Code, 1==Data]
+      ui32 cacheL2[2]     = {}; // Size of L2 cache per core; 0==Non-SMT, 1==SMT
+      ui32 cacheL3        = 0;  // Size of L3 cache per core complex
+      ui16 coreCount[2]   = {}; // Number of physical cores; 0==Non-SMT, 1==SMT
+      ui16 virtCoreCount  = 0;  // Total number of virtual CPU cores
+      ui8  SMTCount       = 0;  // Number of virtual cores per physical SMT core
+      ui8  instructions   = 0;  // Bit flags: 0x01==SSE2, 0x02==SSE3, 0x04==SSSE3, 0x08==SSE4.1, 0x10==SSE4.2, 0x20==AVX, 0x40==AVX2, 0x80==AVX-512F
       // 4 bytes padding
    } cpu;
    ///--- RAM read-outs
@@ -45,8 +50,8 @@ al64 struct SYSTEM_DATA {
       vui32 filesClosed  = 0;
    } storage;
 
-   wchptrc folderProgramData = (wchptr)_aligned_malloc(sizeof(wchar) * 1024u, 64u);
-   wchptrc folderAppData     = folderProgramData + 512u;
+   wchptrc folderProgramFiles = (wchptr)_aligned_malloc(sizeof(wchar) * 1024u, 64u);
+   wchptrc folderAppData      = folderProgramFiles ? folderProgramFiles + 512u : 0;
 
    ///--- GPU read-outs
    struct {
@@ -89,25 +94,34 @@ public:
       constexpr cui64 SLPI_SIZE = sizeof(SLPI);
 
       SLPIptrc sysLPI = (SLPIptr)_aligned_malloc(SLPI_SIZE * 4096u, 64u); // 128KB
-      wchptr   stPath;
+      wchptr   stPath = 0;
       DWORD    bytesProc;
 
       mem.location  = (vptrptr)_aligned_malloc(maxMemAllocations << 3u, 32u);
       mem.byteCount = (vui64ptr)_aligned_malloc(maxMemAllocations << 3u, 32u);
-      for(ui64 i = 0; i < maxMemAllocations; ++i) {
-         mem.location[i]  = 0;
-         mem.byteCount[i] = 0;
+      if(mem.location && mem.byteCount) {
+         for(ui64 i = 0; i < maxMemAllocations; ++i) {
+            mem.location[i]  = 0;
+            mem.byteCount[i] = 0;
+         }
+         mem.maxAllocations = (ui32)maxMemAllocations;
+      } else { // Partial failure: release the survivor; tracking stays disabled (maxAllocations remains 0 per its default)
+         _aligned_free((ptr)mem.byteCount);
+         _aligned_free(mem.location);
+         mem.location  = 0;
+         mem.byteCount = 0;
       }
-      mem.maxAllocations = (ui32)maxMemAllocations;
 
-      SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, 0, &stPath);
-      wcscpy(folderAppData, stPath);
-      CoTaskMemFree(stPath);
-      SHGetKnownFolderPath(FOLDERID_ProgramFiles, 0, 0, &stPath);
-      wcscpy(folderProgramData, stPath);
-      CoTaskMemFree(stPath);
+      if(folderProgramFiles) {
+         if(SUCCEEDED(SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, 0, &stPath))) wcsncpy_s(folderAppData, 512u, stPath, _TRUNCATE);
+         else folderAppData[0] = 0;
+         CoTaskMemFree(stPath);
+         if(SUCCEEDED(SHGetKnownFolderPath(FOLDERID_ProgramFiles, 0, 0, &stPath))) wcsncpy_s(folderProgramFiles, 512u, stPath, _TRUNCATE);
+         else folderProgramFiles[0] = 0;
+         CoTaskMemFree(stPath);
+      }
 
-      GetLogicalProcessorInformation(sysLPI, &(bytesProc = SLPI_SIZE * 4096u));
+      if(!sysLPI || !GetLogicalProcessorInformation(sysLPI, &(bytesProc = SLPI_SIZE * 4096u))) bytesProc = 0; // Alloc/query failure: skip scan
       for(si32 i = 0; (si32&)bytesProc > 0; ++i, bytesProc -= SLPI_SIZE) { ///--- Modify to account for >64 virtual cores !!!
          cui8 coreType = (PopulationCount64(sysLPI[i].ProcessorMask) > 1 ? 1 : 0);
 
@@ -161,7 +175,10 @@ public:
    }
 
    ~SYSTEM_DATA(void) {
-      _aligned_free(folderProgramData);
+      if(freeAllAllocations && mem.location)
+         for(ui32 i = 0; i < mem.maxAllocations; ++i)
+            if(mem.location[i]) _aligned_free((ptr)mem.location[i]);
+      _aligned_free(folderProgramFiles);
       _aligned_free((ptr)mem.byteCount);
       _aligned_free(mem.location);
       mem.maxAllocations = 0;
