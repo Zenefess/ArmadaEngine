@@ -1,13 +1,13 @@
 /*
  * File: data tracking.h
- * Version: v1.0.1
+ * Version: v1.1
  * Owner: David William Bull
  * Created: 2024-03-30
  * Last Modified: 2026-08-12
  * Description: System data aggregation: CPU topology, memory-allocation tracking, and run-time performance read-outs.
  * To Do: 1) Add support for processor groups (>64 virtual cores) via GetLogicalProcessorInformationEx.
  *        2) Add network (and APU?) read-out sections.
- * Dependencies: typedefs.h, Shlobj.h
+ * Dependencies: typedefs.h, Shlobj.h, spinlocks.h
  * ISA: SSE4.2
  * Thread-safety: Reentrant
  * Reviewers: Unassigned
@@ -17,6 +17,7 @@
 
 #include "typedefs.h"
 #include "Shlobj.h"
+#include "spinlocks.h"
 
 // Input: Maxmimum memory allocations
 al64 struct SYSTEM_DATA {
@@ -41,6 +42,8 @@ al64 struct SYSTEM_DATA {
       vui64    allocated      = 0;
       vui32    allocations    = 0;
       vui32    maxAllocations = 0;
+      vui32    lock           = 0; // Tracking-table spin lock: 0 == unlocked, 1 == locked; see spinlocks.h
+      vui32    untracked      = 0; // Allocations dropped because the table was full or never initialised
    } mem;
    ///--- Storage read-outs
    struct {
@@ -87,7 +90,7 @@ al64 struct SYSTEM_DATA {
       ///--- More?
    } culling;
 private:
-   bool freeAllAllocations; // 1 byte overflow beyond 272 byte alignment
+   bool freeAllAllocations; // 1 byte overflow beyond 280 byte alignment
 public:
    SYSTEM_DATA(cui64 maxMemAllocations, cbool freeAllMemoryOnDeletion) {
       typedef SYSTEM_LOGICAL_PROCESSOR_INFORMATION SLPI, * SLPIptr, *const SLPIptrc;
@@ -186,3 +189,47 @@ public:
 };
 
 extern SYSTEM_DATA sysData;
+
+/// @brief Appends a record to the allocation-tracking table. Never writes past maxAllocations: when the table is
+///        full, or construction failed (maxAllocations == 0), the record is dropped and mem.untracked incremented.
+/// @param pointer   Address returned by _aligned_malloc; must be non-null.
+/// @param numBytes  Size of the allocation in bytes.
+/// @note Serialised by mem.lock. SpinLockMax and SpinUnlock are full barriers (LOCK CMPXCHG / XCHG), so every
+///       table mutation is globally visible before the lock clears; the counters are modified only inside the lock.
+inline void MemTrack(ptrc pointer, csize_t numBytes) {
+   SpinLockMax(&sysData.mem.lock);
+   if(sysData.mem.allocations < sysData.mem.maxAllocations) {
+      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
+      sysData.mem.location[sysData.mem.allocations]  = pointer;
+      sysData.mem.allocated += numBytes;
+      sysData.mem.allocations++;
+   } else sysData.mem.untracked++;
+   SpinUnlock(&sysData.mem.lock);
+}
+
+/// @brief Removes a record from the allocation-tracking table via swap-and-pop: the top record fills the vacated
+///        slot, so [0, allocations) stays densely packed and mem.allocations remains a valid append cursor.
+/// @param pointer  Address to remove.
+/// @return true if a record was found and removed, otherwise false.
+/// @note Serialised by mem.lock; same barrier guarantees as MemTrack. Call before _aligned_free(pointer) so the
+///       address cannot be recycled by another thread while its stale record is still in the table.
+inline cui64 MemUntrack(ptrc pointer) {
+   SpinLockMax(&sysData.mem.lock);
+   vptrptrc  location  = sysData.mem.location;
+   vui64ptrc byteCount = sysData.mem.byteCount;
+   cui32     count     = sysData.mem.allocations;
+
+   ui32 index = 0;
+   while(index < count && pointer != location[index]) index++;
+   if(index >= count) { SpinUnlock(&sysData.mem.lock);   return false; } // Pointer is not in the table
+
+   cui32 last = count - 1u;
+   sysData.mem.allocated -= byteCount[index];
+   location[index]  = location[last];   // Swap-and-pop: the top record fills the hole; the vacated
+   byteCount[index] = byteCount[last];  // top slot is zeroed so the destructor sweep stays valid
+   location[last]  = 0;
+   byteCount[last] = 0;
+   sysData.mem.allocations = last;
+   SpinUnlock(&sysData.mem.lock);
+   return true;
+}

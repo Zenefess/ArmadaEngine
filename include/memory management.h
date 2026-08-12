@@ -1,7 +1,7 @@
 /*
  * File: memory management.h
  *
- * Version: v1.1
+ * Version: v1.2
  *
  * Owner: David William Bull
  *
@@ -218,12 +218,7 @@
 inline ptrc malloc(csize_t numBytes, csize_t alignment) {
    ptrc pointer = _aligned_malloc(numBytes, alignment);
 #ifdef DATA_TRACKING
-   if(pointer) {
-      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
-      sysData.mem.location[sysData.mem.allocations]  = pointer;
-      sysData.mem.allocated += numBytes;
-      sysData.mem.allocations++;
-   }
+   if(pointer) MemTrack(pointer, numBytes);
 #endif
    return pointer;
 }
@@ -233,10 +228,7 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui8 bitPattern) {
    ptrc pointer = _aligned_malloc(numBytes, alignment);
    if(pointer) {
 #ifdef DATA_TRACKING
-      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
-      sysData.mem.location[sysData.mem.allocations]  = pointer;
-      sysData.mem.allocated += numBytes;
-      sysData.mem.allocations++;
+      MemTrack(pointer, numBytes);
 #endif
       cui64 bitPat8  = ui64(bitPattern);
       cui64 bitPat16 = bitPat8  | (bitPat8 << 8u);
@@ -256,10 +248,7 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui16 bitPattern) {
    ptrc pointer = _aligned_malloc(numBytes, alignment);
    if(pointer) {
 #ifdef DATA_TRACKING
-      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
-      sysData.mem.location[sysData.mem.allocations]  = pointer;
-      sysData.mem.allocated += numBytes;
-      sysData.mem.allocations++;
+      MemTrack(pointer, numBytes);
 #endif
       cui64 bitPat16 = ui64(bitPattern);
       cui64 bitPat32 = bitPat16 | (bitPat16 << 16u);
@@ -278,10 +267,7 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui32 bitPattern) {
    ptrc pointer = _aligned_malloc(numBytes, alignment);
    if(pointer) {
 #ifdef DATA_TRACKING
-      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
-      sysData.mem.location[sysData.mem.allocations]  = pointer;
-      sysData.mem.allocated += numBytes;
-      sysData.mem.allocations++;
+      MemTrack(pointer, numBytes);
 #endif
       cui64 bitPat32 = ui64(bitPattern);
       cui64 bitPat64 = bitPat32 | (bitPat32 << 32u);
@@ -299,10 +285,7 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui64 bitPattern) {
    ptrc pointer = _aligned_malloc(numBytes, alignment);
    if(pointer) {
 #ifdef DATA_TRACKING
-      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
-      sysData.mem.location[sysData.mem.allocations]  = pointer;
-      sysData.mem.allocated += numBytes;
-      sysData.mem.allocations++;
+      MemTrack(pointer, numBytes);
 #endif
       cui64 limit = numBytes >> 3;
       ui64  os;
@@ -318,10 +301,7 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui128 bitPattern) {
    ptrc pointer = _aligned_malloc(numBytes, alignment);
    if(pointer) {
 #ifdef DATA_TRACKING
-      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
-      sysData.mem.location[sysData.mem.allocations]  = pointer;
-      sysData.mem.allocated += numBytes;
-      sysData.mem.allocations++;
+      MemTrack(pointer, numBytes);
 #endif
       cui64 limit = numBytes >> 4;
       ui64  os;
@@ -337,10 +317,7 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui256 bitPattern) {
    ptrc pointer = _aligned_malloc(numBytes, alignment);
    if(pointer) {
 #ifdef DATA_TRACKING
-      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
-      sysData.mem.location[sysData.mem.allocations]  = pointer;
-      sysData.mem.allocated += numBytes;
-      sysData.mem.allocations++;
+      MemTrack(pointer, numBytes);
 #endif
       cui64 limit = numBytes >> 5;
       ui64  os;
@@ -356,10 +333,7 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui512 bitPattern) {
    ptrc pointer = _aligned_malloc(numBytes, alignment);
    if(pointer) {
 #ifdef DATA_TRACKING
-      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
-      sysData.mem.location[sysData.mem.allocations]  = pointer;
-      sysData.mem.allocated += numBytes;
-      sysData.mem.allocations++;
+      MemTrack(pointer, numBytes);
 #endif
       cui64 limit = numBytes >> 6;
       ui64  os;
@@ -374,78 +348,37 @@ inline ptrc salloc(csize_t numBytes, csize_t alignment, cui512 bitPattern) {
 inline cui64 mdealloc(ptrc pointer);
 
 // Frees a pointer and returns true if successful.
-inline constexpr cui64 mfree1(ptr pointer) {
-    if(pointer) {
-        mdealloc(pointer);
-#if defined(DATA_TRACKING)
-        int x = 0;
-        for(; sysData.mem.location[x] != pointer && x << sysData.mem.allocations; x++)
-        if(sysData.mem.location[x] != pointer) sysData.mem.location[x] = 0;
-#endif
-        return true;
-    }
-    return false;
-}
-//#define mfree1(pointer) mdealloc(pointer)
+inline cui64 mfree1(ptrc pointer) { return mdealloc(pointer); }
 
 // Frees a variable number of pointers. Each bit represents each pointer (in argument order), and will be true if the relevant pointer is freed.
 #define mfree(pointer, ...) mdealloc_(pointer, __VA_ARGS__, -1ll)
 
 // Frees a pointer and returns true if successful.
 inline cui64 mdealloc(ptrc pointer) {
-   if(pointer) {
+   if(!pointer) return false;
 #ifdef DATA_TRACKING
-      cui32    allocations = sysData.mem.allocations;
-      vptrptrc location    = sysData.mem.location;
-
-      ui32 index = 0;
-
-      // Find entry
-      while(allocations < index && pointer != location[index]) index++;
-
-      // Is the pointer invalid?
-      if(index >= allocations) return false;
-
-      --sysData.mem.allocations;
-      sysData.mem.allocated -= sysData.mem.byteCount[index];
-      sysData.mem.location[index]  = 0;
-      sysData.mem.byteCount[index] = 0;
-      location[index] = 0;
+   // Untrack before freeing so the address cannot be recycled while its record is live. When tracking never
+   // initialised (maxAllocations == 0) fall through and free; otherwise an unknown pointer is refused -- the
+   // double-free/foreign-pointer guard.
+   if(sysData.mem.maxAllocations && !MemUntrack(pointer)) return false;
 #endif
-      _aligned_free(pointer);
-      return true;
-   }
-   return false;
+   _aligned_free(pointer);
+   return true;
 }
 
 // Frees a variable number of pointers. Each bit represents each pointer (in argument order), and will be true if the relevant pointer is freed.
 inline cui64 mdealloc_(ptr pointer, ...) {
-   va_list val; va_start(val, pointer);
+   va_list val;   va_start(val, pointer);
    ui64    retVal = 0, ptrBit = 0x01u;
 
-   for(; (ui64 &)pointer != -1; pointer = va_arg(val, ptrc)) {
+   for(; (ui64 &)pointer != -1; pointer = va_arg(val, ptrc), ptrBit <<= 1)
       if(pointer) {
 #ifdef DATA_TRACKING
-         cui32    allocations = sysData.mem.allocations;
-         vptrptrc location    = sysData.mem.location;
-         ui32     index       = 0;
-
-         // Find entry
-         while(allocations < index && pointer != location[index]) index++;
-         // Is the pointer invalid?
-         if(index >= allocations) continue;
-
-         --sysData.mem.allocations;
-         sysData.mem.allocated -= sysData.mem.byteCount[index];
-         sysData.mem.location[index]  = 0;
-         sysData.mem.byteCount[index] = 0;
-         location[index] = 0;
+         if(sysData.mem.maxAllocations && !MemUntrack(pointer)) continue; // Unknown pointer: its bit stays 0
 #endif
          _aligned_free(pointer);
          retVal |= ptrBit;
-         ptrBit <<= 1;
       }
-   }
    va_end(val);
    return retVal;
 }

@@ -1,6 +1,6 @@
 /************************************************************
  * File: class_timers.h                 Created: 2022/10/20 *
- *                                Last modified: 2025/01/21 *
+ *                                Last modified: 2026/08/12 *
  *                                                          *
  * Desc: Single and multi timer classes.                    *
  *                                                          *
@@ -20,25 +20,10 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #endif
 
-#ifndef _MEMORY_MANAGER_
-// Allocates RAM at aligned boundary, then sets the entire array to a repeating 64-bit pattern
-inline ptrc salloc(csize_t numBytes, csize_t alignment, cui64 bitPattern) {
-   ptrc pointer = _aligned_malloc(numBytes, alignment);
-   if(pointer) {
-#ifdef DATA_TRACKING
-      sysData.mem.byteCount[sysData.mem.allocations] = numBytes;
-      sysData.mem.location[sysData.mem.allocations++] = pointer;
-      sysData.mem.allocated += numBytes;
-#endif
-      cui64 limit = numBytes >> 3;
-      ui64  os;
-
-      for(os = 0; os < limit; os++) ((ui64ptr)pointer)[os] = bitPattern;
-      for(os <<= 3; os < numBytes; os++) ((ui8ptr)pointer)[os] = ((ui8(&)[8])bitPattern)[os & 0x07];
-   }
-   return pointer;
-}
-#endif
+// Real allocator with bounds-checked, lock-serialised tracking. Replaces the former standalone salloc fallback,
+// which duplicated an inline definition (ODR hazard), referenced sysData with no include, and appended to the
+// tracking table with no maxAllocations check.
+#include "memory management.h"
 
 al64 struct TIMER_VARIABLES {
    fl64 dGrandTotal;
