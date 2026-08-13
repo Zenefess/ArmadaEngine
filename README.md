@@ -14,7 +14,7 @@ Previous updates:
 * Keyboard: Up to 192 unique keys
 * Game controllers: Up to 8 devices, each of which allows for up to 8 axes, 4 POVs, and 32 buttons
 
-2024/06/01:   I have spendt most of the time since the last update rewriting fixed-point data type handling, which has included revising a lot of code that utilises those data types. Much easier to use them, now, as their conversions are handled by class functions. Work on this project is still well in progress.
+2024/06/01:   I have spent most of the time since the last update rewriting fixed-point data type handling, which has included revising a lot of code that utilises those data types. Much easier to use them, now, as their conversions are handled by class functions. Work on this project is still well in progress.
 
 2024/05/06:   Currently preparing GUI backend to make creating/editing GUI profiles fully customisable. Support for custom input processing & triggered functions is almost complete.
 
