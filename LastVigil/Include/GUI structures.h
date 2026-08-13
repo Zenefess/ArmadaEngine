@@ -137,8 +137,9 @@ al32 struct GUI_EL_DGS { // 96 bytes (24 scalars)   ///--- Rewrite to remove red
       struct { // Type==Text|TextArray
          fl32 width;         // Total width of vertex's text in view space
          ui32 charBankOS;    // 0~25==Offset into character bank (div.by 16), 26~31==Vertex's char count
-         ui16 alphabetIndex; // Offset into alphabet buffer
-         ui8  RES8[2];
+         ui16 pIMMos;        // Offset into alphabet buffer
+		 ui8  alphabetIndex; // CPU-side alphabet index
+         ui8  RES8;
       };
       struct { // Type!=Text|TextArray
          union {
