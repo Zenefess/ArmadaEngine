@@ -1,13 +1,14 @@
-/************************************************************
- * File: GUI structures.h               Created: 2023/01/26 *
- *                                Last modified: 2024/07/30 *
- *                                                          *
- * Desc:                                                    *
- *                                                          *
- * 2024/04/18: Added GUI_DESC struct                        *
- *                                                          *
- *  Copyright (c) David William Bull. All rights reserved.  *
- ************************************************************/
+/*********************************************************************
+ * File: GUI structures.h                        Created: 2023/01/26 *
+ *                                         Last modified: 2026/08/13 *
+ *                                                                   *
+ * Desc:                                                             *
+ *                                                                   *
+ * 2024/04/18: Added GUI_DESC struct                                 *
+ * 2026/08/13: Added .pIMMos to GUI_EL_DGS for CPU-side convenience  *
+ *                                                                   *
+ *  Copyright (c) David William Bull.          All rights reserved.  *
+ *********************************************************************/
 #pragma once
 
 #include "typedefs.h"
