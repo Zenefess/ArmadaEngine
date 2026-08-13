@@ -1,12 +1,13 @@
 /*******************************************************************************  
  * File: class_gui.h                                       Created: 2023/01/26 *
- *                                                   Last modified: 2025/09/09 *
+ *                                                   Last modified: 2026/08/13 *
  *                                                                             *
  * Desc:                                                                       *
  *                                                                             *
  * 2024/04/01: GUI_EL_DYN SRV+Adj.coords replaced by UAV                       *
  * 2024/04/17: Modified all 'Create...' functions to use data struct for input *
  * 2024/04/25: Modified .ProcessInputs() to use custom Input mappings          *
+ * 2026/08/13: Rewrote CalculateTextOrigin() to utilise SIMD in one pass       *
  *                                                                             *
  * Copyright (c) David William Bull.                      All rights reserved. *
  *******************************************************************************/
@@ -512,6 +513,57 @@ public:
       return (SSE4Df32 &)_mm_fmadd_ps(coords.xmm, _mm_set_ps1(0.5f), _mm_set_ps1(0.5f));
    }
 
+/// @brief   Calculates a text vertex's origin by accumulating the character widths of the previous vertex's text block
+/// @param   firstVert      Index of the text's first vertex
+/// @param   curVert        Index of the vertex to calculate the origin of
+/// @param   alphabetIndex  Index of the text's alphabet
+/// @return  Origin of vertex [curVert] in parent/view space
+/// @note    Accumulation stops at the first non-positive character, or after 32 characters
+#if !defined(USE_OLD_CODE)
+   inline cVEC2Df CalculateTextOrigin(csi16 firstVert, csi16 curVert, csi16 alphabetIndex) const {
+      if(firstVert == curVert) return element_dgs[firstVert].origin[0];
+
+      cui32     uiPrevVert   = ui32(curVert) - 1;
+      cVEC2Df   uiPrevOrigin = element_dgs[uiPrevVert].origin[0];
+      cui32     uiBufIndex   = (element_dgs[uiPrevVert].charBankOS & 0x03FFFFFF) << 4u;
+      csi32ptrc pWidthPairs  = (csi32ptrc)&alphabet_pIMM->width; // Dword gathers read [width|height]; CHAR_IMM stride == 16 bytes
+
+      // Locate the first non-positive character; the run of set bits from bit 0 is the number of characters to accumulate
+      cui256 chars     = _mm256_loadu_si256((cui256ptr)&textBuffer[uiBufIndex]); // Unaligned load: charBankOS is 16-byte granular
+      cui32  charCount = _tzcnt_u32(~ui32(_mm256_movemask_epi8(_mm256_cmpgt_epi8(chars, null256)))); // ==32u if all positive
+
+      cui256 countV  = _mm256_set1_epi32(si32(charCount));
+      cui256 pIMMosV = _mm256_set1_epi32(si32(alphabet[alphabetIndex].pIMMos));
+      cui128 charsLo = _mm256_castsi256_si128(chars);
+      cui128 charsHi = _mm256_extracti128_si256(chars, 1);
+
+      // Per-lane predicates from the prefix count; per-8 table indices: (pIMMos + char) * sizeof(CHAR_IMM) via index*4, scale 4
+      cui256 mask0  = _mm256_cmpgt_epi32(countV, _mm256_setr_epi32( 0,  1,  2,  3,  4,  5,  6,  7));
+      cui256 mask1  = _mm256_cmpgt_epi32(countV, _mm256_setr_epi32( 8,  9, 10, 11, 12, 13, 14, 15));
+      cui256 mask2  = _mm256_cmpgt_epi32(countV, _mm256_setr_epi32(16, 17, 18, 19, 20, 21, 22, 23));
+      cui256 mask3  = _mm256_cmpgt_epi32(countV, _mm256_setr_epi32(24, 25, 26, 27, 28, 29, 30, 31));
+      cui256 index0 = _mm256_slli_epi32(_mm256_add_epi32(pIMMosV, _mm256_cvtepi8_epi32(charsLo)), 2);
+      cui256 index1 = _mm256_slli_epi32(_mm256_add_epi32(pIMMosV, _mm256_cvtepi8_epi32(_mm_srli_si128(charsLo, 8))), 2);
+      cui256 index2 = _mm256_slli_epi32(_mm256_add_epi32(pIMMosV, _mm256_cvtepi8_epi32(charsHi)), 2);
+      cui256 index3 = _mm256_slli_epi32(_mm256_add_epi32(pIMMosV, _mm256_cvtepi8_epi32(_mm_srli_si128(charsHi, 8))), 2);
+
+      // Masked-off lanes perform no memory access and yield 0; garbage bytes beyond the terminator are never dereferenced
+      cui256 pairs0 = _mm256_mask_i32gather_epi32(null256, pWidthPairs, index0, mask0, 4);
+      cui256 pairs1 = _mm256_mask_i32gather_epi32(null256, pWidthPairs, index1, mask1, 4);
+      cui256 pairs2 = _mm256_mask_i32gather_epi32(null256, pWidthPairs, index2, mask2, 4);
+      cui256 pairs3 = _mm256_mask_i32gather_epi32(null256, pWidthPairs, index3, mask3, 4);
+
+      // Strip the .height words and reduce; maximum sum (32 * 65,535) < 2^24, so the fl32 conversion is exact
+      cui256 wordV   = _mm256_set1_epi32(0x0FFFF);
+      cui256 sum8    = _mm256_add_epi32(_mm256_add_epi32(_mm256_and_si256(pairs0, wordV), _mm256_and_si256(pairs1, wordV)),
+                                        _mm256_add_epi32(_mm256_and_si256(pairs2, wordV), _mm256_and_si256(pairs3, wordV)));
+      cui128 sum4    = _mm_add_epi32(_mm256_castsi256_si128(sum8), _mm256_extracti128_si256(sum8, 1));
+      cui128 sum2    = _mm_add_epi32(sum4, _mm_shuffle_epi32(sum4, 0x04E));
+      cfl32  fOffset = fl32(_mm_cvtsi128_si32(_mm_add_epi32(sum2, _mm_shuffle_epi32(sum2, 0x0B1)))) * _fpdt_rcp65535f;
+
+      return { fOffset * element_dgs[firstVert].size.x + uiPrevOrigin.x, uiPrevOrigin.y };
+   };
+#else
    inline cVEC2Df CalculateTextOrigin(csi16 firstVert, csi16 curVert, csi16 alphabetIndex) const {
       if(firstVert == curVert) return element_dgs[firstVert].origin[0];
 
@@ -526,6 +578,7 @@ public:
 
       return { fOffset * element_dgs[firstVert].size.x + uiPrevOrigin.x, uiPrevOrigin.y };
    };
+#endif
 
    // Returns first vertex, or 0x0FFFFFFFF if insufficient text buffer space
    cui32 CreateTextVertices(cGUI_EL_DESC &desc, ui32 textSize, cbool forTextArray) {
@@ -556,7 +609,8 @@ public:
          element_dgs[uiGUIVerts].parentIndex   = uiGUIVerts;
          element_dgs[uiGUIVerts].width         = 0.0f;
          element_dgs[uiGUIVerts].charBankOS    = ((i + siTextBankOS) >> 4u) | ((textSize - i > 32u ? 32u : textSize - i) << 26u);
-         element_dgs[uiGUIVerts].alphabetIndex = alphabet[desc.index.alphabet].pIMMos;
+         element_dgs[uiGUIVerts].pIMMos        = alphabet[desc.index.alphabet].pIMMos;
+         element_dgs[uiGUIVerts].alphabetIndex = desc.index.alphabet;
          element_dgs[uiGUIVerts].atlasIndex    = (ui8 &)alphabet[desc.index.alphabet].atlasIndex * 2u + TEX_REG_OS_GUI;
          element_dgs[uiGUIVerts].elementType   = (forTextArray ? aet_textArray : aet_text);
          element_dgs[uiGUIVerts].sibling       = uiGUIVerts - firstVertex;
@@ -571,7 +625,8 @@ public:
          element_dgs[uiGUIVerts].parentIndex   = uiGUIVerts;
          element_dgs[uiGUIVerts].width         = 0.0f;
          element_dgs[uiGUIVerts].charBankOS    = (i + siTextBankOS) >> 4u;
-         element_dgs[uiGUIVerts].alphabetIndex = alphabet[desc.index.alphabet].pIMMos;
+         element_dgs[uiGUIVerts].pIMMos        = alphabet[desc.index.alphabet].pIMMos;
+         element_dgs[uiGUIVerts].alphabetIndex = desc.index.alphabet;
          element_dgs[uiGUIVerts].atlasIndex    = (ui8 &)alphabet[desc.index.alphabet].atlasIndex * 2u + TEX_REG_OS_GUI;
          element_dgs[uiGUIVerts].elementType   = (forTextArray ? aet_textArray : aet_text);
          element_dgs[uiGUIVerts].sibling       = uiGUIVerts - firstVertex;
