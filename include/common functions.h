@@ -16,8 +16,8 @@
  */
 #pragma once
 
-#include <typedefs.h>
-#include <vector structures.h>
+#include "typedefs.h"
+#include "vector structures.h"
 #include <corecrt_math.h>
 #include "SIMD management.h"
 //#include "string_func_avx2.h"
